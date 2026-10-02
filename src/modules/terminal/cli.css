@@ -1,17 +1,21 @@
-/* Command line. A literal terminal in BOTH themes: amber on black, ignores the theme tokens. */
 .cli {
-  flex: none;
+  flex: 1 1 380px;
+  min-width: 260px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 28px;
-  padding: 0 0 0 8px;
-  background: #000;
-  border-top: 1px solid #2c2c2c;
-  border-bottom: 1px solid #2c2c2c;
+  gap: 10px;
+  height: 32px;
+  padding: 0 4px 0 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: 12px;
-  color: #ffa028;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.cli:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .cli-line {
   order: 0;
@@ -23,11 +27,10 @@
   height: 100%;
 }
 .cli-prompt {
+  color: var(--accent);
   font-weight: 600;
-  font-size: 10.5px;
-  padding: 1px 5px;
-  background: #ffa028;
-  color: #000;
+  font-size: 15px;
+  line-height: 1;
 }
 .cli-line input {
   flex: 1;
@@ -36,45 +39,43 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #ffd60a;
-  caret-color: #ffa028;
+  color: var(--text);
   font-family: var(--font-mono);
   font-size: 12.5px;
-  text-transform: uppercase;
 }
 .cli-line input::placeholder {
-  color: #5a4520;
+  color: var(--text-faint);
 }
 .cli-go {
-  height: 100%;
+  height: 24px;
   border: 0;
-  padding: 0 14px;
-  background: #00a651;
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  background: var(--royal);
   color: #fff;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-weight: 600;
   font-size: 11.5px;
 }
 .cli-go:hover {
-  background: #00c060;
+  background: var(--royal-hi);
 }
 .cli-result {
   order: 1;
   flex: 0 1 auto;
-  max-width: 50%;
-  padding-right: 10px;
+  max-width: 45%;
   font-size: 11.5px;
-  color: #f2f2f2;
+  color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cli-ok {
-  color: #00d26a;
+  color: var(--profit);
 }
 .cli-err {
-  color: #ff3b3b;
+  color: var(--loss);
 }
 .cli-dim {
-  color: #6b6b6b;
+  color: var(--text-faint);
 }

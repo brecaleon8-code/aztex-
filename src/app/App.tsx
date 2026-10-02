@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { TopBar, AccountStrip } from './TopBar';
-import { QuoteBoard } from './QuoteBoard';
+import { GasTicker } from './GasTicker';
 import { useFunctionKeys } from './useFunctionKeys';
 import { ThemeSync } from './ThemeSync';
 import { startMarketFeed } from './marketFeed';
@@ -28,9 +28,11 @@ export function App() {
     <div className="app" data-platform={platform}>
       <ThemeSync />
       <TopBar />
-      <CliBar />
-      <QuoteBoard />
-      <AccountStrip />
+      <div className="cmdrow">
+        <CliBar />
+        <AccountStrip />
+        <GasTicker />
+      </div>
       <main className="main">
         <div className="content">
           <Suspense fallback={<div className="empty">Loading…</div>}>

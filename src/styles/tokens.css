@@ -1,81 +1,87 @@
-/* Design tokens — institutional terminal (Bloomberg-lineage). Pure black ground, amber UI chrome,
-   white values, green/red reserved for direction. Square corners and 1px rules everywhere.
-   "Paper" (light) is a separately tuned print-style palette sharing the same token names. */
+/* Design tokens — "Royal". A green-black ground with a royal-green brand used for fills and active
+   states, muted gold as a sparing highlight, and bright mint/red reserved for P/L direction so
+   brand never reads as profit. "Ivory" is the separately tuned light palette (same token names). */
 :root,
 [data-theme='dark'] {
-  --bg: #000000;
-  --bg2: #0b0b0b;
-  --panel: #000000;
-  --panel-solid: #0a0a0a;
-  --panel-head: #161616;
-  --panel-alt: #121212;
-  --border: #2c2c2c;
-  --border-soft: #1a1a1a;
-  --text: #f2f2f2;
-  --text-dim: #a8a8a8;
-  --text-faint: #6b6b6b;
-  --amber: #ffa028;
-  --accent: #ffa028;
-  --accent-2: #3dc7f5;
-  --accent-3: #ffd60a;
-  --accent-soft: rgba(255, 160, 40, 0.14);
-  --on-accent: #000000;
-  --hl: #1e2a3a; /* selected-row band */
-  --flash-up: rgba(0, 210, 106, 0.28);
-  --flash-down: rgba(255, 59, 59, 0.3);
-  --hover: #161616;
-  --scrim: rgba(0, 0, 0, 0.7);
-  --shadow: none;
+  --bg: #070b09;
+  --bg2: #0a100d;
+  --panel: #0d1411;
+  --panel-solid: #0d1411;
+  --panel-head: #0d1411;
+  --panel-alt: #121b17;
+  --border: #1d2a24;
+  --border-soft: #16211c;
+  --text: #e8eee9;
+  --text-dim: #98a8a0;
+  --text-faint: #5e6f67;
+  --royal: #0f6b4b;
+  --royal-hi: #138058;
+  --accent: #2fa477; /* royal green, lifted for legibility as text/icons */
+  --accent-soft: rgba(47, 164, 119, 0.14);
+  --on-accent: #ffffff;
+  --gold: #c9a75a;
+  --amber: var(--gold);
+  --accent-2: #6aaed6;
+  --accent-3: var(--gold);
+  --hl: rgba(47, 164, 119, 0.1);
+  --flash-up: rgba(61, 220, 151, 0.18);
+  --flash-down: rgba(255, 93, 93, 0.2);
+  --hover: rgba(255, 255, 255, 0.03);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.8);
   --chart-glow: none;
-  --go: #00a651;
-  --cancel: #c8102e;
+  --go: var(--royal);
+  --cancel: #c2393b;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --bg: #e9e6df;
-  --bg2: #dcd8cf;
-  --panel: #fbfaf7;
-  --panel-solid: #fbfaf7;
-  --panel-head: #ece8df;
-  --panel-alt: #f2efe8;
-  --border: #b9b3a6;
-  --border-soft: #dcd7cc;
-  --text: #111111;
-  --text-dim: #4a4a4a;
-  --text-faint: #858078;
-  --amber: #a65200;
-  --accent: #a65200;
-  --accent-2: #005f8f;
-  --accent-3: #8a6d00;
-  --accent-soft: rgba(166, 82, 0, 0.1);
+  --bg: #f2f0eb;
+  --bg2: #faf9f6;
+  --panel: #ffffff;
+  --panel-solid: #ffffff;
+  --panel-head: #ffffff;
+  --panel-alt: #f6f5f1;
+  --border: #e2dfd7;
+  --border-soft: #efede7;
+  --text: #13201a;
+  --text-dim: #4d5d55;
+  --text-faint: #8a958f;
+  --royal: #0f6b4b;
+  --royal-hi: #0c5a3f;
+  --accent: #0f6b4b;
+  --accent-soft: rgba(15, 107, 75, 0.08);
   --on-accent: #ffffff;
-  --hl: #dbe6f2;
-  --flash-up: rgba(0, 140, 70, 0.2);
-  --flash-down: rgba(200, 30, 30, 0.18);
-  --hover: #efebe2;
-  --scrim: rgba(0, 0, 0, 0.25);
-  --shadow: none;
+  --gold: #9a7a2e;
+  --amber: var(--gold);
+  --accent-2: #2f6f9e;
+  --accent-3: var(--gold);
+  --hl: rgba(15, 107, 75, 0.07);
+  --flash-up: rgba(15, 138, 85, 0.14);
+  --flash-down: rgba(200, 40, 40, 0.12);
+  --hover: rgba(19, 32, 26, 0.035);
+  --scrim: rgba(19, 32, 26, 0.2);
+  --shadow: 0 1px 2px rgba(19, 32, 26, 0.04), 0 8px 24px -18px rgba(19, 32, 26, 0.18);
   --chart-glow: none;
-  --go: #00843d;
-  --cancel: #b00020;
+  --go: var(--royal);
+  --cancel: #b3261e;
   color-scheme: light;
 }
 
 :root {
-  --font-display: 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --font-ui: 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-display: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-ui: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --radius-panel: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --gap: 2px;
-  --pad: 10px;
+  --radius-panel: 8px;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --gap: 8px;
+  --pad: 12px;
   --cli-h: 0px;
   /* P/L palette — overwritten at runtime from the Appearance store (literal hex). */
-  --bull: #00d26a;
-  --bear: #ff3b3b;
-  --profit: #00d26a;
-  --loss: #ff3b3b;
+  --bull: #3ddc97;
+  --bear: #ff5d5d;
+  --profit: #3ddc97;
+  --loss: #ff5d5d;
 }

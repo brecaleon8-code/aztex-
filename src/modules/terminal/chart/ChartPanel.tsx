@@ -72,18 +72,6 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
               <option key={t}>{t}</option>
             ))}
           </select>
-          <Segmented<ChartMode>
-            ariaLabel="Chart mode"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'candles', label: 'Candles' },
-              { value: 'heikin', label: 'Heikin-Ashi' },
-              { value: 'bars', label: 'Bars' },
-              { value: 'line', label: 'Line' },
-              { value: 'area', label: 'Area' },
-            ]}
-          />
           <button className="btn sm icon ghost" onClick={toggleChartMaximized} aria-label={chartMaximized ? 'Restore chart' : 'Maximize chart'}>
             {chartMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -119,6 +107,19 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
             </span>
           ))}
         </div>
+        <span className="spacer" />
+        <Segmented<ChartMode>
+          ariaLabel="Chart mode"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'candles', label: 'Candles' },
+            { value: 'heikin', label: 'HA', title: 'Heikin-Ashi' },
+            { value: 'bars', label: 'Bars' },
+            { value: 'line', label: 'Line' },
+            { value: 'area', label: 'Area' },
+          ]}
+        />
       </div>
       <PriceChart />
       <ResizeHandle />

@@ -15,10 +15,10 @@ export function GasTicker() {
   }, []);
   return (
     <div className="gas" aria-label="Network fee estimates">
-      <span className="label">FEES</span>
-      {gas.slice(0, 4).map((g) => (
-        <span key={g.chain} className="gas-item mono">
-          <span className="faint">{g.chain.slice(0, 3).toUpperCase()}</span> {fmtGas(g)}
+      <span className="label">Fees</span>
+      {gas.slice(0, 3).map((g) => (
+        <span key={g.chain} className="gas-item" title={`${g.chain}: ≈ $${g.usd.toFixed(4)}`}>
+          <span className="faint">{g.chain}</span> <span className="mono">{fmtGas(g)}</span>
         </span>
       ))}
     </div>

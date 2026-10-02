@@ -6,15 +6,15 @@ export type Theme = 'dark' | 'light';
 export type Platform = 'website' | 'mobile' | 'terminal';
 
 export const DEFAULT_COLORS: AppearanceColors = {
-  bull: '#00D26A',
-  bear: '#FF3B3B',
-  profit: '#00D26A',
-  loss: '#FF3B3B',
+  bull: '#3DDC97',
+  bear: '#FF5D5D',
+  profit: '#3DDC97',
+  loss: '#FF5D5D',
 };
 
 /** Fixed categorical palette — independent of theme and of P/L colors (spec §3). */
-/** Terminal series colors: amber, cyan, magenta, yellow, white, coral. */
-export const CATEGORICAL = ['#FFA028', '#3DC7F5', '#E066FF', '#FFD60A', '#E6E6E6', '#FF7F50'];
+/** Series colors: gold, steel blue, lavender, rose, silver, slate — no greens/reds, so they never read as P/L. */
+export const CATEGORICAL = ['#C9A75A', '#6AAED6', '#A98BE0', '#D9A3C8', '#D7DBD9', '#8FB4CC'];
 
 interface ThemeState {
   theme: Theme;
@@ -39,6 +39,6 @@ export const useThemeStore = create<ThemeState>()(
       setColor: (k, hex) => set((s) => ({ colors: { ...s.colors, [k]: hex } })),
       resetColors: () => set({ colors: DEFAULT_COLORS }),
     }),
-    { name: 'aztex.theme', version: 3, migrate: (s) => ({ ...(s as ThemeState), colors: DEFAULT_COLORS }) },
+    { name: 'aztex.theme', version: 4, migrate: (s) => ({ ...(s as ThemeState), colors: DEFAULT_COLORS }) },
   ),
 );

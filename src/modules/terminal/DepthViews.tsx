@@ -128,7 +128,7 @@ export function LiquidityHeatmap({ history }: { history: OrderBookSnapshot[] }) 
       }
     });
     // Mid trace
-    ctx.strokeStyle = '#ffa028';
+    ctx.strokeStyle = '#c9a75a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     history.forEach((s, i) => {

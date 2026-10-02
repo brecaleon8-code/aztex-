@@ -80,7 +80,7 @@ export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors
         instance: i,
         lines: [
           { key: 'macd', values: m.macd, color: i.color },
-          { key: 'signal', values: m.signal, color: '#FFA028', opacity: 0.9 },
+          { key: 'signal', values: m.signal, color: '#C9A75A', opacity: 0.9 },
         ],
         bars: { values: m.histogram, colors: m.histogram.map((h) => (h == null ? null : h >= 0 ? colors.bull : colors.bear)) },
         guides: [0],

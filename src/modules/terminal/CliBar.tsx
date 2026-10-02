@@ -3,8 +3,8 @@ import { execCli, type CliResult } from './cliExec';
 import './cli.css';
 
 /**
- * Always-on command line across every route (terminal-style, with a <GO> key). It stays a literal
- * dark terminal in BOTH themes — it does not use theme tokens.
+ * Always-on command line across every route. Keyboard-first: "/" focuses it from anywhere,
+ * Enter runs, ↑/↓ walk history.
  */
 export function CliBar() {
   const [value, setValue] = useState('');
@@ -33,10 +33,10 @@ export function CliBar() {
         )}
       </div>
       <label className="cli-line">
-        <span className="cli-prompt">CMD</span>
+        <span className="cli-prompt">›</span>
         <input
           aria-label="Command line"
-          placeholder="BUY 0.1 BTC · ETH · WATCH SOL · THEME LIGHT · HELP   (press / to focus)"
+          placeholder="Type a command — buy 0.1 btc, eth, watch sol, help   ( / )"
           spellCheck={false}
           autoComplete="off"
           value={value}
@@ -52,7 +52,7 @@ export function CliBar() {
           }}
         />
         <button type="button" className="cli-go" onClick={run} aria-label="Run command">
-          &lt;GO&gt;
+          Run
         </button>
       </label>
     </div>

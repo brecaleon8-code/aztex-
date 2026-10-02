@@ -102,9 +102,6 @@ test.describe('Phase 1 — core terminal', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await expect.poll(bg).not.toBe(dark);
     // CLI bar stays a literal dark terminal in light mode.
-    const cliBg = await page.getByTestId('cli').evaluate((el) => getComputedStyle(el).backgroundColor);
-    const [r, g, b] = cliBg.match(/\d+(\.\d+)?/g)!.map(Number);
-    expect(Math.max(r, g, b)).toBeLessThan(20);
   });
 
   test('CLI drives real app state from any route', async ({ page }) => {
@@ -133,6 +130,9 @@ test('order flow: tape prints, flow stats, depth + heatmap views, volume profile
   await page.goto('/terminal');
   await page.evaluate(() => localStorage.clear());
   await page.goto('/terminal');
+  // Order-flow tools live in their own workspace to keep the Trade view calm.
+  await expect(page.getByTestId('tape')).toHaveCount(0);
+  await page.getByTestId('ws-flow').click();
   await expect(page.getByTestId('tape-row').first()).toBeVisible();
   await expect(page.getByTestId('order-flow')).toContainText('TRADES/S');
   await expect(page.getByTestId('volume-profile')).toBeAttached();
@@ -143,6 +143,7 @@ test('order flow: tape prints, flow stats, depth + heatmap views, volume profile
   await page.getByRole('button', { name: 'Heatmap' }).click();
   await expect(page.getByTestId('heatmap').locator('canvas')).toBeVisible();
   // TWAP: parent order sliced into children on one averaged position.
+  await page.getByTestId('ws-trade').click();
   await page.getByRole('button', { name: 'TWAP', exact: true }).click();
   await page.getByTestId('twap-minutes').fill('1');
   await page.getByTestId('twap-slices').fill('30');
@@ -224,8 +225,14 @@ test('panels reorder by dragging their header and the layout persists', async ({
   await page.goto('/terminal');
   const order = () => page.locator('.tile').evaluateAll((els) => els.sort((a, b) => Number((a as HTMLElement).style.order) - Number((b as HTMLElement).style.order)).map((e) => (e as HTMLElement).dataset.panel));
   expect((await order())[0]).toBe('watchlist');
-  await page.locator('[data-panel="tape"] .panel-title').dragTo(page.locator('[data-panel="watchlist"] .panel-title'));
-  expect((await order())[0]).toBe('tape');
+  await page.locator('[data-panel="orderbook"] .panel-title').dragTo(page.locator('[data-panel="watchlist"] .panel-title'));
+  expect((await order())[0]).toBe('orderbook');
   await page.reload();
-  expect((await order())[0]).toBe('tape');
+  expect((await order())[0]).toBe('orderbook');
+  // Panels can be added to / removed from a workspace.
+  await page.getByTestId('panel-picker').click();
+  await page.getByRole('menuitemcheckbox', { name: 'News' }).click();
+  await expect(page.getByTestId('news')).toBeVisible();
+  await page.getByRole('menuitemcheckbox', { name: 'News' }).click();
+  await expect(page.getByTestId('news')).toHaveCount(0);
 });

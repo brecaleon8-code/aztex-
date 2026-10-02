@@ -21,8 +21,8 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Price chart | Hand-rolled SVG (see "Charting decision" below) |
 | Simple charts | `recharts` (P/L mountain, dominance ring, comparison lines) |
 | Icons | `lucide-react` |
-| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). The visual language is an institutional terminal in the Bloomberg lineage: pure black, amber chrome, white values, green/red only for direction, square cells and 1px rules (a global no-radius rule), solid-block value-change flashes, function-code title bars (GP, DOM, T&S, EMSX…), F1–F5 function keys, and a `<GO>` command line. "Paper" is the separately tuned light theme. |
-| Fonts | IBM Plex Mono (all data and chrome) and IBM Plex Sans Condensed (labels), self-hosted via Fontsource |
+| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). "Royal" visual language: green-black ground, royal-green brand used only for fills and active states, muted gold as a sparing highlight, and bright mint/red reserved for P/L so the brand never reads as profit. Modest 6–8px radii, quiet panel chrome, numbers carry the weight. "Ivory" is the separately tuned light theme. |
+| Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
 ## Layout
@@ -98,7 +98,9 @@ src/
 | TWAP execution | ticket → Execution | Splits the parent order into equal child market orders over the chosen duration, averaging into one position. Progress, average price, cancel, and slippage vs arrival are reported on completion. |
 | News wire | `terminal/News.tsx` | Simulated headlines; filter to the selected symbol. |
 
-Keyboard: **F1–F5** switch modules; **/** focuses the command line.
+**Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
+
+Keyboard: **F1–F5** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
 ## Charting decision
 

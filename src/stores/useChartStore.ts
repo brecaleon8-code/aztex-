@@ -26,10 +26,9 @@ export const useChartStore = create<ChartState>()(
       mode: 'candles',
       tool: 'cursor',
       indicators: [
-        { id: 'ema21', kind: 'ema', type: 'overlay', color: '#FFA028', period: 21 },
-        { id: 'vwap', kind: 'vwap', type: 'overlay', color: '#3DC7F5' },
-        { id: 'vol', kind: 'volume', type: 'oscillator', color: '#3DC7F5' },
-        { id: 'cvd', kind: 'cvd', type: 'oscillator', color: '#FFD60A' },
+        { id: 'ema21', kind: 'ema', type: 'overlay', color: '#C9A75A', period: 21 },
+        { id: 'vwap', kind: 'vwap', type: 'overlay', color: '#6AAED6' },
+        { id: 'vol', kind: 'volume', type: 'oscillator', color: '#6AAED6' },
       ],
       drawings: [],
       profile: true,
@@ -42,6 +41,6 @@ export const useChartStore = create<ChartState>()(
       removeDrawing: (id) => set((s) => ({ drawings: s.drawings.filter((d) => d.id !== id) })),
       clearDrawings: () => set({ drawings: [] }),
     }),
-    { name: 'aztex.chart', version: 2, migrate: () => ({}), partialize: (s) => ({ mode: s.mode, indicators: s.indicators, profile: s.profile }) },
+    { name: 'aztex.chart', version: 3, migrate: () => ({}), partialize: (s) => ({ mode: s.mode, indicators: s.indicators, profile: s.profile }) },
   ),
 );

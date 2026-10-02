@@ -6,170 +6,126 @@
   background: var(--bg);
 }
 
-/* ── Top bar: brand · function keys · status ────────────────────────────────────────────── */
+/* ── Top bar ────────────────────────────────────────────────────────────────────────────── */
 .topbar {
-  flex: none;
-  display: flex;
-  align-items: stretch;
-  height: 30px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-}
-.tb-brand {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 12px 0 8px;
-  border-right: 1px solid var(--border);
-}
-.tb-name {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  color: var(--amber);
-}
-.tb-sub {
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
-  color: var(--text-faint);
-}
-.tb-nav {
-  display: flex;
-  align-items: stretch;
-}
-.fkey {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 11px;
-  border-right: 1px solid var(--border);
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 11.5px;
-  white-space: nowrap;
-}
-.fkey-k {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  color: var(--text-faint);
-}
-.fkey-c {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--amber);
-}
-.fkey:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.fkey.active {
-  background: var(--amber);
-  color: var(--on-accent);
-}
-.fkey.active .fkey-k,
-.fkey.active .fkey-c {
-  color: var(--on-accent);
-}
-.tb-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 8px;
-  font-size: 11px;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-}
-.tb-cell {
-  display: inline-flex;
-  gap: 5px;
-  align-items: baseline;
-}
-.tb-select {
-  height: 20px;
-  border: 1px solid var(--border);
-  background: var(--panel-alt);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-}
-.go-text {
-  color: var(--go);
-  font-weight: 600;
-}
-.live-dot.off {
-  background: var(--text-faint);
-  animation: none;
-}
-
-/* ── Quote board ────────────────────────────────────────────────────────────────────────── */
-.quoteboard {
-  flex: none;
-  display: flex;
-  height: 22px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 11.5px;
-}
-.qb-track {
-  flex: 1;
-  overflow: hidden;
-}
-.qb-run {
-  display: inline-flex;
-  white-space: nowrap;
-  animation: marquee 70s linear infinite;
-  height: 100%;
-}
-.qb-track:hover .qb-run {
-  animation-play-state: paused;
-}
-.qb-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 12px;
-  height: 100%;
-  border: 0;
-  border-right: 1px solid var(--border-soft);
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-}
-.qb-item:hover {
-  background: var(--hover);
-}
-.gas {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  border-left: 1px solid var(--border);
-  font-size: 10.5px;
-}
-
-/* ── Account strip ──────────────────────────────────────────────────────────────────────── */
-.acct {
   flex: none;
   display: flex;
   align-items: center;
   gap: 18px;
-  height: 26px;
-  padding: 0 8px;
+  height: 48px;
+  padding: 0 14px;
   background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-  overflow: hidden;
+  border-bottom: 1px solid var(--border-soft);
 }
-.acct-cell,
-.acct-id {
+.tb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.tb-name {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.tb-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+}
+.nav-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.nav-tab:hover {
+  color: var(--text);
+}
+.nav-tab.active {
+  color: var(--text);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.tb-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tb-cell {
   display: inline-flex;
-  align-items: baseline;
   gap: 6px;
+  align-items: center;
+}
+.tb-select {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  font-size: 12px;
+  padding: 0 4px;
+}
+.live-dot.off {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+
+/* ── Command row: command line · account · fees ─────────────────────────────────────────── */
+.cmdrow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg);
+}
+.acct {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  white-space: nowrap;
+}
+.acct-cell {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.2;
+}
+.acct-cell .num {
+  font-size: 12.5px;
 }
 .acct-eq {
   font-weight: 600;
   color: var(--text);
+}
+.gas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-soft);
+}
+.gas-item .mono {
+  font-size: 11.5px;
 }
 
 /* ── Main ───────────────────────────────────────────────────────────────────────────────── */
@@ -182,31 +138,25 @@
 .content {
   flex: 1;
   overflow: auto;
-  padding: var(--gap);
+  padding: 12px 14px 14px;
 }
 .page-head {
   position: relative;
   z-index: 20;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
-  margin: 0 0 var(--gap);
-  padding: 6px 8px;
-  background: var(--panel-head);
-  border: 1px solid var(--border);
+  margin: 2px 2px 14px;
 }
 .page-head h1 {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--amber);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 .page-head p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--text-dim);
-  font-size: 11.5px;
+  font-size: 13px;
 }
 
 /* Cosmetic platform previews. */
@@ -215,13 +165,19 @@
   margin-left: auto;
   margin-right: auto;
 }
-.app[data-platform='terminal'] .quoteboard {
-  display: none;
+.app[data-platform='terminal'] {
+  --gap: 4px;
+  --pad: 10px;
 }
 
+@media (max-width: 1500px) {
+  .gas,
+  .hide-narrow {
+    display: none;
+  }
+}
 @media (max-width: 1100px) {
-  .fkey-l,
-  .tb-sub {
+  .tb-status .tb-cell:nth-child(2) {
     display: none;
   }
 }

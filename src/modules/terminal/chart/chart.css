@@ -2,18 +2,19 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 3px 6px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-soft);
 }
 .tool-group {
   display: flex;
-  gap: 0;
-  border: 1px solid var(--border);
+  gap: 1px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--panel-alt);
 }
 .tool-group .btn {
   border: 0;
-  border-right: 1px solid var(--border-soft);
 }
 .tb-sep {
   width: 1px;
@@ -27,7 +28,7 @@
   font-family: var(--font-mono);
 }
 .btn.starred {
-  color: var(--accent-3);
+  color: var(--gold);
 }
 .chart {
   position: relative;
@@ -46,8 +47,8 @@
 .readout {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 3px 8px 1px;
+  gap: 14px;
+  padding: 6px 12px 2px;
   font-size: 11px;
   min-height: 20px;
 }
@@ -76,7 +77,6 @@
 .grid {
   stroke: var(--border-soft);
   stroke-width: 1;
-  stroke-dasharray: 1 3;
 }
 .axis-line {
   stroke: var(--border);
@@ -85,7 +85,7 @@
 .axis-text {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  fill: var(--text-dim);
+  fill: var(--text-faint);
 }
 .tag-text {
   font-family: var(--font-mono);
@@ -124,16 +124,17 @@
   fill: var(--accent-2);
 }
 .drawing-text {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-family: var(--font-ui);
+  font-size: 12px;
   font-weight: 600;
-  fill: var(--accent-3);
+  fill: var(--gold);
 }
 .chart-text-input {
   position: absolute;
-  height: 22px;
+  height: 26px;
   width: 160px;
-  border: 1px solid var(--amber);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
   background: var(--panel-solid);
   padding: 0 6px;
   outline: 0;
@@ -153,35 +154,34 @@
 }
 .live-pill {
   position: absolute;
-  right: 86px;
-  bottom: 26px;
+  right: 88px;
+  bottom: 28px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 20px;
-  padding: 0 8px;
-  border: 1px solid var(--amber);
-  background: #000;
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
 }
 .live-pill:hover {
-  background: var(--amber);
-  color: #000;
+  border-color: var(--accent);
 }
 .chart-hint {
   position: absolute;
   left: 50%;
-  top: 4px;
+  top: 6px;
   transform: translateX(-50%);
-  padding: 2px 8px;
-  background: #000;
-  border: 1px solid var(--amber);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--amber);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-dim);
   pointer-events: none;
 }
 .osc {
@@ -222,7 +222,7 @@
   background: var(--border);
 }
 .chart-resize:hover span {
-  background: var(--amber);
+  background: var(--accent);
 }
 .color-dot {
   width: 14px;
@@ -244,25 +244,25 @@
 }
 /* Volume profile */
 .vp-va {
-  fill: var(--amber);
-  opacity: 0.22;
+  fill: var(--accent);
+  opacity: 0.2;
 }
 .vp-out {
   fill: var(--text-faint);
-  opacity: 0.2;
+  opacity: 0.16;
 }
 .vp-poc {
-  fill: var(--amber);
+  fill: var(--gold);
   opacity: 0.6;
 }
 .vp-poc-line {
-  stroke: var(--amber);
+  stroke: var(--gold);
   stroke-width: 1;
   stroke-dasharray: 6 3;
   opacity: 0.85;
 }
 .vp-va-line {
-  stroke: var(--amber);
+  stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 1 3;
   opacity: 0.5;
@@ -270,7 +270,7 @@
 .vp-label {
   font-family: var(--font-mono);
   font-size: 9.5px;
-  fill: var(--amber);
+  fill: var(--gold);
 }
 .vp-label.dim {
   opacity: 0.6;

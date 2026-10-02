@@ -9,6 +9,7 @@ import { indicatorLabel } from '@/lib/indicators/compute';
 import { fmtPct, fmtPrice } from '@/lib/format';
 import type { ChartMode, DrawingTool, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
+import { useTickFlash } from '@/app/useTickFlash';
 import { IndicatorMenu } from './IndicatorMenu';
 import './chart.css';
 
@@ -30,6 +31,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
   const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
+  const flash = useTickFlash(asset.price);
 
   // Drawings are anchored to this symbol/timeframe's candle indices — clear on switch.
   useEffect(() => {
@@ -42,10 +44,15 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
       drag={drag}
       flush
       title={
-        <span className="row" style={{ gap: 10 }}>
-          <span>{symbol}/USDT</span>
-          <span className="num" style={{ fontSize: 14 }}>{fmtPrice(asset.price)}</span>
-          <span className={`num ${asset.change24h >= 0 ? 'up' : 'down'}`}>{fmtPct(asset.change24h)}</span>
+        <span className="chart-hero">
+          <span className="chart-sym">
+            {symbol}
+            <span className="faint">/USDT</span>
+          </span>
+          <span className={`chart-price ${flash.cls}`} key={flash.key}>
+            {fmtPrice(asset.price)}
+          </span>
+          <span className={`chart-chg ${asset.change24h >= 0 ? 'pos' : 'neg'}`}>{fmtPct(asset.change24h)}</span>
         </span>
       }
       actions={

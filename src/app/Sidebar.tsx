@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { CandlestickChart, Radar, Users, Handshake, Palette, Sun, Moon, Globe, Smartphone, Monitor, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
+import { Logo } from './Logo';
+import { useTickFlash } from './useTickFlash';
 import { useThemeStore, type Platform } from '@/stores/useThemeStore';
 import { useWalletStore } from '@/stores/useWalletStore';
 import { usePositionStore, committedNotional, totalUnrealized } from '@/stores/usePositionStore';
@@ -19,19 +21,19 @@ const NAV = [
 export function Sidebar() {
   const { theme, toggleTheme, platform, setPlatform } = useThemeStore();
   return (
-    <aside className="sidebar">
+    <aside className="sidebar glass">
       <div className="brand">
-        <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden>
-          <rect width="32" height="32" rx="8" fill="var(--accent)" />
-          <path d="M8 24 16 7l8 17h-4.2L16 15.6 12.2 24z" fill="var(--on-accent)" />
-        </svg>
+        <Logo size={30} />
         <span className="brand-name">Aztex</span>
+        <span className="brand-tag">PRIME</span>
       </div>
 
       <nav className="nav">
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <Icon size={16} />
+            <span className="nav-icon">
+              <Icon size={16} />
+            </span>
             <span>{label}</span>
           </NavLink>
         ))}
@@ -73,6 +75,7 @@ function WalletCard() {
   const [amount, setAmount] = useState('');
   const upnl = totalUnrealized(positions);
   const equity = balance + committedNotional(positions) + upnl;
+  const flash = useTickFlash(Math.round(equity * 100));
 
   const submit = () => {
     const n = Number(amount);
@@ -92,7 +95,9 @@ function WalletCard() {
         <span className="spacer" />
         <span className="badge accent">USDT</span>
       </div>
-      <div className="wallet-equity mono">{fmtUsd(equity)}</div>
+      <div className={`wallet-equity ${flash.cls}`} key={flash.key}>
+        {fmtUsd(equity)}
+      </div>
       <div className="wallet-rows">
         <div className="row">
           <span className="label">Available</span>

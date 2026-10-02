@@ -5,6 +5,7 @@ import { useOrderStore } from '@/stores/useOrderStore';
 import { imbalance } from '@/lib/mock/orderbook';
 import { fmtPct, fmtPrice, fmtQty, priceDecimals } from '@/lib/format';
 import type { OrderBookLevel } from '@/types';
+import { useTickFlash } from '@/app/useTickFlash';
 
 const LEVELS = 10;
 
@@ -29,6 +30,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   }, [book]);
 
   const dec = priceDecimals(last);
+  const flash = useTickFlash(last);
   const row = (l: OrderBookLevel, side: 'bid' | 'ask', i: number) => (
     <button
       key={`${side}-${i}`}
@@ -58,7 +60,9 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
           <>
             <div className="ob-side asks">{[...view.asks].reverse().map((l, i) => row(l, 'ask', view.asks.length - 1 - i))}</div>
             <div className="ob-divider">
-              <span className="num ob-last">{fmtPrice(last, dec)}</span>
+              <span className={`num ob-last ${flash.cls}`} key={flash.key}>
+                {fmtPrice(last, dec)}
+              </span>
               <span className="spacer" />
               <span className="label">Spread</span>
               <span className="num">{fmtPrice(view.spread, dec)}</span>

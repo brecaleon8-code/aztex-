@@ -233,3 +233,48 @@
   padding: 0;
   background: transparent;
 }
+
+/* ── Liquid-glass refinements ───────────────────────────────────────────────────────────── */
+.chart {
+  background: var(--chart-glow);
+}
+.grid {
+  stroke: var(--border-soft);
+  opacity: 0.8;
+}
+.axis-line {
+  stroke: var(--border-soft);
+}
+.last-ring {
+  animation: ring-pulse 1.8s ease-out infinite;
+  transform-box: fill-box;
+}
+.live-pill {
+  background: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--glow);
+}
+.chart-hint {
+  background: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  backdrop-filter: blur(16px);
+}
+.chart-zoom .btn {
+  background: color-mix(in srgb, var(--panel-solid) 60%, transparent);
+  backdrop-filter: blur(10px);
+}
+.chart-toolbar {
+  padding: 8px 12px;
+}
+.tool-group {
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border-soft);
+}
+.readout {
+  padding: 8px 14px 2px;
+}
+.chart-resize span {
+  width: 44px;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}

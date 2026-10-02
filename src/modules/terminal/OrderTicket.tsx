@@ -171,7 +171,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
         </div>
 
         <button
-          className={`btn lg primary place-btn ${phase}`}
+          className={`btn lg primary place-btn ${phase} ${t.side === 'Long' ? 'long' : 'short'}`}
           onClick={submit}
           disabled={phase !== 'idle' || !(t.size > 0) || insufficient || tpWrong || slWrong}
           data-testid="place-order"

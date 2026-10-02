@@ -21,8 +21,8 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Price chart | Hand-rolled SVG (see "Charting decision" below) |
 | Simple charts | `recharts` (P/L mountain, dominance ring, comparison lines) |
 | Icons | `lucide-react` |
-| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`), so a theme switch never re-renders components |
-| Fonts | Fraunces (display, variable `opsz`), Inter (UI), JetBrains Mono (all numbers), self-hosted via Fontsource |
+| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`), so a theme switch never re-renders components. Visual direction is "liquid glass / spatial": a drifting aurora backdrop with film grain, frosted glass panels with specular edges and a cursor spotlight, spring-eased entrance and hover motion, price-tick glow flashes, and a one-time brand intro. All motion respects `prefers-reduced-motion`. |
+| Fonts | Unbounded (display, large prices), Inter Tight (UI), Geist Mono (all numbers), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
 ## Layout
@@ -49,7 +49,7 @@ src/
 
 ## How the spec maps to code
 
-- **Theming (§3).** `styles/tokens.css` defines both palettes with the exact hex values. Light mode has its own near-invisible `--shadow`. P/L colors are literal hex in the Appearance store and are mirrored to `--bull/--bear/--profit/--loss`. The categorical palette is fixed in `useThemeStore.CATEGORICAL`.
+- **Theming (§3).** `styles/tokens.css` defines both palettes. They were redesigned from the spec's original hex values to the liquid-glass direction. Light mode has its own near-invisible `--shadow`. P/L colors are literal hex in the Appearance store and are mirrored to `--bull/--bear/--profit/--loss`. The categorical palette is fixed in `useThemeStore.CATEGORICAL`.
 - **Terminal (§4).**
   - Panels can be dragged by their header and reflow via flexbox `order`. The order persists, and there's a "Reset layout" button.
   - Clicking an order-book row sets the ticket's limit price and switches the ticket to Limit.

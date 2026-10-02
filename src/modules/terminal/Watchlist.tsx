@@ -4,6 +4,8 @@ import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { ASSET_UNIVERSE } from '@/lib/mock/assets';
 import { fmtPct, fmtPrice } from '@/lib/format';
+import { useTickFlash } from '@/app/useTickFlash';
+import type { Asset } from '@/types';
 
 export function Watchlist({ drag }: { drag?: PanelDragProps }) {
   const watchlist = useMarketStore((s) => s.watchlist);
@@ -33,7 +35,7 @@ export function Watchlist({ drag }: { drag?: PanelDragProps }) {
                   <div className="wl-sym">{sym}</div>
                   <div className="label">{a.name}</div>
                 </td>
-                <td className="r num">{fmtPrice(a.price)}</td>
+                <LastCell a={a} />
                 <td className="r">
                   <div className="num up" style={{ fontSize: 11 }}>{fmtPrice(a.bid)}</div>
                   <div className="num down" style={{ fontSize: 11 }}>{fmtPrice(a.ask)}</div>
@@ -58,6 +60,15 @@ export function Watchlist({ drag }: { drag?: PanelDragProps }) {
       </table>
       {watchlist.length === 0 && <div className="empty">Watchlist is empty — add a currency.</div>}
     </Panel>
+  );
+}
+
+function LastCell({ a }: { a: Asset }) {
+  const f = useTickFlash(a.price);
+  return (
+    <td className={`r num wl-last ${f.cls}`} key={f.key}>
+      {fmtPrice(a.price)}
+    </td>
   );
 }
 

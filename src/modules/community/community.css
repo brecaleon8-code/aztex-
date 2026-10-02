@@ -99,7 +99,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--text-faint);
-  border: 2px solid var(--panel);
+  border: 2px solid var(--panel-solid);
 }
 .presence.online,
 .presence-inline.online {
@@ -144,7 +144,7 @@
   line-height: 1.45;
 }
 .msg.mine .bubble {
-  background: var(--accent-soft);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent-2) 16%, transparent));
   border-color: color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 12px 12px 4px 12px;
 }
@@ -185,12 +185,15 @@
   padding: 9px 11px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel-solid) 55%, transparent);
+  backdrop-filter: blur(12px);
   text-align: left;
-  transition: border-color 0.12s;
+  transition: border-color 0.2s, box-shadow 0.3s, transform 0.3s var(--ease-spring);
 }
 .trade-chip:hover {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 26px -8px var(--accent);
+  transform: translateY(-1px);
 }
 .trade-chip.compact {
   align-self: flex-start;
@@ -225,5 +228,5 @@
   margin-left: -8px;
 }
 .btn.liked {
-  color: #e0785a;
+  color: #FF8A5B;
 }

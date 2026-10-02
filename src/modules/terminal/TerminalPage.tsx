@@ -51,7 +51,7 @@ export function TerminalPage() {
           <div
             key={id}
             className={`tile ${dragging === id ? 'dragging' : ''} ${over === id && dragging && dragging !== id ? 'drop-target' : ''}`}
-            style={{ ...panelStyle(id, maximized), order: idx }}
+            style={{ ...panelStyle(id, maximized), order: idx, ['--i' as string]: idx }}
             data-panel={id}
             onDragOver={(e) => {
               if (!dragging) return;

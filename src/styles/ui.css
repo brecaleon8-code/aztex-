@@ -1,21 +1,68 @@
-/* Shared primitives: Panel, Button, Segmented, Field, Chip, Badge, Table */
+/* ── Glass material ──────────────────────────────────────────────────────────────────────── */
+.glass,
 .panel {
+  position: relative;
   background: var(--panel);
+  backdrop-filter: blur(var(--blur)) saturate(170%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(170%);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow);
+}
+/* Specular top edge — light catching the rim of the glass. */
+.glass::before,
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, var(--edge-hi), transparent 38%, transparent 70%, color-mix(in srgb, var(--accent) 18%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+/* Cursor spotlight — position fed by --mx/--my from a single global pointer listener. */
+.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--spot), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.panel:hover::after {
+  opacity: 1;
+}
+.panel {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.45s var(--ease-spring), box-shadow 0.45s ease, border-color 0.3s ease, background-color 0.4s ease;
+  animation: rise-in 0.7s var(--ease-spring) both;
+}
+.panel:hover {
+  box-shadow: var(--shadow-lift);
+  border-color: color-mix(in srgb, var(--text) 14%, transparent);
+}
+.panel > * {
+  position: relative;
+  z-index: 1;
 }
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 8px;
   align-items: center;
   gap: 8px;
-  padding: 10px var(--pad);
+  padding: 12px var(--pad);
   border-bottom: 1px solid var(--border-soft);
-  min-height: 42px;
+  min-height: 48px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -27,9 +74,9 @@
 }
 .panel-title {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 12.5px;
   font-weight: 500;
-  font-optical-sizing: auto;
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 .panel-sub {
@@ -44,25 +91,34 @@
 .panel-body.flush {
   padding: 0;
 }
-.panel.drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
-}
-.panel.dragging {
-  opacity: 0.45;
-}
 .grip {
   color: var(--text-faint);
   flex: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.panel:hover .grip {
+  opacity: 1;
+}
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  cursor: default;
 }
 
+/* ── Buttons ─────────────────────────────────────────────────────────────────────────────── */
 .btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 12px;
+  height: 32px;
+  padding: 0 13px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--panel-alt);
@@ -70,38 +126,62 @@
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
-  transition: background-color 0.12s, border-color 0.12s, transform 0.08s, opacity 0.12s;
+  overflow: hidden;
+  transition: background-color 0.18s, border-color 0.18s, transform 0.25s var(--ease-spring), box-shadow 0.25s, opacity 0.15s, color 0.15s;
 }
 .btn:hover:not(:disabled) {
-  border-color: var(--text-faint);
+  border-color: color-mix(in srgb, var(--text) 22%, transparent);
+  background: var(--hover);
 }
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--glow);
+}
 .btn.sm {
-  height: 24px;
-  padding: 0 8px;
+  height: 26px;
+  padding: 0 9px;
   font-size: 11px;
   border-radius: var(--radius-sm);
 }
 .btn.lg {
-  height: 40px;
-  font-size: 13px;
+  height: 46px;
+  font-size: 13.5px;
   border-radius: var(--radius-lg);
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-grad);
+  border-color: transparent;
   color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .btn.primary:hover:not(:disabled) {
-  border-color: var(--accent);
-  filter: brightness(1.06);
+  background: var(--accent-grad);
+  border-color: transparent;
+  box-shadow: 0 12px 34px -10px color-mix(in srgb, var(--accent) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+/* Light sweep across primary buttons on hover. */
+.btn.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  pointer-events: none;
+}
+.btn.primary:hover:not(:disabled)::after {
+  animation: shimmer 0.9s ease;
 }
 .btn.ghost {
   background: transparent;
@@ -114,26 +194,31 @@
   border-color: transparent;
 }
 .btn.icon {
-  width: 30px;
+  width: 32px;
   padding: 0;
 }
 .btn.sm.icon {
-  width: 24px;
+  width: 26px;
 }
 .btn.danger {
   color: var(--loss);
 }
+.btn.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--loss) 50%, transparent);
+  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--loss) 60%, transparent);
+}
 .btn.active {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--accent);
+  box-shadow: 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
-/* Segmented control: pill container with a sliding active background. */
+/* ── Segmented control: sliding glass thumb ─────────────────────────────────────────────── */
 .seg {
   position: relative;
   display: inline-flex;
-  padding: 2px;
+  padding: 3px;
   border-radius: 999px;
   background: var(--panel-alt);
   border: 1px solid var(--border-soft);
@@ -141,21 +226,21 @@
 }
 .seg-thumb {
   position: absolute;
-  top: 2px;
-  bottom: 2px;
+  top: 3px;
+  bottom: 3px;
   border-radius: 999px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  transition: left 0.18s ease, width 0.18s ease, background-color 0.18s;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px -6px rgba(0, 0, 0, 0.5);
+  transition: left 0.42s var(--ease-spring), width 0.42s var(--ease-spring), background-color 0.25s, box-shadow 0.25s;
 }
 .seg-btn {
   position: relative;
   z-index: 1;
   border: 0;
   background: transparent;
-  padding: 0 11px;
-  height: 24px;
+  padding: 0 12px;
+  height: 26px;
   font-size: 11.5px;
   font-weight: 500;
   color: var(--text-dim);
@@ -164,6 +249,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  transition: color 0.2s;
+}
+.seg-btn:hover {
+  color: var(--text);
 }
 .seg-btn[aria-pressed='true'] {
   color: var(--text);
@@ -176,43 +265,46 @@
   justify-content: center;
 }
 .seg.lg .seg-btn {
-  height: 30px;
-  font-size: 12.5px;
-}
-.seg.buy .seg-btn[aria-pressed='true'].is-long {
-  color: var(--on-accent);
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .seg .seg-thumb.long {
   background: var(--profit);
-  border-color: var(--profit);
+  border-color: transparent;
+  box-shadow: 0 0 26px -4px color-mix(in srgb, var(--profit) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .seg .seg-thumb.short {
   background: var(--loss);
-  border-color: var(--loss);
+  border-color: transparent;
+  box-shadow: 0 0 26px -4px color-mix(in srgb, var(--loss) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
+/* ── Fields ─────────────────────────────────────────────────────────────────────────────── */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 .input-wrap {
   display: flex;
   align-items: center;
-  height: 32px;
+  height: 36px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--panel-alt);
-  padding: 0 10px;
+  padding: 0 11px;
   gap: 6px;
-  transition: border-color 0.12s;
+  transition: border-color 0.2s, box-shadow 0.25s, background-color 0.2s;
 }
 .input-wrap:focus-within {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 24px -8px var(--accent);
 }
 .input-wrap.invalid {
   border-color: var(--loss);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--loss) 14%, transparent);
 }
 .input-wrap input,
 .input-wrap select {
@@ -229,44 +321,52 @@
   font-family: var(--font-mono);
 }
 .input {
-  height: 32px;
+  height: 36px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--panel-alt);
-  padding: 0 10px;
+  padding: 0 11px;
   outline: 0;
   min-width: 0;
+  transition: border-color 0.2s, box-shadow 0.25s;
 }
 .input:focus {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 textarea.input {
   height: auto;
-  padding: 8px 10px;
+  padding: 10px 11px;
   resize: vertical;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 select.input {
   padding-right: 4px;
 }
+select option {
+  background: var(--panel-solid);
+}
 
+/* ── Chips, badges ──────────────────────────────────────────────────────────────────────── */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 8px;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
   border-radius: 999px;
   background: var(--panel-alt);
   border: 1px solid var(--border-soft);
   font-size: 11px;
   color: var(--text-dim);
   white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s, box-shadow 0.25s;
 }
 .chip .swatch {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
 }
 .chip button {
   border: 0;
@@ -284,33 +384,36 @@ button.chip:hover {
 }
 .chip.on {
   color: var(--text);
-  border-color: var(--border);
-  background: var(--panel);
+  border-color: color-mix(in srgb, var(--text) 18%, transparent);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 5px;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 999px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.2px;
   white-space: nowrap;
 }
 .badge.long {
-  background: color-mix(in srgb, var(--profit) 16%, transparent);
+  background: color-mix(in srgb, var(--profit) 15%, transparent);
   color: var(--profit);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--profit) 25%, transparent);
 }
 .badge.short {
-  background: color-mix(in srgb, var(--loss) 16%, transparent);
+  background: color-mix(in srgb, var(--loss) 15%, transparent);
   color: var(--loss);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loss) 25%, transparent);
 }
 .badge.accent {
   background: var(--accent-soft);
   color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 .badge.neutral {
   background: var(--panel-alt);
@@ -318,6 +421,7 @@ button.chip:hover {
   border: 1px solid var(--border-soft);
 }
 
+/* ── Tables ─────────────────────────────────────────────────────────────────────────────── */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -328,16 +432,17 @@ button.chip:hover {
   font-size: 10.5px;
   letter-spacing: 0.2px;
   color: var(--text-faint);
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
   position: sticky;
   top: 0;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel-solid) 80%, transparent);
+  backdrop-filter: blur(12px);
   z-index: 1;
 }
 .table td {
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
 }
@@ -348,6 +453,9 @@ button.chip:hover {
 .table td.r {
   text-align: right;
 }
+.table tbody tr {
+  transition: background-color 0.2s;
+}
 .table tbody tr.clickable {
   cursor: pointer;
 }
@@ -355,10 +463,11 @@ button.chip:hover {
   background: var(--hover);
 }
 .table tbody tr.selected {
-  background: var(--accent-soft);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 80%);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .empty {
-  padding: 28px 12px;
+  padding: 32px 14px;
   text-align: center;
   color: var(--text-faint);
   font-size: 12px;
@@ -372,15 +481,24 @@ button.chip:hover {
   background: var(--border-soft);
   margin: 4px 0;
 }
+
+/* ── Floating menus ─────────────────────────────────────────────────────────────────────── */
 .menu {
   position: absolute;
   z-index: 30;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel-solid) 82%, transparent);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow), 0 12px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-lift), 0 30px 60px -20px rgba(0, 0, 0, 0.5);
   padding: 6px;
-  animation: fade-in 0.12s ease;
+  animation: menu-in 0.28s var(--ease-spring);
+  transform-origin: top;
+}
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
 }
 .menu-item {
   display: flex;
@@ -389,19 +507,22 @@ button.chip:hover {
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 7px 8px;
+  padding: 8px 9px;
   border-radius: var(--radius-sm);
   text-align: left;
   font-size: 12px;
+  transition: background-color 0.15s;
 }
 .menu-item:hover,
 .menu-item.hl {
   background: var(--hover);
 }
-.panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  cursor: default;
+/* Panels are stacking contexts (glass blur); lift the one being interacted with so its menus
+   float above neighbouring panels. */
+.panel:hover,
+.panel:focus-within {
+  z-index: 5;
+}
+.panel > .panel-head {
+  z-index: 3;
 }

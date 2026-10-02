@@ -1,25 +1,46 @@
 .toasts {
   position: fixed;
-  right: 18px;
+  right: 22px;
   bottom: calc(var(--cli-h) + 14px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   z-index: 60;
-  width: 340px;
+  width: 350px;
   pointer-events: none;
 }
 .toast {
+  position: relative;
   pointer-events: auto;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 11px 10px 11px 12px;
-  border-radius: var(--radius-lg);
-  background: var(--panel);
+  gap: 11px;
+  padding: 12px 10px 12px 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel-solid) 72%, transparent);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow), 0 10px 30px rgba(0, 0, 0, 0.14);
-  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: var(--shadow-lift), 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+  animation: toast-in 0.5s var(--ease-spring);
+}
+.toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--text-faint);
+}
+.toast.success::before {
+  background: var(--accent-grad);
+  box-shadow: 0 0 16px var(--accent);
+}
+.toast.error::before {
+  background: var(--loss);
+  box-shadow: 0 0 16px var(--loss);
 }
 .toast > svg {
   margin-top: 1px;
@@ -27,12 +48,13 @@
 }
 .toast.success > svg {
   color: var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent));
 }
 .toast.error > svg {
   color: var(--loss);
 }
 .toast.info > svg {
-  color: var(--text-dim);
+  color: var(--accent-2);
 }
 .toast-title {
   font-weight: 600;

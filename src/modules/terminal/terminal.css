@@ -296,3 +296,134 @@
 .watchlist tr .btn.icon:focus-visible {
   opacity: 1;
 }
+
+/* ── Liquid-glass refinements ───────────────────────────────────────────────────────────── */
+.tile > .panel {
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.wl-sym {
+  font-size: 12.5px;
+}
+.wl-last {
+  font-weight: 500;
+}
+.chart-hero {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.chart-sym {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.chart-sym .faint {
+  font-size: 11px;
+  margin-left: 2px;
+}
+.chart-price {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.chart-chg {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  align-self: center;
+}
+.chart-chg.pos {
+  color: var(--profit);
+  background: color-mix(in srgb, var(--profit) 13%, transparent);
+}
+.chart-chg.neg {
+  color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 13%, transparent);
+}
+.ob-row.ask .ob-depth {
+  background: linear-gradient(270deg, color-mix(in srgb, var(--loss) 75%, transparent), transparent);
+  opacity: 0.22;
+}
+.ob-row.bid .ob-depth {
+  background: linear-gradient(270deg, color-mix(in srgb, var(--profit) 75%, transparent), transparent);
+  opacity: 0.22;
+}
+.ob-divider {
+  background: linear-gradient(90deg, var(--accent-soft), transparent 70%);
+  border-color: var(--border);
+}
+.ob-last {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.imb-bar {
+  height: 5px;
+}
+.imb-bid {
+  background: var(--profit);
+  box-shadow: 0 0 10px var(--profit);
+}
+.ticket-market,
+.ticket-summary {
+  background: var(--panel-alt);
+  border-color: var(--border-soft);
+}
+.side-seg .seg-btn[aria-pressed='true'] {
+  color: #02140d;
+}
+.place-btn.long {
+  background: linear-gradient(135deg, var(--profit), var(--accent-2));
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--profit) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #02140d;
+}
+.place-btn.short {
+  background: linear-gradient(135deg, var(--loss), #ff9a6b);
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--loss) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #1a0408;
+}
+.place-btn.long:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--profit), var(--accent-2));
+}
+.place-btn.short:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--loss), #ff9a6b);
+}
+.place-btn.placed {
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 40px -6px var(--accent);
+}
+.pos-row {
+  border-radius: 0;
+}
+.pos-row:hover {
+  background: var(--hover);
+}
+.pos-bar {
+  height: 5px;
+}
+.pos-bar-marker {
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  background: var(--text);
+  border: 2px solid var(--panel-solid);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--text) 60%, transparent);
+  transition: left 0.6s var(--ease-spring);
+}
+.pos-pnl {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.pos-sym {
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-decoration: none;
+}
+.terminal-foot .label {
+  opacity: 0.7;
+}

@@ -6,14 +6,14 @@ export type Theme = 'dark' | 'light';
 export type Platform = 'website' | 'mobile' | 'terminal';
 
 export const DEFAULT_COLORS: AppearanceColors = {
-  bull: '#3FCE84',
-  bear: '#F0635A',
-  profit: '#3FCE84',
-  loss: '#F0635A',
+  bull: '#2EE6A0',
+  bear: '#FF5C7A',
+  profit: '#2EE6A0',
+  loss: '#FF5C7A',
 };
 
 /** Fixed categorical palette — independent of theme and of P/L colors (spec §3). */
-export const CATEGORICAL = ['#C8973F', '#5B8DBE', '#9B7FC7', '#4FA8A8', '#E0785A', '#6FBF73'];
+export const CATEGORICAL = ['#F5B84B', '#4CC9F0', '#9D8CFF', '#3DD6C6', '#FF8A5B', '#B6E35A'];
 
 interface ThemeState {
   theme: Theme;
@@ -38,6 +38,6 @@ export const useThemeStore = create<ThemeState>()(
       setColor: (k, hex) => set((s) => ({ colors: { ...s.colors, [k]: hex } })),
       resetColors: () => set({ colors: DEFAULT_COLORS }),
     }),
-    { name: 'aztex.theme' },
+    { name: 'aztex.theme', version: 2, migrate: (s) => ({ ...(s as ThemeState), colors: DEFAULT_COLORS }) },
   ),
 );

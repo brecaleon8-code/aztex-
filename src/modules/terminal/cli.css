@@ -1,55 +1,80 @@
+/* Always-on command bar. Intentionally a literal phosphor terminal in BOTH themes — a floating
+   near-black capsule that ignores the theme tokens. */
 .cli {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--cli-h);
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  height: calc(var(--cli-h) - 14px);
   z-index: 50;
-  background: #0a0b0d;
-  border-top: 1px solid #1b2a20;
+  background: rgba(6, 9, 8, 0.88);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(74, 250, 139, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 18px 50px -18px rgba(0, 0, 0, 0.8), 0 0 40px -18px rgba(74, 250, 139, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: #4afa8b;
   font-family: var(--font-mono);
   font-size: 12px;
-  padding: 6px 16px;
+  padding: 0 18px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  align-items: center;
+  gap: 18px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.cli:focus-within {
+  border-color: rgba(74, 250, 139, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 18px 50px -18px rgba(0, 0, 0, 0.8), 0 0 60px -14px rgba(74, 250, 139, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.cli-line {
+  order: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 .cli-result {
-  font-size: 11px;
+  order: 1;
+  flex: 0 1 auto;
+  max-width: 55%;
+  font-size: 11.5px;
   color: #4afa8b;
-  opacity: 0.85;
+  opacity: 0.9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 0 10px rgba(74, 250, 139, 0.35);
 }
 .cli-ok {
   color: #4afa8b;
 }
 .cli-err {
-  color: #ff6b5e;
+  color: #ff6b7d;
 }
 .cli-dim {
   color: #2f8a52;
-}
-.cli-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  text-shadow: none;
 }
 .cli-prompt {
   color: #4afa8b;
+  text-shadow: 0 0 12px rgba(74, 250, 139, 0.8);
+  font-size: 14px;
 }
 .cli-line input {
   flex: 1;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: #4afa8b;
   caret-color: #4afa8b;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 13.5px;
+  text-shadow: 0 0 10px rgba(74, 250, 139, 0.35);
+}
+.cli-line input::placeholder {
+  color: #2a6b43;
 }
 .cli-line input::selection {
   background: rgba(74, 250, 139, 0.25);

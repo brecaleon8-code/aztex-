@@ -4,6 +4,9 @@ import { Sidebar } from './Sidebar';
 import { StatusStrip } from './StatusStrip';
 import { GasTicker } from './GasTicker';
 import { ThemeSync } from './ThemeSync';
+import { Backdrop } from './Backdrop';
+import { Intro } from './Intro';
+import { useSpotlight } from './useSpotlight';
 import { startMarketFeed } from './marketFeed';
 import { startScannerFeed } from './scannerFeed';
 import { CliBar } from '@/modules/terminal/CliBar';
@@ -22,14 +25,19 @@ export function App() {
   const platform = useThemeStore((s) => s.platform);
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
+  useSpotlight();
 
   return (
     <div className="app" data-platform={platform}>
       <ThemeSync />
+      <Backdrop />
+      <Intro />
       <Sidebar />
       <main className="main">
-        <StatusStrip />
-        <GasTicker />
+        <header className="topbar glass">
+          <StatusStrip />
+          <GasTicker />
+        </header>
         <div className="content">
           <Suspense fallback={<div className="empty">Loading…</div>}>
           <Routes>

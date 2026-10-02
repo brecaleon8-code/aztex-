@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  // Skip the once-per-session brand intro in tests.
+  await page.addInitScript(() => sessionStorage.setItem('aztex.intro', '1'));
+});
+
 async function freshTerminal(page: Page) {
   await page.goto('/terminal');
   await page.evaluate(() => localStorage.clear());
@@ -89,9 +94,11 @@ test.describe('Phase 1 — core terminal', () => {
     const dark = await bg();
     await page.getByTestId('theme-toggle').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    expect(await bg()).not.toBe(dark);
+    await expect.poll(bg).not.toBe(dark);
     // CLI bar stays a literal dark terminal in light mode.
-    expect(await page.getByTestId('cli').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(10, 11, 13)');
+    const cliBg = await page.getByTestId('cli').evaluate((el) => getComputedStyle(el).backgroundColor);
+    const [r, g, b] = cliBg.match(/\d+(\.\d+)?/g)!.map(Number);
+    expect(Math.max(r, g, b)).toBeLessThan(20);
   });
 
   test('CLI drives real app state from any route', async ({ page }) => {

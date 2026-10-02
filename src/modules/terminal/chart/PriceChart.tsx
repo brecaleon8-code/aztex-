@@ -229,6 +229,18 @@ export function PriceChart() {
             <clipPath id={clipId}>
               <rect x={0} y={0} width={plotW} height={plotH} />
             </clipPath>
+            <filter id={`glow-${uidBase}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b" />
+              <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.55 0" result="g" />
+              <feMerge>
+                <feMergeNode in="g" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <linearGradient id={`line-${uidBase}`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="var(--accent-2)" />
+              <stop offset="1" stopColor="var(--accent)" />
+            </linearGradient>
             <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="var(--accent)" stopOpacity={0.28} />
               <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
@@ -259,7 +271,16 @@ export function PriceChart() {
 
           <g clipPath={`url(#${clipId})`}>
             {hoverIdx != null && <rect x={xs.toX(hoverIdx) - cw / 2} y={0} width={cw} height={plotH} className="hover-col" />}
-            <Series display={display} visible={visible} xs={xs} ys={ys} mode={mode} bodyW={bodyW} bull={colors.bull} bear={colors.bear} areaId={areaId} plotH={plotH} start={start} end={end} />
+            <g filter={`url(#glow-${uidBase})`}>
+              <Series display={display} visible={visible} xs={xs} ys={ys} mode={mode} bodyW={bodyW} bull={colors.bull} bear={colors.bear} areaId={areaId} lineId={`line-${uidBase}`} plotH={plotH} start={start} end={end} />
+            </g>
+            {end >= n && (
+              <g className="live-mark">
+                <line x1={0} x2={plotW} y1={ys.toY(lastC.close)} y2={ys.toY(lastC.close)} stroke={lastC.close >= lastC.open ? colors.bull : colors.bear} strokeDasharray="1 3" opacity={0.6} />
+                <circle className="last-ring" cx={xs.toX(n - 1)} cy={ys.toY(lastC.close)} r={3} fill="none" stroke={lastC.close >= lastC.open ? colors.bull : colors.bear} strokeWidth={1.5} />
+                <circle cx={xs.toX(n - 1)} cy={ys.toY(lastC.close)} r={2.6} fill={lastC.close >= lastC.open ? colors.bull : colors.bear} />
+              </g>
+            )}
             {overlays.map((o) => (
               <Overlay key={o.instance.id} c={o} xs={xs} ys={ys} start={start} end={end} />
             ))}
@@ -365,12 +386,13 @@ interface SeriesProps {
   bull: string;
   bear: string;
   areaId: string;
+  lineId: string;
   plotH: number;
   start: number;
   end: number;
 }
 
-function Series({ display, visible, xs, ys, mode, bodyW, bull, bear, areaId, plotH, start, end }: SeriesProps) {
+function Series({ display, visible, xs, ys, mode, bodyW, bull, bear, areaId, lineId, plotH, start, end }: SeriesProps) {
   if (mode === 'line' || mode === 'area') {
     const closes = display.map((c) => c.close);
     const d = linePath(closes, xs, ys, start, end);
@@ -379,7 +401,7 @@ function Series({ display, visible, xs, ys, mode, bodyW, bull, bear, areaId, plo
     return (
       <g>
         {mode === 'area' && <path d={`${d}L${xs.toX(last)},${plotH}L${xs.toX(first)},${plotH}Z`} fill={`url(#${areaId})`} />}
-        <path d={d} fill="none" stroke="var(--accent)" strokeWidth={1.6} strokeLinejoin="round" />
+        <path d={d} fill="none" stroke={`url(#${lineId})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       </g>
     );
   }

@@ -52,7 +52,7 @@ export function PnlChart({ drag }: { drag?: PanelDragProps }) {
               <ReferenceLine y={0} stroke="var(--border)" />
               <Tooltip
                 cursor={{ stroke: 'var(--text-faint)', strokeDasharray: '3 3' }}
-                contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font-mono)', fontSize: 11 }}
+                contentStyle={{ background: 'color-mix(in srgb, var(--panel-solid) 85%, transparent)', backdropFilter: 'blur(16px)', border: '1px solid var(--border)', borderRadius: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}
                 labelFormatter={(_, p) => (p?.[0] ? fmtTime((p[0].payload as { t: number }).t) : '')}
                 formatter={(v) => [fmtSigned(Number(v)) + ' USDT', 'P/L']}
               />

@@ -1,5 +1,6 @@
 .disc-search {
   position: relative;
+  z-index: 20;
   width: 360px;
   max-width: 100%;
 }
@@ -79,10 +80,10 @@
   animation: fade-in 0.35s ease;
 }
 .scan-row.flagged td:first-child {
-  box-shadow: inset 2px 0 0 #c8973f;
+  box-shadow: inset 2px 0 0 #F5B84B;
 }
 .flag-icon {
-  color: #c8973f;
+  color: #F5B84B;
   vertical-align: -1px;
 }
 .ev-type {
@@ -93,16 +94,16 @@
   color: var(--text-dim);
 }
 .ev-exchange_inflow svg {
-  color: #e0785a;
+  color: #FF8A5B;
 }
 .ev-exchange_outflow svg {
-  color: #4fa8a8;
+  color: #3DD6C6;
 }
 .ev-whale_move svg {
-  color: #5b8dbe;
+  color: #4CC9F0;
 }
 .ev-large_transfer svg {
-  color: #9b7fc7;
+  color: #9D8CFF;
 }
 .ext {
   color: var(--text-faint);

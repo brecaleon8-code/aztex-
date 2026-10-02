@@ -36,6 +36,7 @@ export function CliBar() {
         <span className="cli-prompt">❯</span>
         <input
           aria-label="Command line"
+          placeholder="buy 0.1 btc · theme light · help"
           spellCheck={false}
           autoComplete="off"
           value={value}

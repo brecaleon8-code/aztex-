@@ -23,8 +23,8 @@ export const useChartStore = create<ChartState>()(
       mode: 'candles',
       tool: 'cursor',
       indicators: [
-        { id: 'ema21', kind: 'ema', type: 'overlay', color: '#C8973F', period: 21 },
-        { id: 'vol', kind: 'volume', type: 'oscillator', color: '#5B8DBE' },
+        { id: 'ema21', kind: 'ema', type: 'overlay', color: '#F5B84B', period: 21 },
+        { id: 'vol', kind: 'volume', type: 'oscillator', color: '#4CC9F0' },
       ],
       drawings: [],
       setMode: (mode) => set({ mode }),

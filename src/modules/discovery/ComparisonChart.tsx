@@ -68,7 +68,7 @@ export function ComparisonChart() {
               <XAxis dataKey="time" tickFormatter={(t: number) => fmtDate(t).slice(5)} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} minTickGap={28} />
               <YAxis tickFormatter={(v: number) => fmtPct(v, 0)} width={48} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font-mono)', fontSize: 11 }}
+                contentStyle={{ background: 'color-mix(in srgb, var(--panel-solid) 85%, transparent)', backdropFilter: 'blur(16px)', border: '1px solid var(--border)', borderRadius: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}
                 labelFormatter={(t) => fmtDate(Number(t))}
                 formatter={(v, name) => [fmtPct(Number(v)), String(name)]}
               />

@@ -1,0 +1,56 @@
+.cli {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--cli-h);
+  z-index: 50;
+  background: #0a0b0d;
+  border-top: 1px solid #1b2a20;
+  color: #4afa8b;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+.cli-result {
+  font-size: 11px;
+  color: #4afa8b;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cli-ok {
+  color: #4afa8b;
+}
+.cli-err {
+  color: #ff6b5e;
+}
+.cli-dim {
+  color: #2f8a52;
+}
+.cli-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cli-prompt {
+  color: #4afa8b;
+}
+.cli-line input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #4afa8b;
+  caret-color: #4afa8b;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.cli-line input::selection {
+  background: rgba(74, 250, 139, 0.25);
+}

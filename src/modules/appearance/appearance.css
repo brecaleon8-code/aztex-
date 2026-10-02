@@ -1,0 +1,51 @@
+.appearance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--gap);
+  max-width: 1100px;
+}
+@media (max-width: 1000px) {
+  .appearance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.picker:hover {
+  background: var(--hover);
+}
+.picker input[type='color'] {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  background: var(--panel-alt);
+  cursor: pointer;
+}
+.picker-label {
+  display: block;
+  font-weight: 500;
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--chart-glow);
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

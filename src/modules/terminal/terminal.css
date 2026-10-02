@@ -1,0 +1,298 @@
+.terminal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  align-items: stretch;
+}
+.tile {
+  display: flex;
+  min-width: 0;
+  border-radius: var(--radius-panel);
+  transition: opacity 0.15s;
+}
+.tile > .panel {
+  flex: 1;
+}
+.tile.dragging {
+  opacity: 0.4;
+}
+.tile.drop-target > .panel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+}
+.terminal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Watchlist */
+.watchlist td {
+  padding: 6px 10px;
+}
+.wl-sym {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Order book */
+.ob {
+  display: flex;
+  flex-direction: column;
+  font-size: 11.5px;
+}
+.ob-head {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.ob-head span:not(:first-child) {
+  text-align: right;
+}
+.ob-side {
+  display: flex;
+  flex-direction: column;
+}
+.ob-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  align-items: center;
+  height: 21px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.ob-row:hover {
+  background: var(--hover);
+}
+.ob-row.chosen {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
+}
+.ob-depth {
+  position: absolute;
+  right: 0;
+  top: 1px;
+  bottom: 1px;
+  opacity: 0.13;
+  transition: width 0.35s ease;
+  pointer-events: none;
+}
+.ob-row.ask .ob-depth {
+  background: var(--loss);
+}
+.ob-row.bid .ob-depth {
+  background: var(--profit);
+}
+.ob-row.ask .ob-price {
+  color: var(--loss);
+}
+.ob-row.bid .ob-price {
+  color: var(--profit);
+}
+.ob-price {
+  position: relative;
+  border-radius: 3px;
+  animation: flash-row 0.6s ease-out;
+  justify-self: start;
+  padding: 0 3px;
+  margin-left: -3px;
+}
+.ob-size,
+.ob-cum {
+  position: relative;
+  text-align: right;
+}
+.ob-divider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel-alt);
+}
+.ob-last {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ob-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.imb-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--loss) 55%, transparent);
+  overflow: hidden;
+}
+.imb-bid {
+  display: block;
+  height: 100%;
+  background: var(--profit);
+  transition: width 0.4s ease;
+}
+
+/* Order ticket */
+.ticket-market {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  background: var(--panel-alt);
+  border: 1px dashed var(--border);
+}
+.ticket-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--panel-alt);
+}
+.ticket-levels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.side-seg .seg-btn[aria-pressed='true'] {
+  color: #0b0c0e;
+  font-weight: 600;
+}
+.place-btn {
+  transition: background-color 0.2s, transform 0.08s, box-shadow 0.2s;
+}
+.place-btn.placing {
+  transform: scale(0.985);
+}
+.place-btn.placed {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.place-btn:disabled.placing,
+.place-btn:disabled.placed {
+  opacity: 1;
+}
+
+/* Positions */
+.positions {
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.pos-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  max-height: 120px;
+  transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
+}
+.pos-row.closing {
+  opacity: 0;
+  transform: scale(0.97);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.pulse-ring {
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  pointer-events: none;
+  animation: glow-pulse 1.4s ease-out forwards;
+}
+.pos-sym {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: underline dotted var(--text-faint);
+  text-underline-offset: 3px;
+}
+.pos-sym:hover {
+  color: var(--accent);
+}
+.pos-pnl {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pos-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 4px;
+  display: flex;
+  overflow: visible;
+}
+.pos-bar-loss,
+.pos-bar-profit {
+  flex: 1;
+  height: 100%;
+}
+.pos-bar-loss {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--loss) 70%, transparent), color-mix(in srgb, var(--loss) 15%, transparent));
+  border-radius: 4px 0 0 4px;
+}
+.pos-bar-profit {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--profit) 15%, transparent), color-mix(in srgb, var(--profit) 70%, transparent));
+  border-radius: 0 4px 4px 0;
+}
+.pos-bar-entry {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--text-faint);
+}
+.pos-bar-marker {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--panel);
+  transition: left 0.4s ease;
+}
+.pos-levels .num {
+  font-size: 11px;
+}
+.pos-section {
+  padding: 8px 14px 4px;
+}
+.pos-working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.watchlist td:last-child,
+.watchlist th:last-child {
+  width: 28px;
+  padding-right: 6px;
+}
+.watchlist tr .btn.icon {
+  opacity: 0;
+}
+.watchlist tr:hover .btn.icon,
+.watchlist tr .btn.icon:focus-visible {
+  opacity: 1;
+}

@@ -1,0 +1,62 @@
+.otc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+.otc-blotter {
+  grid-column: 1 / -1;
+}
+@media (max-width: 1000px) {
+  .otc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+  animation: fade-in 0.2s ease;
+}
+.quote.expired {
+  border-color: var(--border);
+  background: var(--panel-alt);
+  opacity: 0.75;
+}
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.countdown.warn {
+  color: #e0785a;
+}
+.countdown-bar {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.countdown-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}
+.quote-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+}
+.quote-grid .num {
+  text-align: right;
+}
+.quote-total {
+  font-size: 14px;
+  font-weight: 600;
+}

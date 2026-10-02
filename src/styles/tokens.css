@@ -1,0 +1,61 @@
+/* Design tokens (spec §3). Dark and light are separate palettes sharing token names, switched via
+   [data-theme] on <html> so theme changes never require re-rendering components. */
+:root,
+[data-theme='dark'] {
+  --bg: #0b0c0e;
+  --bg2: #111318;
+  --panel: #15171c;
+  --panel-alt: #1a1d23;
+  --border: #262a32;
+  --border-soft: #1e2127;
+  --text: #ecedef;
+  --text-dim: #9198a3;
+  --text-faint: #5b616c;
+  --accent: #3fa179;
+  --accent-soft: rgba(63, 161, 121, 0.16);
+  --on-accent: #0b0c0e;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --chart-glow: radial-gradient(ellipse at 60% 40%, rgba(63, 161, 121, 0.05), transparent 65%);
+  --hover: rgba(255, 255, 255, 0.035);
+  --scrim: rgba(5, 6, 8, 0.6);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #eef1ed;
+  --bg2: #f7f9f6;
+  --panel: #fbfcfa;
+  --panel-alt: #eff2ed;
+  --border: #e2e7e0;
+  --border-soft: #eaeee7;
+  --text: #242923;
+  --text-dim: #5e685c;
+  --text-faint: #8c978a;
+  --accent: #236b48;
+  --accent-soft: rgba(35, 107, 72, 0.08);
+  --on-accent: #ffffff;
+  /* Deliberately near-invisible — the dark-mode shadow carried over verbatim was a bug. */
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 6px 18px rgba(30, 40, 32, 0.07);
+  --chart-glow: radial-gradient(ellipse at 60% 40%, rgba(35, 107, 72, 0.035), transparent 65%);
+  --hover: rgba(30, 40, 32, 0.04);
+  --scrim: rgba(36, 41, 35, 0.25);
+  color-scheme: light;
+}
+
+:root {
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --font-ui: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --radius-panel: 13px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --gap: 12px;
+  --pad: 14px;
+  --cli-h: 58px;
+  /* P/L palette — overwritten at runtime from the Appearance store (literal hex). */
+  --bull: #3fce84;
+  --bear: #f0635a;
+  --profit: #3fce84;
+  --loss: #f0635a;
+}

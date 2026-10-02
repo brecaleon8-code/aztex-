@@ -1,0 +1,213 @@
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+.sidebar {
+  width: 228px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px calc(var(--cli-h) + 14px);
+  background: var(--bg2);
+  border-right: 1px solid var(--border-soft);
+  overflow-y: auto;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  transition: background-color 0.12s, color 0.12s;
+}
+.nav-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.side-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 4px;
+}
+.theme-toggle {
+  justify-content: flex-start;
+}
+.wallet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.wallet-equity {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.wallet-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--gap) var(--gap) calc(var(--cli-h) + var(--gap));
+}
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg2);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.status-strip .sep {
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+}
+.live-dot.off {
+  background: var(--text-faint);
+  animation: none;
+}
+.fix-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.gas-ticker {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg);
+  font-size: 11px;
+  overflow: hidden;
+}
+.gas-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px 0 16px;
+  color: var(--text-faint);
+  height: 100%;
+  border-right: 1px solid var(--border-soft);
+  flex: none;
+}
+.gas-track {
+  overflow: hidden;
+  flex: 1;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.gas-run {
+  display: inline-flex;
+  gap: 28px;
+  padding-left: 16px;
+  white-space: nowrap;
+  animation: marquee 48s linear infinite;
+}
+.gas-track:hover .gas-run {
+  animation-play-state: paused;
+}
+.gas-item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.gas-item .num {
+  font-size: 11px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 4px 2px 14px;
+}
+.page-head h1 {
+  font-size: 26px;
+  font-weight: 500;
+}
+.page-head p {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  max-width: 640px;
+}
+
+/* Cosmetic platform previews. */
+.app[data-platform='mobile'] .content > * {
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.app[data-platform='mobile'] .content {
+  background: var(--chart-glow);
+}
+.app[data-platform='terminal'] {
+  --gap: 8px;
+  --pad: 11px;
+  --radius-panel: 9px;
+}
+.app[data-platform='terminal'] .gas-ticker {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 64px;
+    padding: 14px 8px calc(var(--cli-h) + 14px);
+  }
+  .sidebar .brand-name,
+  .sidebar .nav-item span,
+  .sidebar .side-section,
+  .sidebar .wallet-card {
+    display: none;
+  }
+  .nav-item {
+    justify-content: center;
+  }
+}

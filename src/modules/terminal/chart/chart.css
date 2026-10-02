@@ -1,0 +1,235 @@
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.tool-group {
+  display: flex;
+  gap: 2px;
+}
+.tb-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+.tf-select {
+  height: 26px;
+  font-size: 11.5px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+}
+.btn.starred {
+  color: var(--accent);
+}
+.chart {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--chart-glow);
+}
+.chart-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  min-height: 26px;
+}
+.chart-main {
+  position: relative;
+}
+.chart-svg {
+  display: block;
+  touch-action: none;
+}
+.chart-svg.tool-cursor {
+  cursor: grab;
+}
+.chart-svg.tool-cursor.panning {
+  cursor: grabbing;
+}
+.chart-svg:not(.tool-cursor) {
+  cursor: crosshair;
+}
+.chart-svg text,
+.osc text {
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+.grid {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+}
+.axis-line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.axis-text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--text-faint);
+}
+.tag-text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.hover-col {
+  fill: var(--hover);
+}
+.crosshair line,
+.crosshair-line {
+  stroke: var(--text-dim);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.drawing line,
+.drawing rect {
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+.drawing circle {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+.drawing .drawing-fill {
+  fill: var(--accent-soft);
+}
+.drawing.preview {
+  opacity: 0.6;
+}
+.drawing-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--accent);
+}
+.drawing-text {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text);
+}
+.chart-text-input {
+  position: absolute;
+  height: 26px;
+  width: 160px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  padding: 0 8px;
+  outline: 0;
+  font-size: 12px;
+}
+.chart-zoom {
+  position: absolute;
+  left: 10px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.chart-main:hover .chart-zoom {
+  opacity: 1;
+}
+.live-pill {
+  position: absolute;
+  right: 92px;
+  bottom: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  animation: fade-in 0.15s ease;
+}
+.chart-hint {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.osc {
+  position: relative;
+}
+.osc svg {
+  display: block;
+}
+.osc-label {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.osc-label .swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.chart-resize {
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  border-top: 1px solid var(--border-soft);
+  touch-action: none;
+  user-select: none;
+}
+.chart-resize span {
+  width: 36px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.chart-resize:hover span {
+  background: var(--text-faint);
+}
+.color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  outline-offset: 1px;
+}
+.color-input {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}

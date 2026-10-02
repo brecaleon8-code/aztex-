@@ -119,3 +119,42 @@ describe('order → position → close settles into the wallet', () => {
     expect(usePositionStore.getState().positions).toHaveLength(0);
   });
 });
+
+describe('TWAP execution', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useWalletStore.setState({ balance: STARTING_BALANCE });
+    usePositionStore.setState({ positions: [], workingOrders: [], algos: [], closing: {}, highlight: {}, pnlHistory: [], realized: 0 });
+    const a = useMarketStore.getState().assets.BTC;
+    useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, price: 100, bid: 99.5, ask: 100.5 } } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('fills equal child slices into one position and averages the entry', async () => {
+    const { startTwap } = await import('./trading');
+    const r = startTwap({ symbol: 'BTC', side: 'Long', size: 10, durationMs: 4000, slices: 4, tp: 120, sl: 90 });
+    expect(r.ok).toBe(true);
+    expect(usePositionStore.getState().positions[0].size).toBeCloseTo(2.5); // first slice immediately
+    const a = useMarketStore.getState().assets.BTC;
+    useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, ask: 110.5 } } });
+    vi.advanceTimersByTime(3000);
+    const p = usePositionStore.getState().positions;
+    expect(p).toHaveLength(1);
+    expect(p[0].size).toBeCloseTo(10);
+    expect(p[0].entry).toBeCloseTo((100.5 + 3 * 110.5) / 4);
+    const algo = usePositionStore.getState().algos[0];
+    expect(algo).toMatchObject({ status: 'done', slicesDone: 4 });
+    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE - (100.5 * 2.5 + 3 * 110.5 * 2.5));
+  });
+
+  it('can be cancelled mid-flight', async () => {
+    const { startTwap, cancelAlgo } = await import('./trading');
+    const r = startTwap({ symbol: 'BTC', side: 'Short', size: 4, durationMs: 4000, slices: 4, tp: 80, sl: 110 });
+    if (!r.ok) throw new Error('expected ok');
+    vi.advanceTimersByTime(1000);
+    cancelAlgo(r.id);
+    vi.advanceTimersByTime(5000);
+    expect(usePositionStore.getState().positions[0].size).toBeCloseTo(2);
+    expect(usePositionStore.getState().algos[0].status).toBe('cancelled');
+  });
+});

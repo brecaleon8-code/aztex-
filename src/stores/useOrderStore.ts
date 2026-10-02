@@ -16,6 +16,11 @@ interface OrderState {
   usdtValue: number;
   tp: number | null;
   sl: number | null;
+  exec: 'direct' | 'twap';
+  twapMinutes: number;
+  twapSlices: number;
+  setExec: (e: 'direct' | 'twap') => void;
+  setTwap: (p: { minutes?: number; slices?: number }) => void;
   setSide: (s: Side) => void;
   setOrderType: (t: OrderType) => void;
   setLimitPrice: (p: number | null) => void;
@@ -39,6 +44,11 @@ export const useOrderStore = create<OrderState>()(
       usdtValue: 2500,
       tp: null,
       sl: null,
+      exec: 'direct',
+      twapMinutes: 5,
+      twapSlices: 10,
+      setExec: (exec) => set({ exec }),
+      setTwap: ({ minutes, slices }) => set((s) => ({ twapMinutes: minutes ?? s.twapMinutes, twapSlices: slices ?? s.twapSlices })),
       setSide: (side) => set({ side, tp: null, sl: null }),
       setOrderType: (orderType) => set({ orderType }),
       setLimitPrice: (limitPrice) => set({ limitPrice }),
@@ -51,7 +61,7 @@ export const useOrderStore = create<OrderState>()(
     }),
     {
       name: 'aztex.ticket',
-      partialize: (s) => ({ sizingMode: s.sizingMode, pctValue: s.pctValue, usdtValue: s.usdtValue }),
+      partialize: (s) => ({ sizingMode: s.sizingMode, pctValue: s.pctValue, usdtValue: s.usdtValue, twapMinutes: s.twapMinutes, twapSlices: s.twapSlices }),
     },
   ),
 );

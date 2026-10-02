@@ -4,7 +4,7 @@ import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { Segmented } from '@/components/ui/Segmented';
 import { NumericField } from '@/components/ui/NumericField';
 import { usePositionStore } from '@/stores/usePositionStore';
-import { flattenAll, placeOrder } from '@/stores/trading';
+import { flattenAll, placeOrder, startTwap } from '@/stores/trading';
 import { fmtPct, fmtPrice, fmtQty, fmtUsd, priceDecimals } from '@/lib/format';
 import { pctFromEntry } from '@/lib/trading/pnl';
 import type { OrderType, Side } from '@/types';
@@ -24,13 +24,17 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const dec = priceDecimals(t.entry);
+  const twap = t.orderType === 'market' && t.exec === 'twap';
 
   const submit = () => {
     if (phase !== 'idle') return;
     setPhase('placing');
     timers.current.push(
       setTimeout(() => {
-        const r = placeOrder({ symbol: t.symbol, side: t.side, orderType: t.orderType, size: t.size, limitPrice: t.limitPx, tp: t.tp, sl: t.sl });
+        const r =
+          twap
+            ? startTwap({ symbol: t.symbol, side: t.side, size: t.size, durationMs: t.twapMinutes * 60_000, slices: t.twapSlices, tp: t.tp, sl: t.sl })
+            : placeOrder({ symbol: t.symbol, side: t.side, orderType: t.orderType, size: t.size, limitPrice: t.limitPx, tp: t.tp, sl: t.sl });
         if (!r.ok) {
           setPhase('idle');
           return;
@@ -48,7 +52,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   const insufficient = t.notional > t.balance + 1e-9;
 
   return (
-    <Panel title="Order ticket" sub={`${t.symbol}/USDT`} drag={drag} testId="ticket">
+    <Panel code="EMSX" title="Order Ticket" sub={`${t.symbol}/USDT`} drag={drag} testId="ticket">
       <div className="col ticket" style={{ gap: 12 }}>
         <Segmented<Side>
           full
@@ -91,10 +95,32 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
             </div>
           </div>
         ) : (
-          <div className="ticket-market row">
-            <span className="label">Est. fill</span>
-            <span className="spacer" />
-            <span className="num">{fmtPrice(t.entry)}</span>
+          <div className="col" style={{ gap: 6 }}>
+            <div className="row">
+              <span className="label">Execution</span>
+              <span className="spacer" />
+              <Segmented<'direct' | 'twap'>
+                ariaLabel="Execution"
+                value={t.exec}
+                onChange={t.setExec}
+                options={[
+                  { value: 'direct', label: 'Direct' },
+                  { value: 'twap', label: 'TWAP' },
+                ]}
+              />
+            </div>
+            {twap && (
+              <div className="ticket-levels">
+                <NumericField label="Duration (min)" value={t.twapMinutes} min={1} onCommit={(v) => t.setTwap({ minutes: v })} ariaLabel="TWAP duration" testId="twap-minutes" />
+                <NumericField label="Slices" value={t.twapSlices} min={2} onCommit={(v) => t.setTwap({ slices: Math.round(v) })} ariaLabel="TWAP slices" testId="twap-slices" />
+              </div>
+            )}
+            <div className="ticket-market row">
+              <span className="label">{twap ? 'Arrival px' : 'Est. fill'}</span>
+              <span className="spacer" />
+              <span className="num">{fmtPrice(t.entry)}</span>
+              {twap && <span className="num faint">· child {fmtQty(t.size / Math.max(2, t.twapSlices))} / {((t.twapMinutes * 60) / Math.max(2, t.twapSlices)).toFixed(0)}s</span>}
+            </div>
           </div>
         )}
 
@@ -186,7 +212,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
             </>
           ) : (
             <>
-              {t.side === 'Long' ? 'Buy' : 'Sell'} {t.orderType === 'market' ? 'market' : 'limit'} · {fmtQty(t.size)} {t.symbol}
+              {twap ? 'Start TWAP' : t.side === 'Long' ? 'Buy' : 'Sell'} {twap ? (t.side === 'Long' ? 'buy' : 'sell') : t.orderType === 'market' ? 'market' : 'limit'} · {fmtQty(t.size)} {t.symbol}
             </>
           )}
         </button>

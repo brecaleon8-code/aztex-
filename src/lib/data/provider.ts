@@ -1,4 +1,4 @@
-import type { Candle, OrderBookSnapshot, Ticker, Timeframe } from '@/types';
+import type { Candle, OrderBookSnapshot, Ticker, Timeframe, Trade } from '@/types';
 
 export type Unsubscribe = () => void;
 
@@ -22,6 +22,8 @@ export interface MarketDataProvider {
   subscribeTickers(symbols: string[], onTickers: (t: Ticker[]) => void): Unsubscribe;
   /** The forming candle: same `time` as the last one replaces it, a newer `time` appends. */
   subscribeCandles(symbol: string, tf: Timeframe, onCandle: (c: Candle) => void): Unsubscribe;
+  /** Executed trades (the tape), batched. */
+  subscribeTrades(symbol: string, onTrades: (t: Trade[]) => void): Unsubscribe;
   /** L2 book snapshots (best levels first). */
   subscribeOrderBook(symbol: string, onBook: (b: OrderBookSnapshot) => void): Unsubscribe;
   onStatus(cb: (s: ConnectionStatus) => void): Unsubscribe;

@@ -12,6 +12,7 @@ import { computeIndicator, indicatorLabel, type ComputedIndicator } from '@/lib/
 import { extent } from '@/lib/indicators/series';
 import { fmtCompact, fmtDate, fmtPct, fmtPrice, fmtTime, priceDecimals, textOn, clamp } from '@/lib/format';
 import { useChartLevels } from './useChartLevels';
+import { volumeProfile, type VolumeProfile } from '@/lib/orderflow/orderflow';
 
 const AXIS_W = 78;
 const TIME_H = 22;
@@ -24,7 +25,7 @@ export function PriceChart() {
   const key = useMarketStore((s) => s.candlesKey);
   const error = useMarketStore((s) => s.candlesError);
   const tf = useMarketStore((s) => s.timeframe);
-  const { mode, tool, indicators, drawings, addDrawing } = useChartStore();
+  const { mode, tool, indicators, drawings, addDrawing, profile: showProfile } = useChartStore();
   const colors = useThemeStore((s) => s.colors);
   const height = useLayoutStore((s) => s.chartHeight);
   const levels = useChartLevels();
@@ -61,14 +62,17 @@ export function PriceChart() {
       return;
     }
     if (n !== seen.current.n) {
-      setVp((v) => onSeriesGrow(v, seen.current.n, n));
+      // Capture prev now: the updater runs later, after seen.current has moved on.
+      const prev = seen.current.n;
+      setVp((v) => onSeriesGrow(v, prev, n));
       seen.current.n = n;
     }
   }, [key, n]);
 
   const display = useMemo(() => (mode === 'heikin' ? heikinAshi(candles) : candles), [candles, mode]);
   // Indicators: computed once on full real-OHLC history, then windowed at render.
-  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, candles, colors)), [indicators, candles, colors]);
+  const deltaByTime = useMarketStore((s) => s.deltaByTime);
+  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, candles, colors, deltaByTime)), [indicators, candles, colors, deltaByTime]);
   const overlays = computed.filter((c) => c.instance.type === 'overlay');
   const oscillators = computed.filter((c) => c.instance.type === 'oscillator');
 
@@ -88,7 +92,7 @@ export function PriceChart() {
       if (c.high > hi) hi = c.high;
     }
     const ov = extent(
-      overlays.filter((o) => o.instance.kind !== 'custom').flatMap((o) => o.lines.map((l) => l.values)),
+      overlays.filter((o) => o.instance.kind !== 'custom' && o.instance.kind !== 'vwap').flatMap((o) => o.lines.map((l) => l.values)),
       start,
       end,
     );
@@ -98,6 +102,11 @@ export function PriceChart() {
     }
     return makeYScale(lo, hi, 10, plotH - 6);
   }, [display, overlays, start, end, plotH]);
+
+  const profile = useMemo(
+    () => (showProfile ? volumeProfile(candles, start, end, Math.max(16, Math.min(64, Math.round(plotH / 9)))) : null),
+    [showProfile, candles, start, end, plotH],
+  );
 
   // Interaction state.
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
@@ -229,21 +238,13 @@ export function PriceChart() {
             <clipPath id={clipId}>
               <rect x={0} y={0} width={plotW} height={plotH} />
             </clipPath>
-            <filter id={`glow-${uidBase}`} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b" />
-              <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.55 0" result="g" />
-              <feMerge>
-                <feMergeNode in="g" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
             <linearGradient id={`line-${uidBase}`} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="var(--accent-2)" />
-              <stop offset="1" stopColor="var(--accent)" />
+              <stop offset="0" stopColor="var(--amber)" />
+              <stop offset="1" stopColor="var(--amber)" />
             </linearGradient>
             <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="var(--accent)" stopOpacity={0.28} />
-              <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
+              <stop offset="0" stopColor="var(--amber)" stopOpacity={0.22} />
+              <stop offset="1" stopColor="var(--amber)" stopOpacity={0} />
             </linearGradient>
           </defs>
 
@@ -271,7 +272,8 @@ export function PriceChart() {
 
           <g clipPath={`url(#${clipId})`}>
             {hoverIdx != null && <rect x={xs.toX(hoverIdx) - cw / 2} y={0} width={cw} height={plotH} className="hover-col" />}
-            <g filter={`url(#glow-${uidBase})`}>
+            {profile && <ProfileLayer p={profile} ys={ys} plotW={plotW} />}
+            <g>
               <Series display={display} visible={visible} xs={xs} ys={ys} mode={mode} bodyW={bodyW} bull={colors.bull} bear={colors.bear} areaId={areaId} lineId={`line-${uidBase}`} plotH={plotH} start={start} end={end} />
             </g>
             {end >= n && (
@@ -360,6 +362,30 @@ export function PriceChart() {
   );
 }
 
+/** Volume-by-price histogram anchored to the right edge of the plot, with POC and value area. */
+function ProfileLayer({ p, ys, plotW }: { p: VolumeProfile; ys: YScale; plotW: number }) {
+  const maxW = plotW * 0.22;
+  const poc = p.bins[p.poc];
+  const pocY = ys.toY((poc.lo + poc.hi) / 2);
+  return (
+    <g className="vp" data-testid="volume-profile">
+      {p.bins.map((b, i) => {
+        const y1 = ys.toY(b.hi);
+        const y2 = ys.toY(b.lo);
+        const w = (b.volume / (p.max || 1)) * maxW;
+        const inVa = i >= p.vaLo && i <= p.vaHi;
+        return <rect key={i} x={plotW - w} y={y1 + 0.5} width={w} height={Math.max(1, y2 - y1 - 1)} className={i === p.poc ? 'vp-poc' : inVa ? 'vp-va' : 'vp-out'} />;
+      })}
+      <line x1={0} x2={plotW} y1={pocY} y2={pocY} className="vp-poc-line" />
+      <text x={4} y={pocY - 3} className="vp-label">POC {fmtPrice((poc.lo + poc.hi) / 2)}</text>
+      <line x1={0} x2={plotW} y1={ys.toY(p.bins[p.vaHi].hi)} y2={ys.toY(p.bins[p.vaHi].hi)} className="vp-va-line" />
+      <line x1={0} x2={plotW} y1={ys.toY(p.bins[p.vaLo].lo)} y2={ys.toY(p.bins[p.vaLo].lo)} className="vp-va-line" />
+      <text x={4} y={ys.toY(p.bins[p.vaHi].hi) - 3} className="vp-label dim">VAH</text>
+      <text x={4} y={ys.toY(p.bins[p.vaLo].lo) + 10} className="vp-label dim">VAL</text>
+    </g>
+  );
+}
+
 function Readout({ c, prev, dec, hovering }: { c: Candle; prev?: Candle; dec: number; hovering: boolean }) {
   const chg = prev ? ((c.close - prev.close) / prev.close) * 100 : ((c.close - c.open) / c.open) * 100;
   const cls = c.close >= c.open ? 'bull' : 'bear';
@@ -401,7 +427,7 @@ function Series({ display, visible, xs, ys, mode, bodyW, bull, bear, areaId, lin
     return (
       <g>
         {mode === 'area' && <path d={`${d}L${xs.toX(last)},${plotH}L${xs.toX(first)},${plotH}Z`} fill={`url(#${areaId})`} />}
-        <path d={d} fill="none" stroke={`url(#${lineId})`} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={d} fill="none" stroke={`url(#${lineId})`} strokeWidth={1.5} strokeLinejoin="miter" />
       </g>
     );
   }
@@ -426,7 +452,7 @@ function Series({ display, visible, xs, ys, mode, bodyW, bull, bear, areaId, lin
         return (
           <g key={i}>
             <line x1={x} x2={x} y1={ys.toY(c.high)} y2={ys.toY(c.low)} stroke={col} strokeWidth={1} />
-            <rect x={x - bodyW / 2} y={Math.min(yo, yc)} width={bodyW} height={Math.max(1, Math.abs(yc - yo))} fill={col} rx={bodyW > 6 ? 1 : 0} />
+            <rect x={x - bodyW / 2} y={Math.min(yo, yc)} width={bodyW} height={Math.max(1, Math.abs(yc - yo))} fill={col} />
           </g>
         );
       })}

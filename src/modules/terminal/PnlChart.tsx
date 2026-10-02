@@ -24,6 +24,7 @@ export function PnlChart({ drag }: { drag?: PanelDragProps }) {
 
   return (
     <Panel
+      code="PNL"
       title="P/L"
       sub={`realized ${fmtSigned(realized)}`}
       drag={drag}

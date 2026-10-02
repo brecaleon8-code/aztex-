@@ -27,7 +27,11 @@ export function startMarketFeed(): Unsubscribe {
       .catch((e: unknown) => {
         if (useMarketStore.getState().candlesKey === key) setCandles(key, [], e instanceof Error ? e.message : String(e));
       });
-    scoped = [provider.subscribeCandles(selected, timeframe, (c) => upsertCandle(key, c)), provider.subscribeOrderBook(selected, setBook)];
+    scoped = [
+      provider.subscribeCandles(selected, timeframe, (c) => upsertCandle(key, c)),
+      provider.subscribeOrderBook(selected, setBook),
+      provider.subscribeTrades(selected, (ts) => useMarketStore.getState().pushTrades(selected, ts)),
+    ];
   };
 
   const connectProvider = () => {

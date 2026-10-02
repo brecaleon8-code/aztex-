@@ -1,17 +1,18 @@
-import type { Candle, OrderBookSnapshot, Ticker, Timeframe } from '@/types';
+import type { Candle, OrderBookSnapshot, Ticker, Timeframe, Trade } from '@/types';
 import { ASSET_UNIVERSE, BASE_PRICES, SPREAD } from '@/lib/mock/assets';
 import { TIMEFRAME_MS, applyTick, generateCandles, stepVol } from '@/lib/mock/candles';
-import { generateOrderBook } from '@/lib/mock/orderbook';
+import { evolveBook } from '@/lib/mock/orderbook';
 import { gaussian, hashSeed, mulberry32 } from '@/lib/mock/rng';
 import type { ConnectionStatus, MarketDataProvider, Unsubscribe } from './provider';
 
 const TICK_MS = 1000;
-const BOOK_MS = 2600;
+const BOOK_MS = 1000;
 /** Mock moves are exaggerated vs. real 1s vol so the demo visibly breathes. */
 const LIVELINESS = 4;
 
 interface SymState {
   price: number;
+  prev: number;
   open24: number;
   vol24: number;
 }
@@ -31,7 +32,7 @@ export class MockProvider implements MarketDataProvider {
       const r = mulberry32(hashSeed(a.symbol + ':24h'));
       const price = BASE_PRICES[a.symbol];
       const change = (r() - 0.45) * 0.09;
-      this.state.set(a.symbol, { price, open24: price / (1 + change), vol24: price * a.supply * (0.015 + r() * 0.04) });
+      this.state.set(a.symbol, { price, prev: price, open24: price / (1 + change), vol24: price * a.supply * (0.015 + r() * 0.04) });
     }
     this.timers.push(setInterval(() => this.step(), TICK_MS));
     this.timers.push(
@@ -45,6 +46,7 @@ export class MockProvider implements MarketDataProvider {
   private step() {
     for (const [sym, s] of this.state) {
       const v = stepVol(sym, TICK_MS) * LIVELINESS;
+      s.prev = s.price;
       s.price *= Math.exp(gaussian(this.rand) * v);
       s.vol24 *= 1 + (this.rand() - 0.5) * 0.002;
     }
@@ -92,10 +94,36 @@ export class MockProvider implements MarketDataProvider {
     return () => this.tickListeners.delete(listener);
   }
 
+  subscribeTrades(symbol: string, onTrades: (t: Trade[]) => void): Unsubscribe {
+    let seq = 0;
+    const listener = (m: Map<string, SymState>) => {
+      const s = m.get(symbol);
+      if (!s) return;
+      // Aggressor mix leans with the tick's direction; count ~ Poisson(5); sizes heavy-tailed.
+      const up = s.price >= s.prev;
+      const n = 1 + Math.floor(-Math.log(Math.max(1e-9, this.rand())) * 5);
+      const unit = s.vol24 / s.price / 86_400 / 5;
+      const now = Date.now();
+      const trades: Trade[] = [];
+      for (let i = 0; i < n; i++) {
+        const buy = this.rand() < (up ? 0.64 : 0.36);
+        const block = this.rand() < 0.04 ? 12 + this.rand() * 30 : 1;
+        const size = unit * Math.exp(gaussian(this.rand) * 0.9) * block;
+        const px = s.prev + (s.price - s.prev) * ((i + 1) / n);
+        const half = (px * (SPREAD[symbol] ?? 0.0002)) / 2;
+        trades.push({ id: `${symbol}-${now}-${seq++}`, symbol, price: buy ? px + half : px - half, size, side: buy ? 'buy' : 'sell', time: now - (n - i) * 40 });
+      }
+      onTrades(trades);
+    };
+    this.tickListeners.add(listener);
+    return () => this.tickListeners.delete(listener);
+  }
+
   subscribeOrderBook(symbol: string, onBook: (b: OrderBookSnapshot) => void): Unsubscribe {
+    const memory = new Map<number, number>();
     const emit = () => {
       const s = this.state.get(symbol);
-      if (s) onBook(generateOrderBook(s.price, SPREAD[symbol] ?? 0.0002));
+      if (s) onBook(evolveBook(s.price, SPREAD[symbol] ?? 0.0002, memory));
     };
     emit();
     const t = setInterval(emit, BOOK_MS);

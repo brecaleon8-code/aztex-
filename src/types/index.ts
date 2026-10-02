@@ -38,6 +38,16 @@ export interface Candle {
   volume: number;
 }
 
+/** A single print on the tape. `side` is the aggressor (taker) side. */
+export interface Trade {
+  id: string;
+  symbol: string;
+  price: number;
+  size: number; // base qty
+  side: 'buy' | 'sell';
+  time: number;
+}
+
 export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
 export interface OrderBookLevel {
@@ -81,6 +91,26 @@ export interface WorkingOrder {
   createdAt: number;
 }
 
+/** A running execution algorithm (parent order). */
+export interface AlgoOrder {
+  id: string;
+  kind: 'TWAP';
+  symbol: string;
+  side: Side;
+  totalSize: number;
+  slices: number;
+  slicesDone: number;
+  intervalMs: number;
+  filledSize: number;
+  avgPx: number;
+  arrivalPx: number;
+  tp: number;
+  sl: number;
+  positionId: string | null;
+  status: 'running' | 'done' | 'cancelled';
+  startedAt: number;
+}
+
 export type DrawingTool = 'cursor' | 'trend' | 'ray' | 'rect' | 'fib' | 'text';
 export interface DataPoint {
   index: number;
@@ -94,7 +124,7 @@ export interface Drawing {
   text?: string;
 }
 
-export type IndicatorKind = 'sma' | 'ema' | 'bollinger' | 'rsi' | 'macd' | 'volume' | 'custom';
+export type IndicatorKind = 'sma' | 'ema' | 'bollinger' | 'rsi' | 'macd' | 'volume' | 'vwap' | 'cvd' | 'custom';
 export interface IndicatorInstance {
   id: string;
   kind: IndicatorKind;

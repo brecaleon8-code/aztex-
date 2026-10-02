@@ -14,7 +14,7 @@ export function Watchlist({ drag }: { drag?: PanelDragProps }) {
   const { select, removeWatch } = useMarketStore.getState();
 
   return (
-    <Panel title="Watchlist" sub={`${watchlist.length} assets`} drag={drag} flush actions={<AddCurrency />} testId="watchlist">
+    <Panel code="MON" title="Monitor" sub={`${watchlist.length} assets`} drag={drag} flush actions={<AddCurrency />} testId="watchlist">
       <table className="table watchlist">
         <thead>
           <tr>

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type PanelId = 'watchlist' | 'chart' | 'orderbook' | 'ticket' | 'positions' | 'pnl';
-export const DEFAULT_PANEL_ORDER: PanelId[] = ['watchlist', 'chart', 'orderbook', 'ticket', 'positions', 'pnl'];
-export const DEFAULT_CHART_HEIGHT = 380;
+export type PanelId = 'watchlist' | 'chart' | 'orderbook' | 'tape' | 'ticket' | 'positions' | 'flow' | 'pnl' | 'news';
+export const DEFAULT_PANEL_ORDER: PanelId[] = ['watchlist', 'chart', 'orderbook', 'tape', 'ticket', 'positions', 'flow', 'news', 'pnl'];
+export const DEFAULT_CHART_HEIGHT = 400;
 export const MAXIMIZED_CHART_HEIGHT = 560;
 
 interface LayoutState {
@@ -42,6 +42,6 @@ export const useLayoutStore = create<LayoutState>()(
         })),
       resetLayout: () => set({ panelOrder: DEFAULT_PANEL_ORDER, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false }),
     }),
-    { name: 'aztex.layout' },
+    { name: 'aztex.layout', version: 2, migrate: () => ({ panelOrder: DEFAULT_PANEL_ORDER, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false }) },
   ),
 );

@@ -8,6 +8,9 @@ import { OrderBook } from './OrderBook';
 import { OrderTicket } from './OrderTicket';
 import { Positions } from './Positions';
 import { PnlChart } from './PnlChart';
+import { TimeSales } from './TimeSales';
+import { OrderFlow } from './OrderFlow';
+import { News } from './News';
 import './terminal.css';
 
 const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
@@ -17,23 +20,32 @@ const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
   ticket: (d) => <OrderTicket drag={d} />,
   positions: (d) => <Positions drag={d} />,
   pnl: (d) => <PnlChart drag={d} />,
+  tape: (d) => <TimeSales drag={d} />,
+  flow: (d) => <OrderFlow drag={d} />,
+  news: (d) => <News drag={d} />,
 };
 
 /** Flex basis per panel; order comes from the persisted layout store (flexbox `order`). */
 function panelStyle(id: PanelId, maximized: boolean): CSSProperties {
   switch (id) {
     case 'watchlist':
-      return { flex: '1 1 340px', maxWidth: 400 };
+      return { flex: '0 1 300px', minWidth: 260 };
     case 'chart':
-      return maximized ? { flex: '1 1 100%' } : { flex: '999 1 620px' };
+      return maximized ? { flex: '1 1 100%' } : { flex: '999 1 560px' };
     case 'orderbook':
-      return { flex: '1 1 270px', maxWidth: 340 };
+      return { flex: '0 1 290px', minWidth: 250 };
+    case 'tape':
+      return { flex: '0 1 300px', minWidth: 280 };
     case 'ticket':
-      return { flex: '1 1 300px', maxWidth: 380 };
+      return { flex: '0 1 300px', minWidth: 270 };
     case 'positions':
-      return { flex: '3 1 520px' };
+      return { flex: '3 1 480px' };
+    case 'flow':
+      return { flex: '0 1 300px', minWidth: 260 };
+    case 'news':
+      return { flex: '2 1 380px' };
     case 'pnl':
-      return { flex: '2 1 360px' };
+      return { flex: '1 1 320px' };
   }
 }
 
@@ -85,7 +97,7 @@ export function TerminalPage() {
         ))}
       </div>
       <div className="terminal-foot">
-        <span className="label">Drag panels by their header to rearrange · layout is saved</span>
+        <span className="label">Drag panels by title bar · F1–F5 switch modules · / focuses command line</span>
         <button className="btn ghost sm" onClick={resetLayout}>
           <RotateCcw size={12} /> Reset layout
         </button>

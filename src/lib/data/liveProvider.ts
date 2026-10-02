@@ -1,4 +1,4 @@
-import type { Candle, OrderBookLevel, OrderBookSnapshot, Ticker, Timeframe } from '@/types';
+import type { Candle, OrderBookLevel, OrderBookSnapshot, Ticker, Timeframe, Trade } from '@/types';
 import { createBatcher, type ConnectionStatus, type MarketDataProvider, type Unsubscribe } from './provider';
 import { ReconnectingSocket } from './reconnectingSocket';
 
@@ -94,6 +94,26 @@ export class LiveProvider implements MarketDataProvider {
     );
     return () => {
       batch.cancel();
+      off();
+    };
+  }
+
+  subscribeTrades(symbol: string, onTrades: (t: Trade[]) => void): Unsubscribe {
+    // aggTrade: m = buyer is maker ⇒ the aggressor sold.
+    let buf: Trade[] = [];
+    const timer = setInterval(() => {
+      if (buf.length) {
+        onTrades(buf);
+        buf = [];
+      }
+    }, 100);
+    type Raw = { a: number; p: string; q: string; T: number; m: boolean; E: number };
+    const off = this.open<Raw>([`${toVenueSymbol(symbol).toLowerCase()}@aggTrade`], (d) => {
+      buf.push({ id: String(d.a), symbol, price: +d.p, size: +d.q, side: d.m ? 'sell' : 'buy', time: d.T });
+      if (buf.length > 500) buf = buf.slice(-500);
+    });
+    return () => {
+      clearInterval(timer);
       off();
     };
   }

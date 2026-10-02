@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Asset, Candle, OrderBookSnapshot, Ticker, Timeframe } from '@/types';
+import type { Asset, Candle, OrderBookSnapshot, Ticker, Timeframe, Trade } from '@/types';
+import { TIMEFRAME_MS } from '@/lib/mock/candles';
 import { ASSET_UNIVERSE, BASE_PRICES, DEFAULT_WATCHLIST, SPREAD } from '@/lib/mock/assets';
 import { DEFAULT_PROVIDER, type ProviderId } from '@/lib/data';
 import type { ConnectionStatus } from '@/lib/data/provider';
 
 export const HISTORY_LIMIT = 320;
+export const TAPE_MAX = 400;
+export const BOOK_HISTORY_MAX = 160;
 
 function initialAssets(): Record<string, Asset> {
   return Object.fromEntries(
@@ -28,6 +31,12 @@ interface MarketState {
   candlesError: string | null;
   book: OrderBookSnapshot | null;
   bookVersion: number;
+  /** Rolling book snapshots for the liquidity heatmap. */
+  bookHistory: OrderBookSnapshot[];
+  /** Tape for the selected symbol, newest first. */
+  trades: Trade[];
+  /** Real aggressor delta per candle open-time, accumulated from the tape. */
+  deltaByTime: Record<number, number>;
   status: ConnectionStatus;
   setProvider: (id: ProviderId) => void;
   select: (symbol: string) => void;
@@ -39,6 +48,7 @@ interface MarketState {
   setCandles: (key: string, candles: Candle[], error?: string | null) => void;
   upsertCandle: (key: string, c: Candle) => void;
   setBook: (b: OrderBookSnapshot) => void;
+  pushTrades: (symbol: string, t: Trade[]) => void;
   setStatus: (s: ConnectionStatus) => void;
 }
 
@@ -55,10 +65,13 @@ export const useMarketStore = create<MarketState>()(
       candlesError: null,
       book: null,
       bookVersion: 0,
+      bookHistory: [],
+      trades: [],
+      deltaByTime: {},
       status: { state: 'connecting', latencyMs: null },
-      setProvider: (providerId) => set({ providerId, candles: [], candlesKey: '', book: null }),
-      select: (selected) => set((s) => (s.selected === selected ? s : { selected, book: null })),
-      setTimeframe: (timeframe) => set({ timeframe }),
+      setProvider: (providerId) => set({ providerId, candles: [], candlesKey: '', book: null, bookHistory: [], trades: [], deltaByTime: {} }),
+      select: (selected) => set((s) => (s.selected === selected ? s : { selected, book: null, bookHistory: [], trades: [], deltaByTime: {} })),
+      setTimeframe: (timeframe) => set({ timeframe, deltaByTime: {} }),
       addWatch: (sym) => set((s) => (s.watchlist.includes(sym) ? s : { watchlist: [...s.watchlist, sym] })),
       removeWatch: (sym) => set((s) => ({ watchlist: s.watchlist.filter((w) => w !== sym) })),
       toggleWatch: (sym) => set((s) => ({ watchlist: s.watchlist.includes(sym) ? s.watchlist.filter((w) => w !== sym) : [...s.watchlist, sym] })),
@@ -81,7 +94,18 @@ export const useMarketStore = create<MarketState>()(
           if (c.time > last.time) return { candles: [...s.candles, c] };
           return s;
         }),
-      setBook: (book) => set((s) => ({ book, bookVersion: s.bookVersion + 1 })),
+      setBook: (book) => set((s) => ({ book, bookVersion: s.bookVersion + 1, bookHistory: [...s.bookHistory, book].slice(-BOOK_HISTORY_MAX) })),
+      pushTrades: (symbol, ts) =>
+        set((s) => {
+          if (symbol !== s.selected || ts.length === 0) return s;
+          const step = TIMEFRAME_MS[s.timeframe];
+          const deltaByTime = { ...s.deltaByTime };
+          for (const t of ts) {
+            const b = Math.floor(t.time / step) * step;
+            deltaByTime[b] = (deltaByTime[b] ?? 0) + (t.side === 'buy' ? t.size : -t.size);
+          }
+          return { trades: [...ts].reverse().concat(s.trades).slice(0, TAPE_MAX), deltaByTime };
+        }),
       setStatus: (status) => set({ status }),
     }),
     {

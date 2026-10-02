@@ -1,6 +1,7 @@
 import type { Candle, IndicatorInstance } from '@/types';
 import { compile, evaluate } from './formula';
 import { bollinger, ema, macd, rsi, sma, type Series } from './series';
+import { cvd, vwap } from '@/lib/orderflow/orderflow';
 
 export interface ComputedLine {
   key: string;
@@ -39,6 +40,10 @@ export function indicatorLabel(i: IndicatorInstance): string {
       return `MACD ${i.fast}, ${i.slow}, ${i.signal}`;
     case 'volume':
       return 'Volume';
+    case 'vwap':
+      return 'VWAP (session)';
+    case 'cvd':
+      return 'CVD';
     case 'custom':
       return i.name || 'Custom';
   }
@@ -48,7 +53,7 @@ export function indicatorLabel(i: IndicatorInstance): string {
  * Indicators are always computed on the FULL real-OHLC history (never the visible slice, never
  * Heikin-Ashi) so values stay accurate right up to the left edge of whatever window is shown.
  */
-export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors: { bull: string; bear: string }): ComputedIndicator {
+export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors: { bull: string; bear: string }, realDelta: Record<number, number> = {}): ComputedIndicator {
   const close = candles.map((c) => c.close);
   switch (i.kind) {
     case 'sma':
@@ -75,7 +80,7 @@ export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors
         instance: i,
         lines: [
           { key: 'macd', values: m.macd, color: i.color },
-          { key: 'signal', values: m.signal, color: '#F5B84B', opacity: 0.9 },
+          { key: 'signal', values: m.signal, color: '#FFA028', opacity: 0.9 },
         ],
         bars: { values: m.histogram, colors: m.histogram.map((h) => (h == null ? null : h >= 0 ? colors.bull : colors.bear)) },
         guides: [0],
@@ -87,6 +92,10 @@ export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors
         lines: [],
         bars: { values: candles.map((c) => c.volume), colors: candles.map((c) => (c.close >= c.open ? colors.bull : colors.bear)) },
       };
+    case 'vwap':
+      return { instance: i, lines: [{ key: 'vwap', values: vwap(candles), color: i.color, width: 1.4 }] };
+    case 'cvd':
+      return { instance: i, lines: [{ key: 'cvd', values: cvd(candles, realDelta), color: i.color }], guides: [0] };
     case 'custom': {
       const r = compile(i.formula ?? '');
       if (!r.ok) return { instance: i, lines: [], error: r.error };

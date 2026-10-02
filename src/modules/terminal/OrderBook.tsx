@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Segmented } from '@/components/ui/Segmented';
+import { DepthChart, LiquidityHeatmap } from './DepthViews';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -12,6 +14,8 @@ const LEVELS = 10;
 /** DOM-style depth ladder. Clicking a price sets it as the ticket's limit price (Limit mode). */
 export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   const book = useMarketStore((s) => s.book);
+  const history = useMarketStore((s) => s.bookHistory);
+  const [view, setView] = useState<'dom' | 'depth' | 'heat'>('dom');
   const version = useMarketStore((s) => s.bookVersion);
   const symbol = useMarketStore((s) => s.selected);
   const last = useMarketStore((s) => s.assets[s.selected].price);
@@ -19,7 +23,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   const orderType = useOrderStore((s) => s.orderType);
   const limitFromBook = useOrderStore((s) => s.limitFromBook);
 
-  const view = useMemo(() => {
+  const ladder = useMemo(() => {
     if (!book) return null;
     const asks = book.asks.slice(0, LEVELS);
     const bids = book.bids.slice(0, LEVELS);
@@ -39,7 +43,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
       title="Set as limit price"
       data-testid={`ob-${side}-${i}`}
     >
-      <span className="ob-depth" style={{ width: `${(l.cumulative / (view?.maxCum ?? 1)) * 100}%` }} />
+      <span className="ob-depth" style={{ width: `${(l.cumulative / (ladder?.maxCum ?? 1)) * 100}%` }} />
       <span className="ob-price num" key={version}>{fmtPrice(l.price, dec)}</span>
       <span className="ob-size num">{fmtQty(l.size)}</span>
       <span className="ob-cum num faint">{fmtQty(l.cumulative)}</span>
@@ -47,34 +51,55 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   );
 
   return (
-    <Panel title="Order book" sub={`${symbol}/USDT`} drag={drag} flush testId="orderbook">
-      <div className="ob no-select">
+    <Panel
+      code="DOM"
+      title="Depth of Market"
+      sub={`${symbol}/USDT`}
+      drag={drag}
+      flush
+      testId="orderbook"
+      actions={
+        <Segmented
+          value={view}
+          onChange={setView}
+          ariaLabel="Book view"
+          options={[
+            { value: 'dom', label: 'Ladder' },
+            { value: 'depth', label: 'Depth' },
+            { value: 'heat', label: 'Heatmap' },
+          ]}
+        />
+      }
+    >
+      {view === 'depth' && book && <DepthChart book={book} />}
+      {view === 'heat' && <LiquidityHeatmap history={history} />}
+      <div className="ob no-select" hidden={view !== 'dom'}>
         <div className="ob-head label">
           <span>Price</span>
           <span>Size</span>
           <span>Total</span>
         </div>
-        {!view ? (
+        {!ladder ? (
           <div className="empty">Loading book…</div>
         ) : (
           <>
-            <div className="ob-side asks">{[...view.asks].reverse().map((l, i) => row(l, 'ask', view.asks.length - 1 - i))}</div>
+            <div className="ob-side asks">{[...ladder.asks].reverse().map((l, i) => row(l, 'ask', ladder.asks.length - 1 - i))}</div>
             <div className="ob-divider">
               <span className={`num ob-last ${flash.cls}`} key={flash.key}>
                 {fmtPrice(last, dec)}
               </span>
               <span className="spacer" />
               <span className="label">Spread</span>
-              <span className="num">{fmtPrice(view.spread, dec)}</span>
-              <span className="num faint">{fmtPct(view.spreadPct, 3, false)}</span>
+              <span className="num">{fmtPrice(ladder.spread, dec)}</span>
+              <span className="num faint">{fmtPct(ladder.spreadPct, 3, false)}</span>
             </div>
-            <div className="ob-side bids">{view.bids.map((l, i) => row(l, 'bid', i))}</div>
+            <div className="ob-side bids">{ladder.bids.map((l, i) => row(l, 'bid', i))}</div>
             <div className="ob-foot">
               <span className="label">IMB</span>
               <div className="imb-bar">
-                <span className="imb-bid" style={{ width: `${((view.imb + 1) / 2) * 100}%` }} />
+                <span className="imb-bid" style={{ width: `${((ladder.imb + 1) / 2) * 100}%` }} />
               </div>
-              <span className={`num ${view.imb >= 0 ? 'up' : 'down'}`}>{fmtPct(view.imb * 100, 1)}</span>
+              <span className={`num ${ladder.imb >= 0 ? 'up' : 'down'}`}>{fmtPct(ladder.imb * 100, 1)}</span>
             </div>
           </>
         )}

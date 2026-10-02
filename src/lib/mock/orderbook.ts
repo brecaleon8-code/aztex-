@@ -38,3 +38,27 @@ export function imbalance(book: OrderBookSnapshot): number {
   const a = book.asks.reduce((s, l) => s + l.size, 0);
   return a + b === 0 ? 0 : (b - a) / (a + b);
 }
+
+/**
+ * Book with memory: resting size per price persists between snapshots and drifts, with
+ * occasional walls added or pulled — so a liquidity heatmap shows structure, not noise.
+ */
+export function evolveBook(mid: number, spreadFrac: number, memory: Map<number, number>, depth = 14, rand: () => number = Math.random): OrderBookSnapshot {
+  const fresh = generateOrderBook(mid, spreadFrac, depth, rand);
+  const unit = 25_000 / mid;
+  const evolve = (levels: OrderBookLevel[]) =>
+    withCumulative(
+      levels.map((l) => {
+        const key = Math.round(l.price * 1e8);
+        let size = memory.get(key) ?? l.size;
+        size *= Math.exp((rand() - 0.5) * 0.3);
+        if (rand() < 0.015) size += unit * (3 + rand() * 6); // wall appears
+        if (rand() < 0.02) size *= 0.25; // wall pulled
+        size = Math.max(unit * 0.05, Math.min(unit * 14, size));
+        memory.set(key, size);
+        return { price: l.price, size };
+      }),
+    );
+  if (memory.size > 4000) memory.clear();
+  return { bids: evolve(fresh.bids), asks: evolve(fresh.asks), time: fresh.time };
+}

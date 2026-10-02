@@ -1,12 +1,9 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { StatusStrip } from './StatusStrip';
-import { GasTicker } from './GasTicker';
+import { TopBar, AccountStrip } from './TopBar';
+import { QuoteBoard } from './QuoteBoard';
+import { useFunctionKeys } from './useFunctionKeys';
 import { ThemeSync } from './ThemeSync';
-import { Backdrop } from './Backdrop';
-import { Intro } from './Intro';
-import { useSpotlight } from './useSpotlight';
 import { startMarketFeed } from './marketFeed';
 import { startScannerFeed } from './scannerFeed';
 import { CliBar } from '@/modules/terminal/CliBar';
@@ -25,19 +22,16 @@ export function App() {
   const platform = useThemeStore((s) => s.platform);
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
-  useSpotlight();
+  useFunctionKeys();
 
   return (
     <div className="app" data-platform={platform}>
       <ThemeSync />
-      <Backdrop />
-      <Intro />
-      <Sidebar />
+      <TopBar />
+      <CliBar />
+      <QuoteBoard />
+      <AccountStrip />
       <main className="main">
-        <header className="topbar glass">
-          <StatusStrip />
-          <GasTicker />
-        </header>
         <div className="content">
           <Suspense fallback={<div className="empty">Loading…</div>}>
           <Routes>
@@ -52,8 +46,7 @@ export function App() {
           </Suspense>
         </div>
       </main>
-      {/* App-level overlays: visible regardless of route. */}
-      <CliBar />
+      {/* App-level overlay: visible regardless of route. */}
       <Toasts />
     </div>
   );

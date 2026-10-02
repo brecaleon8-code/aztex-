@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { usePositionStore, totalUnrealized } from '@/stores/usePositionStore';
 import { useMarketStore } from '@/stores/useMarketStore';
-import { cancelWorkingOrder, closePosition } from '@/stores/trading';
+import { cancelAlgo, cancelWorkingOrder, closePosition } from '@/stores/trading';
 import { fmtPct, fmtPrice, fmtQty, fmtSigned } from '@/lib/format';
 import { pnlPct, progressOnRange } from '@/lib/trading/pnl';
 import type { Position } from '@/types';
@@ -10,10 +10,12 @@ import type { Position } from '@/types';
 export function Positions({ drag }: { drag?: PanelDragProps }) {
   const positions = usePositionStore((s) => s.positions);
   const working = usePositionStore((s) => s.workingOrders);
+  const algos = usePositionStore((s) => s.algos);
   const total = totalUnrealized(positions);
 
   return (
     <Panel
+      code="PORT"
       title="Positions"
       sub={`${positions.length} open${working.length ? ` · ${working.length} working` : ''}`}
       drag={drag}
@@ -28,7 +30,36 @@ export function Positions({ drag }: { drag?: PanelDragProps }) {
       }
     >
       <div className="positions">
-        {positions.length === 0 && working.length === 0 && <div className="empty">No open positions. Place an order from the ticket, the book, or the CLI.</div>}
+        {algos.length > 0 && (
+          <>
+            <div className="pos-section label">Algos</div>
+            {algos.map((a) => (
+              <div key={a.id} className={`pos-working algo ${a.status}`} data-testid="algo-row">
+                <span className="badge accent">{a.kind}</span>
+                <span className="mono" style={{ fontWeight: 600 }}>{a.symbol}</span>
+                <span className={`badge ${a.side === 'Long' ? 'long' : 'short'}`}>{a.side}</span>
+                <span className="num">
+                  {fmtQty(a.filledSize)}/{fmtQty(a.totalSize)}
+                </span>
+                <span className="algo-bar">
+                  <span style={{ width: `${(a.slicesDone / a.slices) * 100}%` }} />
+                </span>
+                <span className="num faint">
+                  {a.slicesDone}/{a.slices}
+                </span>
+                <span className="label">AVG</span>
+                <span className="num">{a.avgPx ? fmtPrice(a.avgPx) : '—'}</span>
+                <span className="spacer" />
+                {a.status === 'running' ? (
+                  <button className="btn sm danger" onClick={() => cancelAlgo(a.id)}>Cancel</button>
+                ) : (
+                  <span className="label">{a.status}</span>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+        {positions.length === 0 && working.length === 0 && algos.length === 0 && <div className="empty">No open positions. Place an order from the ticket, the book, or the CLI.</div>}
         {positions.map((p) => (
           <PositionRow key={p.id} p={p} />
         ))}

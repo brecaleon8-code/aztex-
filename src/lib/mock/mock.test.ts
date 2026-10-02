@@ -58,3 +58,18 @@ describe('mock OTC + community', () => {
     expect(generateFriendCode()).toMatch(/^AZT-[A-Z2-9]{4}-[A-Z2-9]{3}$/);
   });
 });
+
+describe('evolving mock book', () => {
+  it('keeps resting size at a price between snapshots (bounded drift)', async () => {
+    const { evolveBook } = await import('./orderbook');
+    const mem = new Map<number, number>();
+    const rand = mulberry32(9);
+    const a = evolveBook(100, 0.0002, mem, 14, rand);
+    const b = evolveBook(100, 0.0002, mem, 14, rand);
+    const p = a.bids[5].price;
+    const sa = a.bids[5].size;
+    const sb = b.bids.find((l) => l.price === p)!.size;
+    expect(sb / sa).toBeGreaterThan(0.2);
+    expect(sb / sa).toBeLessThan(5);
+  });
+});

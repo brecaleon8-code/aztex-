@@ -8,6 +8,8 @@ export interface PanelDragProps {
 }
 
 interface PanelProps {
+  /** Terminal function mnemonic shown in the title bar (e.g. GP, ALLQ). */
+  code?: string;
   title: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;
@@ -21,7 +23,7 @@ interface PanelProps {
   testId?: string;
 }
 
-export function Panel({ title, sub, actions, children, className = '', bodyClassName = '', flush, style, drag, testId }: PanelProps) {
+export function Panel({ code, title, sub, actions, children, className = '', bodyClassName = '', flush, style, drag, testId }: PanelProps) {
   // Controls inside the header (buttons, selects) must not start a panel drag.
   const fromControl = useRef(false);
   return (
@@ -39,7 +41,8 @@ export function Panel({ title, sub, actions, children, className = '', bodyClass
         }}
         onDragEnd={drag?.onDragEnd}
       >
-        {drag && <GripVertical size={14} className="grip" aria-hidden />}
+        {drag && <GripVertical size={12} className="grip" aria-hidden />}
+        {code && <span className="panel-code">{code}</span>}
         <h2 className="panel-title">{title}</h2>
         {sub && <span className="panel-sub">{sub}</span>}
         <div className="spacer" />

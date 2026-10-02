@@ -21,8 +21,8 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Price chart | Hand-rolled SVG (see "Charting decision" below) |
 | Simple charts | `recharts` (P/L mountain, dominance ring, comparison lines) |
 | Icons | `lucide-react` |
-| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`), so a theme switch never re-renders components. Visual direction is "liquid glass / spatial": a drifting aurora backdrop with film grain, frosted glass panels with specular edges and a cursor spotlight, spring-eased entrance and hover motion, price-tick glow flashes, and a one-time brand intro. All motion respects `prefers-reduced-motion`. |
-| Fonts | Unbounded (display, large prices), Inter Tight (UI), Geist Mono (all numbers), self-hosted via Fontsource |
+| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). The visual language is an institutional terminal in the Bloomberg lineage: pure black, amber chrome, white values, green/red only for direction, square cells and 1px rules (a global no-radius rule), solid-block value-change flashes, function-code title bars (GP, DOM, T&S, EMSX…), F1–F5 function keys, and a `<GO>` command line. "Paper" is the separately tuned light theme. |
+| Fonts | IBM Plex Mono (all data and chrome) and IBM Plex Sans Condensed (labels), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
 ## Layout
@@ -49,7 +49,7 @@ src/
 
 ## How the spec maps to code
 
-- **Theming (§3).** `styles/tokens.css` defines both palettes. They were redesigned from the spec's original hex values to the liquid-glass direction. Light mode has its own near-invisible `--shadow`. P/L colors are literal hex in the Appearance store and are mirrored to `--bull/--bear/--profit/--loss`. The categorical palette is fixed in `useThemeStore.CATEGORICAL`.
+- **Theming (§3).** `styles/tokens.css` defines both palettes. The spec's original look was replaced by an institutional terminal design (see Styling above). Light mode has its own near-invisible `--shadow`. P/L colors are literal hex in the Appearance store and are mirrored to `--bull/--bear/--profit/--loss`. The categorical palette is fixed in `useThemeStore.CATEGORICAL`.
 - **Terminal (§4).**
   - Panels can be dragged by their header and reflow via flexbox `order`. The order persists, and there's a "Reset layout" button.
   - Clicking an order-book row sets the ticket's limit price and switches the ticket to Limit.
@@ -84,6 +84,21 @@ src/
   - render-rate batching (tickers about 4 Hz, candles about 15 Hz, book about 10 Hz)
 
   Symbol mapping such as MATIC→POL is isolated in the provider.
+
+## Order flow & execution (beyond the original spec)
+
+| Feature | Where | Notes |
+| --- | --- | --- |
+| Time & Sales tape | `terminal/TimeSales.tsx` | Aggressor-side prints; prints above the 95th percentile of notional are flagged ◆. Live: Binance `@aggTrade`. |
+| Order-flow stats | `terminal/OrderFlow.tsx` | Buy/sell volume, delta, buy %, trades/s, tape VWAP, largest print, book imbalance and spread (bp) over 30s/1m/5m, plus a session cumulative-delta trace. |
+| CVD indicator | `lib/orderflow`, chart pane | Uses real tape delta for candles the session observed, otherwise a bar estimate (volume × body / range). |
+| Volume profile (VP) | chart overlay | Volume-by-price for the visible window, with POC and a 70% value area (VAH/VAL). |
+| Session VWAP | chart overlay | Resets each UTC day. |
+| Depth chart / liquidity heatmap | DOM panel tabs | Cumulative bid/ask curves; Bookmap-style heatmap of resting size over time with the mid traced. The simulated book has persistent liquidity walls. |
+| TWAP execution | ticket → Execution | Splits the parent order into equal child market orders over the chosen duration, averaging into one position. Progress, average price, cancel, and slippage vs arrival are reported on completion. |
+| News wire | `terminal/News.tsx` | Simulated headlines; filter to the selected symbol. |
+
+Keyboard: **F1–F5** switch modules; **/** focuses the command line.
 
 ## Charting decision
 

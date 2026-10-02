@@ -54,7 +54,10 @@ test.describe('Phase 1 — core terminal', () => {
     // Limit order from the book: click a bid → ticket switches to Limit with that price.
     const bidPrice = (await page.getByTestId('ob-bid-4').locator('.ob-price').innerText()).replace(/,/g, '');
     await page.getByTestId('ob-bid-4').click();
-    await expect(page.getByTestId('limit-price')).toHaveValue(Number(bidPrice).toFixed(2));
+    await expect(page.getByRole('button', { name: 'Limit', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    // The book refreshes every second, so allow for the level having moved by a few ticks.
+    const limit = Number(await page.getByTestId('limit-price').inputValue());
+    expect(Math.abs(limit - Number(bidPrice)) / Number(bidPrice)).toBeLessThan(0.002);
     await page.getByTestId('place-order').click();
     await expect(page.getByTestId('toast').filter({ hasText: /limit order (placed|filled)/ })).toBeVisible();
 
@@ -73,6 +76,9 @@ test.describe('Phase 1 — core terminal', () => {
 
   test('zoom + pixel-accumulator pan reveal history; jump to live', async ({ page }) => {
     await freshTerminal(page);
+    // At rest the chart follows the live edge (no "viewing history" pill) even as candles append.
+    await page.waitForTimeout(1500);
+    await expect(page.getByTestId('jump-live')).toHaveCount(0);
     const chart = page.getByTestId('price-chart');
     const box = (await chart.boundingBox())!;
     await page.mouse.move(box.x + 300, box.y + 150);
@@ -121,6 +127,31 @@ test.describe('Phase 1 — core terminal', () => {
     await cli.press('Enter');
     await expect(page.getByTestId('position-row')).toHaveCount(0);
   });
+});
+
+test('order flow: tape prints, flow stats, depth + heatmap views, volume profile, TWAP', async ({ page }) => {
+  await page.goto('/terminal');
+  await page.evaluate(() => localStorage.clear());
+  await page.goto('/terminal');
+  await expect(page.getByTestId('tape-row').first()).toBeVisible();
+  await expect(page.getByTestId('order-flow')).toContainText('TRADES/S');
+  await expect(page.getByTestId('volume-profile')).toBeAttached();
+  await page.getByTestId('toggle-vp').click();
+  await expect(page.getByTestId('volume-profile')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Depth', exact: true }).click();
+  await expect(page.getByTestId('depth-chart').locator('svg')).toBeVisible();
+  await page.getByRole('button', { name: 'Heatmap' }).click();
+  await expect(page.getByTestId('heatmap').locator('canvas')).toBeVisible();
+  // TWAP: parent order sliced into children on one averaged position.
+  await page.getByRole('button', { name: 'TWAP', exact: true }).click();
+  await page.getByTestId('twap-minutes').fill('1');
+  await page.getByTestId('twap-slices').fill('30');
+  await page.getByTestId('place-order').click();
+  await expect(page.getByTestId('algo-row')).toContainText('TWAP');
+  await expect(page.getByTestId('position-row')).toHaveCount(1);
+  await expect(page.getByTestId('algo-row')).toContainText(/[2-9]\/30|1\d\/30/, { timeout: 8000 });
+  await page.getByTestId('algo-row').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByTestId('algo-row')).toContainText('cancelled');
 });
 
 test('Phase 2 — discovery: search, comparison, scanner alerts', async ({ page }) => {
@@ -193,8 +224,8 @@ test('panels reorder by dragging their header and the layout persists', async ({
   await page.goto('/terminal');
   const order = () => page.locator('.tile').evaluateAll((els) => els.sort((a, b) => Number((a as HTMLElement).style.order) - Number((b as HTMLElement).style.order)).map((e) => (e as HTMLElement).dataset.panel));
   expect((await order())[0]).toBe('watchlist');
-  await page.locator('[data-panel="pnl"] .panel-title').dragTo(page.locator('[data-panel="watchlist"] .panel-title'));
-  expect((await order())[0]).toBe('pnl');
+  await page.locator('[data-panel="tape"] .panel-title').dragTo(page.locator('[data-panel="watchlist"] .panel-title'));
+  expect((await order())[0]).toBe('tape');
   await page.reload();
-  expect((await order())[0]).toBe('pnl');
+  expect((await order())[0]).toBe('tape');
 });

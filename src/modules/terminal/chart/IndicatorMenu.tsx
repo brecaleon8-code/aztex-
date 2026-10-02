@@ -16,6 +16,8 @@ export const PRESETS: Preset[] = [
   { label: 'RSI 14', kind: 'rsi', type: 'oscillator', period: 14, color: CATEGORICAL[4] },
   { label: 'MACD 12, 26, 9', kind: 'macd', type: 'oscillator', fast: 12, slow: 26, signal: 9, color: CATEGORICAL[1] },
   { label: 'Volume', kind: 'volume', type: 'oscillator', color: CATEGORICAL[5] },
+  { label: 'VWAP (session)', kind: 'vwap', type: 'overlay', color: CATEGORICAL[1] },
+  { label: 'CVD (order flow)', kind: 'cvd', type: 'oscillator', color: CATEGORICAL[3] },
 ];
 
 const EXAMPLES = ['sma(close,20) - sma(close,50)', '(high + low + close) / 3', 'ema(close, 9)', 'close - ema(close, 50)'];

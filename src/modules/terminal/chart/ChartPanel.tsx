@@ -29,7 +29,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const asset = useMarketStore((s) => s.assets[s.selected]);
   const tf = useMarketStore((s) => s.timeframe);
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
-  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings } = useChartStore();
+  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const flash = useTickFlash(asset.price);
 
@@ -40,6 +40,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
 
   return (
     <Panel
+      code="GP"
       testId="chart-panel"
       drag={drag}
       flush
@@ -103,6 +104,9 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
           )}
         </div>
         <span className="tb-sep" />
+        <button className={`btn sm ${profile ? 'active' : ''}`} onClick={toggleProfile} aria-pressed={profile} title="Volume profile (POC / value area)" data-testid="toggle-vp">
+          VP
+        </button>
         <IndicatorMenu />
         <div className="row" style={{ flexWrap: 'wrap', gap: 4 }}>
           {indicators.map((i) => (

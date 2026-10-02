@@ -76,7 +76,7 @@
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -97,7 +97,7 @@
   bottom: -1px;
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--text-faint);
   border: 2px solid var(--panel-solid);
 }
@@ -108,7 +108,7 @@
 .presence-inline {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--text-faint);
   display: inline-block;
 }
@@ -156,7 +156,7 @@
 .bubble.typing span {
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--text-faint);
   animation: pulse-dot 1s infinite;
 }

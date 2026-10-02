@@ -1,68 +1,25 @@
-/* ── Glass material ──────────────────────────────────────────────────────────────────────── */
-.glass,
+/* ── Panel: square window, 1px rule, function-code title bar ────────────────────────────── */
 .panel {
   position: relative;
-  background: var(--panel);
-  backdrop-filter: blur(var(--blur)) saturate(170%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(170%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow);
-}
-/* Specular top edge — light catching the rim of the glass. */
-.glass::before,
-.panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(180deg, var(--edge-hi), transparent 38%, transparent 70%, color-mix(in srgb, var(--accent) 18%, transparent));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 2;
-}
-/* Cursor spotlight — position fed by --mx/--my from a single global pointer listener. */
-.panel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), var(--spot), transparent 60%);
-  opacity: 0;
-  transition: opacity 0.35s ease;
-  pointer-events: none;
-  z-index: 0;
-}
-.panel:hover::after {
-  opacity: 1;
-}
-.panel {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  transition: transform 0.45s var(--ease-spring), box-shadow 0.45s ease, border-color 0.3s ease, background-color 0.4s ease;
-  animation: rise-in 0.7s var(--ease-spring) both;
+  background: var(--panel);
+  border: 1px solid var(--border);
 }
-.panel:hover {
-  box-shadow: var(--shadow-lift);
-  border-color: color-mix(in srgb, var(--text) 14%, transparent);
-}
-.panel > * {
-  position: relative;
-  z-index: 1;
+.panel:focus-within {
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--border));
 }
 .panel-head {
   display: flex;
   flex-wrap: wrap;
-  row-gap: 8px;
+  row-gap: 4px;
   align-items: center;
   gap: 8px;
-  padding: 12px var(--pad);
-  border-bottom: 1px solid var(--border-soft);
-  min-height: 48px;
+  padding: 0 8px;
+  min-height: 26px;
+  background: var(--panel-head);
+  border-bottom: 1px solid var(--border);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -72,15 +29,27 @@
 .panel-head.draggable:active {
   cursor: grabbing;
 }
+.panel-code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  background: var(--amber);
+  color: var(--on-accent);
+  letter-spacing: 0.04em;
+}
 .panel-title {
   font-family: var(--font-display);
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
   white-space: nowrap;
 }
 .panel-sub {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--text-faint);
 }
 .panel-body {
@@ -94,94 +63,85 @@
 .grip {
   color: var(--text-faint);
   flex: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.panel:hover .grip {
-  opacity: 1;
 }
 .panel-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   cursor: default;
+  padding: 2px 0;
+}
+.panel.drop-target {
+  border-color: var(--amber);
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────────────────────── */
+/* ── Buttons: flat, square, keyboard-key feel ───────────────────────────────────────────── */
 .btn {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 13px;
-  border-radius: var(--radius-md);
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
   font-weight: 500;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-  overflow: hidden;
-  transition: background-color 0.18s, border-color 0.18s, transform 0.25s var(--ease-spring), box-shadow 0.25s, opacity 0.15s, color 0.15s;
 }
 .btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--text) 22%, transparent);
-  background: var(--hover);
+  border-color: var(--amber);
+  color: var(--amber);
 }
 .btn:active:not(:disabled) {
-  transform: scale(0.96);
+  background: var(--amber);
+  color: var(--on-accent);
 }
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .btn:focus-visible {
-  outline: none;
-  box-shadow: var(--glow);
+  outline: 1px solid var(--amber);
+  outline-offset: 1px;
 }
 .btn.sm {
-  height: 26px;
-  padding: 0 9px;
-  font-size: 11px;
-  border-radius: var(--radius-sm);
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10.5px;
 }
 .btn.lg {
-  height: 46px;
-  font-size: 13.5px;
-  border-radius: var(--radius-lg);
+  height: 34px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .btn.primary {
-  background: var(--accent-grad);
-  border-color: transparent;
+  background: var(--amber);
+  border-color: var(--amber);
   color: var(--on-accent);
   font-weight: 600;
-  box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .btn.primary:hover:not(:disabled) {
-  background: var(--accent-grad);
-  border-color: transparent;
-  box-shadow: 0 12px 34px -10px color-mix(in srgb, var(--accent) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--amber) 85%, #fff);
+  color: var(--on-accent);
 }
-/* Light sweep across primary buttons on hover. */
-.btn.primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
-  transform: translateX(-120%) skewX(-20deg);
-  pointer-events: none;
+.btn.go {
+  background: var(--go);
+  border-color: var(--go);
+  color: #fff;
+  font-weight: 600;
 }
-.btn.primary:hover:not(:disabled)::after {
-  animation: shimmer 0.9s ease;
+.btn.go:hover:not(:disabled) {
+  color: #fff;
+  border-color: #fff;
 }
 .btn.ghost {
   background: transparent;
@@ -189,73 +149,74 @@
   color: var(--text-dim);
 }
 .btn.ghost:hover:not(:disabled) {
-  background: var(--hover);
-  color: var(--text);
-  border-color: transparent;
+  border-color: var(--border);
+  color: var(--amber);
 }
 .btn.icon {
-  width: 32px;
+  width: 24px;
   padding: 0;
 }
 .btn.sm.icon {
-  width: 26px;
+  width: 20px;
 }
 .btn.danger {
   color: var(--loss);
+  border-color: color-mix(in srgb, var(--loss) 45%, var(--border));
 }
 .btn.danger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--loss) 50%, transparent);
-  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--loss) 60%, transparent);
+  background: var(--cancel);
+  border-color: var(--cancel);
+  color: #fff;
 }
 .btn.active {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--accent);
-  box-shadow: 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--on-accent);
 }
 
-/* ── Segmented control: sliding glass thumb ─────────────────────────────────────────────── */
+/* ── Segmented: tab strip. Active = solid amber block. ──────────────────────────────────── */
 .seg {
   position: relative;
   display: inline-flex;
-  padding: 3px;
-  border-radius: 999px;
+  border: 1px solid var(--border);
   background: var(--panel-alt);
-  border: 1px solid var(--border-soft);
   user-select: none;
 }
 .seg-thumb {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px -6px rgba(0, 0, 0, 0.5);
-  transition: left 0.42s var(--ease-spring), width 0.42s var(--ease-spring), background-color 0.25s, box-shadow 0.25s;
+  top: 0;
+  bottom: 0;
+  background: var(--amber);
+  transition: left 0.12s linear, width 0.12s linear;
 }
 .seg-btn {
   position: relative;
   z-index: 1;
   border: 0;
+  border-right: 1px solid var(--border);
   background: transparent;
-  padding: 0 12px;
-  height: 26px;
-  font-size: 11.5px;
+  padding: 0 9px;
+  height: 22px;
+  font-family: var(--font-ui);
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-dim);
-  border-radius: 999px;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  transition: color 0.2s;
+}
+.seg-btn:last-child {
+  border-right: 0;
 }
 .seg-btn:hover {
-  color: var(--text);
+  color: var(--amber);
 }
 .seg-btn[aria-pressed='true'] {
-  color: var(--text);
+  color: var(--on-accent);
+  font-weight: 600;
 }
 .seg.full {
   display: flex;
@@ -265,46 +226,38 @@
   justify-content: center;
 }
 .seg.lg .seg-btn {
-  height: 36px;
-  font-size: 13px;
+  height: 30px;
+  font-size: 12px;
   font-weight: 600;
 }
 .seg .seg-thumb.long {
   background: var(--profit);
-  border-color: transparent;
-  box-shadow: 0 0 26px -4px color-mix(in srgb, var(--profit) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .seg .seg-thumb.short {
   background: var(--loss);
-  border-color: transparent;
-  box-shadow: 0 0 26px -4px color-mix(in srgb, var(--loss) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* ── Fields ─────────────────────────────────────────────────────────────────────────────── */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
 }
 .input-wrap {
   display: flex;
   align-items: center;
-  height: 36px;
-  border-radius: var(--radius-md);
+  height: 26px;
   border: 1px solid var(--border);
   background: var(--panel-alt);
-  padding: 0 11px;
+  padding: 0 7px;
   gap: 6px;
-  transition: border-color 0.2s, box-shadow 0.25s, background-color 0.2s;
 }
 .input-wrap:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 24px -8px var(--accent);
+  border-color: var(--amber);
 }
 .input-wrap.invalid {
   border-color: var(--loss);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--loss) 14%, transparent);
 }
 .input-wrap input,
 .input-wrap select {
@@ -314,59 +267,58 @@
   outline: 0;
   background: transparent;
   height: 100%;
+  color: var(--accent-3);
+  font-family: var(--font-mono);
+}
+[data-theme='light'] .input-wrap input {
+  color: var(--text);
 }
 .input-wrap .suffix {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-faint);
   font-family: var(--font-mono);
 }
 .input {
-  height: 36px;
-  border-radius: var(--radius-md);
+  height: 26px;
   border: 1px solid var(--border);
   background: var(--panel-alt);
-  padding: 0 11px;
+  padding: 0 7px;
   outline: 0;
   min-width: 0;
-  transition: border-color 0.2s, box-shadow 0.25s;
 }
 .input:focus {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  border-color: var(--amber);
 }
 textarea.input {
   height: auto;
-  padding: 10px 11px;
+  padding: 6px 7px;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 select.input {
-  padding-right: 4px;
+  padding-right: 2px;
 }
 select option {
   background: var(--panel-solid);
 }
 
-/* ── Chips, badges ──────────────────────────────────────────────────────────────────────── */
+/* ── Chips / badges ─────────────────────────────────────────────────────────────────────── */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
+  gap: 5px;
+  height: 20px;
+  padding: 0 6px;
   background: var(--panel-alt);
-  border: 1px solid var(--border-soft);
-  font-size: 11px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--text-dim);
   white-space: nowrap;
-  transition: border-color 0.2s, color 0.2s, background-color 0.2s, box-shadow 0.25s;
 }
 .chip .swatch {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  box-shadow: 0 0 8px currentColor;
+  width: 8px;
+  height: 2px;
 }
 .chip button {
   border: 0;
@@ -376,52 +328,47 @@ select option {
   color: var(--text-faint);
 }
 .chip button:hover {
-  color: var(--text);
+  color: var(--loss);
 }
 button.chip:hover {
-  border-color: var(--border);
-  color: var(--text);
+  border-color: var(--amber);
+  color: var(--amber);
 }
 .chip.on {
   color: var(--text);
-  border-color: color-mix(in srgb, var(--text) 18%, transparent);
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border-color: var(--text-dim);
 }
-
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 19px;
-  padding: 0 7px;
-  border-radius: 999px;
-  font-size: 10.5px;
+  gap: 3px;
+  height: 16px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .badge.long {
-  background: color-mix(in srgb, var(--profit) 15%, transparent);
-  color: var(--profit);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--profit) 25%, transparent);
+  background: var(--profit);
+  color: #000;
 }
 .badge.short {
-  background: color-mix(in srgb, var(--loss) 15%, transparent);
-  color: var(--loss);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loss) 25%, transparent);
+  background: var(--loss);
+  color: #fff;
 }
 .badge.accent {
-  background: var(--accent-soft);
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  background: var(--amber);
+  color: var(--on-accent);
 }
 .badge.neutral {
-  background: var(--panel-alt);
+  border: 1px solid var(--border);
   color: var(--text-dim);
-  border: 1px solid var(--border-soft);
 }
 
-/* ── Tables ─────────────────────────────────────────────────────────────────────────────── */
+/* ── Tables: dense grid ─────────────────────────────────────────────────────────────────── */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -430,21 +377,22 @@ button.chip:hover {
   text-align: left;
   font-weight: 500;
   font-size: 10.5px;
-  letter-spacing: 0.2px;
-  color: var(--text-faint);
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-soft);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--amber);
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
   position: sticky;
   top: 0;
-  background: color-mix(in srgb, var(--panel-solid) 80%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--panel-solid);
   z-index: 1;
 }
 .table td {
-  padding: 8px 12px;
+  padding: 3px 8px;
   border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
+  height: 22px;
 }
 .table tr:last-child td {
   border-bottom: 0;
@@ -453,9 +401,6 @@ button.chip:hover {
 .table td.r {
   text-align: right;
 }
-.table tbody tr {
-  transition: background-color 0.2s;
-}
 .table tbody tr.clickable {
   cursor: pointer;
 }
@@ -463,42 +408,34 @@ button.chip:hover {
   background: var(--hover);
 }
 .table tbody tr.selected {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 80%);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--hl);
+  box-shadow: inset 2px 0 0 var(--amber);
 }
 .empty {
-  padding: 32px 14px;
+  padding: 18px 10px;
   text-align: center;
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
 }
 .error-text {
   color: var(--loss);
   font-size: 11px;
+  font-family: var(--font-mono);
 }
 .divider {
   height: 1px;
-  background: var(--border-soft);
+  background: var(--border);
   margin: 4px 0;
 }
 
-/* ── Floating menus ─────────────────────────────────────────────────────────────────────── */
+/* ── Menus ──────────────────────────────────────────────────────────────────────────────── */
 .menu {
   position: absolute;
   z-index: 30;
-  background: color-mix(in srgb, var(--panel-solid) 82%, transparent);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lift), 0 30px 60px -20px rgba(0, 0, 0, 0.5);
-  padding: 6px;
-  animation: menu-in 0.28s var(--ease-spring);
-  transform-origin: top;
-}
-@keyframes menu-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); filter: blur(4px); }
-  to { opacity: 1; transform: none; filter: none; }
+  background: var(--panel-solid);
+  border: 1px solid var(--amber);
+  padding: 2px;
 }
 .menu-item {
   display: flex;
@@ -507,22 +444,29 @@ button.chip:hover {
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 8px 9px;
-  border-radius: var(--radius-sm);
+  padding: 4px 6px;
   text-align: left;
-  font-size: 12px;
-  transition: background-color 0.15s;
+  font-size: 11.5px;
 }
 .menu-item:hover,
 .menu-item.hl {
-  background: var(--hover);
+  background: var(--amber);
+  color: var(--on-accent);
 }
-/* Panels are stacking contexts (glass blur); lift the one being interacted with so its menus
-   float above neighbouring panels. */
-.panel:hover,
-.panel:focus-within {
+.menu-item:hover .label,
+.menu-item:hover .dim,
+.menu-item.hl .label,
+.menu-item.hl .dim {
+  color: var(--on-accent);
+}
+.panel:focus-within,
+.panel:hover {
   z-index: 5;
 }
-.panel > .panel-head {
-  z-index: 3;
+
+/* House rule: no rounded chrome anywhere — every surface is a square cell. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
 }

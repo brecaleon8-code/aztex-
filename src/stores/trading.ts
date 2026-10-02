@@ -2,7 +2,7 @@
  * Trading actions that span stores (positions, wallet, toasts). The mock fills at the current
  * price; a real build routes these through a venue order API and reflects fills from its stream.
  */
-import type { Position, Side, WorkingOrder } from '@/types';
+import type { AlgoOrder, Position, Side, WorkingOrder } from '@/types';
 import { fmtPrice, fmtQty, fmtSigned, uid } from '@/lib/format';
 import { unrealizedPnl } from '@/lib/trading/pnl';
 import { useMarketStore } from './useMarketStore';
@@ -152,4 +152,92 @@ export function onPrices() {
   const { tp, sl } = usePositionStore.getState().markToMarket(prices);
   tp.forEach((p) => toast({ kind: 'success', title: `TP reached · ${p.side} ${p.symbol}`, detail: `${fmtPrice(p.tp)} · P/L ${fmtSigned(p.pnl)} USDT` }));
   sl.forEach((p) => toast({ kind: 'error', title: `SL reached · ${p.side} ${p.symbol}`, detail: `${fmtPrice(p.sl)} · P/L ${fmtSigned(p.pnl)} USDT` }));
+}
+
+/* ── Execution algos ─────────────────────────────────────────────────────────────────────── */
+
+const algoTimers = new Map<string, ReturnType<typeof setInterval>>();
+
+export interface TwapRequest {
+  symbol: string;
+  side: Side;
+  size: number;
+  durationMs: number;
+  slices: number;
+  tp: number;
+  sl: number;
+}
+
+/** Adds to an existing position at `px`, re-averaging the entry. */
+function increasePosition(id: string, add: number, px: number): boolean {
+  const p = usePositionStore.getState().positions.find((x) => x.id === id);
+  if (!p || !useWalletStore.getState().reserve(px * add)) return false;
+  const size = p.size + add;
+  usePositionStore.getState().patch(id, { size, entry: (p.entry * p.size + px * add) / size });
+  return true;
+}
+
+/** TWAP: split the parent into equal child market orders spaced evenly over the duration. */
+export function startTwap(req: TwapRequest): OrderResult {
+  const slices = Math.max(2, Math.min(200, Math.round(req.slices)));
+  if (!(req.size > 0) || !(req.durationMs > 0)) return { ok: false, error: 'Invalid TWAP parameters' };
+  const asset = useMarketStore.getState().assets[req.symbol];
+  const arrival = req.side === 'Long' ? asset.ask : asset.bid;
+  if (arrival * req.size > useWalletStore.getState().balance + 1e-9) {
+    toast({ kind: 'error', title: 'TWAP rejected', detail: 'Insufficient balance for full parent size' });
+    return { ok: false, error: 'Insufficient balance' };
+  }
+  const algo: AlgoOrder = {
+    id: uid('algo_'), kind: 'TWAP', symbol: req.symbol, side: req.side, totalSize: req.size, slices, slicesDone: 0,
+    intervalMs: req.durationMs / slices, filledSize: 0, avgPx: 0, arrivalPx: arrival, tp: req.tp, sl: req.sl,
+    positionId: null, status: 'running', startedAt: Date.now(),
+  };
+  usePositionStore.getState().upsertAlgo(algo);
+  toast({ kind: 'success', title: `TWAP started · ${sideWord(req.side)} ${req.symbol}`, detail: `${fmtQty(req.size)} in ${slices} slices over ${Math.round(req.durationMs / 60_000)}m` });
+  const child = () => {
+    const a = usePositionStore.getState().algos.find((x) => x.id === algo.id);
+    if (!a || a.status !== 'running') return stopAlgo(algo.id);
+    const q = useMarketStore.getState().assets[a.symbol];
+    const px = a.side === 'Long' ? q.ask : q.bid;
+    const size = a.totalSize / a.slices;
+    let positionId = a.positionId;
+    let ok: boolean;
+    if (positionId && usePositionStore.getState().positions.some((p) => p.id === positionId)) ok = increasePosition(positionId, size, px);
+    else {
+      const r = openPosition({ symbol: a.symbol, side: a.side, orderType: 'market', size, tp: a.tp, sl: a.sl }, px);
+      ok = r.ok;
+      if (r.ok) positionId = r.id;
+    }
+    if (!ok) {
+      usePositionStore.getState().upsertAlgo({ ...a, status: 'cancelled' });
+      toast({ kind: 'error', title: 'TWAP halted', detail: 'Child order rejected (balance)' });
+      return stopAlgo(a.id);
+    }
+    const filled = a.filledSize + size;
+    const next: AlgoOrder = { ...a, positionId, slicesDone: a.slicesDone + 1, filledSize: filled, avgPx: (a.avgPx * a.filledSize + px * size) / filled };
+    if (next.slicesDone >= next.slices) {
+      next.status = 'done';
+      stopAlgo(a.id);
+      const slip = ((next.avgPx - next.arrivalPx) / next.arrivalPx) * 10_000 * (a.side === 'Long' ? 1 : -1);
+      toast({ kind: 'success', title: `TWAP complete · ${a.symbol}`, detail: `avg ${fmtPrice(next.avgPx)} · slippage vs arrival ${slip.toFixed(1)} bp` });
+    }
+    usePositionStore.getState().upsertAlgo(next);
+  };
+  child();
+  algoTimers.set(algo.id, setInterval(child, algo.intervalMs));
+  return { ok: true, id: algo.id };
+}
+
+function stopAlgo(id: string) {
+  const t = algoTimers.get(id);
+  if (t) clearInterval(t);
+  algoTimers.delete(id);
+}
+
+export function cancelAlgo(id: string) {
+  const a = usePositionStore.getState().algos.find((x) => x.id === id);
+  if (!a || a.status !== 'running') return;
+  stopAlgo(id);
+  usePositionStore.getState().upsertAlgo({ ...a, status: 'cancelled' });
+  toast({ kind: 'info', title: 'TWAP cancelled', detail: `${fmtQty(a.filledSize)} / ${fmtQty(a.totalSize)} ${a.symbol} filled` });
 }

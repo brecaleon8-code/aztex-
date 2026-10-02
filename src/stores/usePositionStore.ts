@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Position, WorkingOrder } from '@/types';
+import type { AlgoOrder, Position, WorkingOrder } from '@/types';
 import { levelHit, unrealizedPnl } from '@/lib/trading/pnl';
 
 export interface PnlSample {
@@ -12,6 +12,7 @@ export const PNL_HISTORY_MAX = 240;
 interface PositionState {
   positions: Position[];
   workingOrders: WorkingOrder[];
+  algos: AlgoOrder[];
   /** ids currently animating out (fade/shrink before removal). */
   closing: Record<string, true>;
   /** id -> timestamp of one-shot highlight pulse (placed / TP hit). */
@@ -19,6 +20,8 @@ interface PositionState {
   pnlHistory: PnlSample[];
   realized: number;
   add: (p: Position) => void;
+  patch: (id: string, p: Partial<Position>) => void;
+  upsertAlgo: (a: AlgoOrder) => void;
   remove: (id: string) => Position | undefined;
   markClosing: (id: string) => void;
   addWorking: (o: WorkingOrder) => void;
@@ -34,10 +37,13 @@ export const usePositionStore = create<PositionState>()(
     (set, get) => ({
       positions: [],
       workingOrders: [],
+      algos: [],
       closing: {},
       highlight: {},
       pnlHistory: [],
       realized: 0,
+      patch: (id, p) => set((s) => ({ positions: s.positions.map((x) => (x.id === id ? { ...x, ...p } : x)) })),
+      upsertAlgo: (a) => set((s) => ({ algos: s.algos.some((x) => x.id === a.id) ? s.algos.map((x) => (x.id === a.id ? a : x)) : [a, ...s.algos].slice(0, 20) })),
       add: (p) => set((s) => ({ positions: [p, ...s.positions], highlight: { ...s.highlight, [p.id]: Date.now() } })),
       remove: (id) => {
         const p = get().positions.find((x) => x.id === id);

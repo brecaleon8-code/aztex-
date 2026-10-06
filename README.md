@@ -25,6 +25,18 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
+## Brand
+
+The Aztex logo (`public/brand/aztex-logo.png`) is rebuilt as vectors in `src/app/Logo.tsx`: the full **wordmark** in the top bar and the pixel-**X** mark for the favicon. Colours sampled from the artwork:
+
+| Role | Hex | Use |
+| --- | --- | --- |
+| Brand green | `#1F8A6E` | Outer X cells; the app's single accent (primary actions, active indicators, focus, key levels) |
+| Ink | `#16130F` | Letters and X centre on light; light-theme text |
+| Paper | `#F4F4F0` | Letters and X centre on dark; light-theme ground |
+
+In the wordmark, the letters and the X's centre cell use `currentColor`, so they flip between ink and paper with the theme. The green cells stay fixed.
+
 ## Layout
 
 ```

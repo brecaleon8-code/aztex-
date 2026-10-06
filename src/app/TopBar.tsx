@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Sun, Moon, Search } from 'lucide-react';
-import { Logo } from './Logo';
+import { Wordmark } from './Logo';
 import { MOD_KEY } from './CommandPalette';
 import { useTickFlash } from './useTickFlash';
 import { useThemeStore, type Platform } from '@/stores/useThemeStore';
@@ -40,8 +40,7 @@ export function TopBar() {
   return (
     <header className="topbar no-select">
       <div className="tb-brand">
-        <Logo size={24} />
-        <span className="tb-name">Aztex</span>
+        <Wordmark height={16} />
       </div>
       <nav className="tb-nav">
         {NAV.map((n) => (

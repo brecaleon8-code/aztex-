@@ -33,11 +33,11 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  padding-right: 6px;
 }
-.tb-name {
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.01em;
+.wordmark {
+  display: block;
+  color: var(--text); /* letters + X centre follow the theme ink; outer X cells stay brand green */
 }
 .tb-nav {
   display: flex;

@@ -129,10 +129,10 @@ h3 {
   100% { background-color: transparent; }
 }
 .tick-up {
-  animation: tick-up 0.7s ease-out;
+  animation: tick-up 0.5s ease-out;
 }
 .tick-down {
-  animation: tick-down 0.7s ease-out;
+  animation: tick-down 0.5s ease-out;
 }
 @keyframes flash-row {
   0% { background-color: var(--accent-soft); }

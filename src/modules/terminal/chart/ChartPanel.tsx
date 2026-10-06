@@ -5,7 +5,8 @@ import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { indicatorLabel } from '@/lib/indicators/compute';
-import { fmtPct, fmtPrice } from '@/lib/format';
+import { fmtCompact, fmtPct, fmtPrice } from '@/lib/format';
+import { useSpark } from '../useSpark';
 import type { ChartMode, DrawingTool, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
 import { useTickFlash } from '@/app/useTickFlash';
@@ -38,6 +39,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const flash = useTickFlash(asset.price);
+  const spark = useSpark(symbol);
 
   // Drawings are anchored to this symbol/timeframe's candle indices — clear on switch.
   useEffect(() => {
@@ -60,6 +62,17 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
             {fmtPrice(asset.price)}
           </span>
           <span className={`chart-chg ${asset.change24h >= 0 ? 'pos' : 'neg'}`}>{fmtPct(asset.change24h)}</span>
+          <span className="stats24 mono" data-testid="stats24">
+            <span>
+              <span className="faint">24h H</span> {spark.high != null ? fmtPrice(spark.high) : '—'}
+            </span>
+            <span>
+              <span className="faint">L</span> {spark.low != null ? fmtPrice(spark.low) : '—'}
+            </span>
+            <span>
+              <span className="faint">Vol</span> ${fmtCompact(asset.volume24h)}
+            </span>
+          </span>
         </span>
       }
       actions={

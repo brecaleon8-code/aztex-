@@ -5,6 +5,7 @@ import { useMarketStore } from '@/stores/useMarketStore';
 import { cancelAlgo, cancelWorkingOrder, closePosition } from '@/stores/trading';
 import { fmtPct, fmtPrice, fmtQty, fmtSigned } from '@/lib/format';
 import { pnlPct, progressOnRange } from '@/lib/trading/pnl';
+import { fmtDuration, rMultiple } from '@/lib/trading/risk';
 import type { Position } from '@/types';
 
 export function Positions({ drag }: { drag?: PanelDragProps }) {
@@ -91,6 +92,7 @@ function PositionRow({ p }: { p: Position }) {
   const select = useMarketStore((s) => s.select);
   const pos = progressOnRange(p.side, p.sl, p.entry, p.tp, p.current);
   const pct = pnlPct(p.side, p.entry, p.current);
+  const r = rMultiple(p.side, p.entry, p.sl, p.current);
 
   return (
     <div className={`pos-row ${closing ? 'closing' : ''}`} data-testid="position-row">
@@ -101,6 +103,13 @@ function PositionRow({ p }: { p: Position }) {
         </button>
         <span className={`badge ${p.side === 'Long' ? 'long' : 'short'}`}>{p.side}</span>
         <span className="num faint">{fmtQty(p.size)}</span>
+        <span className="pos-meta mono" title="Time in position">{fmtDuration(Date.now() - p.openedAt)}</span>
+        {r != null && (
+          <span className={`pos-r mono ${r >= 0 ? 'up' : 'down'}`} title="P/L in multiples of initial risk (entry → stop)" data-testid="position-r">
+            {r >= 0 ? '+' : ''}
+            {r.toFixed(2)}R
+          </span>
+        )}
         {p.tpHit && <span className="badge long">TP hit</span>}
         {p.slHit && <span className="badge short">SL hit</span>}
         <span className="spacer" />

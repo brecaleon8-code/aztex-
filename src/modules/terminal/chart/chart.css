@@ -275,3 +275,77 @@
 .vp-label.dim {
   opacity: 0.6;
 }
+
+/* Readout row: hovered-candle OHLCV on the left, 24h context on the right */
+.readout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 12px;
+}
+.stats24 {
+  display: inline-flex;
+  gap: 12px;
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-soft);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+@media (max-width: 1760px) {
+  .stats24 {
+    display: none;
+  }
+}
+.watermark {
+  font-family: var(--font-ui);
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  fill: var(--text);
+  opacity: 0.035;
+  pointer-events: none;
+}
+.countdown-tag rect {
+  fill: var(--panel-alt);
+  stroke: var(--border);
+}
+.countdown-tag text {
+  fill: var(--text-dim);
+  font-weight: 500;
+}
+.working-line line {
+  stroke: var(--text-dim);
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+}
+.working-line rect {
+  fill: var(--panel-solid);
+  stroke: var(--border);
+}
+.working-line text {
+  fill: var(--text);
+}
+.chart-skeleton {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 24px 90px 40px 16px;
+}
+.chart-skeleton span {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--border-soft);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@keyframes skeleton {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}

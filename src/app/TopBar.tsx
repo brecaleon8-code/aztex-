@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Search } from 'lucide-react';
 import { Logo } from './Logo';
+import { MOD_KEY } from './CommandPalette';
 import { useTickFlash } from './useTickFlash';
 import { useThemeStore, type Platform } from '@/stores/useThemeStore';
 import { useMarketStore } from '@/stores/useMarketStore';
@@ -50,6 +51,12 @@ export function TopBar() {
         ))}
       </nav>
       <div className="spacer" />
+      <button className="palette-trigger" onClick={() => window.dispatchEvent(new Event('aztex:palette'))} data-testid="palette-trigger" aria-label="Open command palette">
+        <Search size={13} />
+        <span>Search or jump to…</span>
+        <span className="spacer" />
+        <kbd>{MOD_KEY}</kbd>
+      </button>
       <div className="tb-status">
         <span className="tb-cell" title={status.detail}>
           <span className={live ? 'live-dot' : 'live-dot off'} />

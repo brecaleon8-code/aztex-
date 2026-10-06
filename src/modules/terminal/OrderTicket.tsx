@@ -7,6 +7,7 @@ import { usePositionStore } from '@/stores/usePositionStore';
 import { flattenAll, placeOrder, startTwap } from '@/stores/trading';
 import { fmtPct, fmtPrice, fmtQty, fmtUsd, priceDecimals } from '@/lib/format';
 import { pctFromEntry } from '@/lib/trading/pnl';
+import { riskReward, type RiskReward } from '@/lib/trading/risk';
 import type { OrderType, Side } from '@/types';
 import type { SizingMode } from '@/lib/trading/pnl';
 import { useTicket } from './useTicket';
@@ -196,6 +197,8 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
           {(tpWrong || slWrong) && <span className="error-text">{tpWrong ? 'TP' : 'SL'} is on the wrong side of entry</span>}
         </div>
 
+        <RiskPanel risk={riskReward(t.side, t.entry, t.tp, t.sl, t.size, t.equity)} />
+
         <button
           className={`btn lg primary place-btn ${phase} ${t.side === 'Long' ? 'long' : 'short'}`}
           onClick={submit}
@@ -234,5 +237,37 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
         )}
       </div>
     </Panel>
+  );
+}
+
+/** Pre-trade risk readout: what the stop costs, what the target pays, and the ratio between them. */
+function RiskPanel({ risk }: { risk: RiskReward }) {
+  const rr = risk.rr;
+  const pct = rr == null ? 0 : Math.min(100, (rr / (rr + 1)) * 100);
+  return (
+    <div className="risk-panel" data-testid="risk-panel">
+      <div className="risk-bar" aria-hidden>
+        <span className="risk-bar-loss" style={{ width: `${100 - pct}%` }} />
+        <span className="risk-bar-gain" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="risk-grid">
+        <div>
+          <span className="label">Max loss</span>
+          <span className="num down">-{fmtUsd(risk.risk)}</span>
+        </div>
+        <div>
+          <span className="label">Target</span>
+          <span className="num up">+{fmtUsd(risk.reward)}</span>
+        </div>
+        <div>
+          <span className="label">R:R</span>
+          <span className="num" data-testid="risk-rr">{rr == null ? '—' : `${rr.toFixed(2)}`}</span>
+        </div>
+        <div>
+          <span className="label">Risk / equity</span>
+          <span className={`num ${risk.riskPct > 2 ? 'warn-text' : ''}`}>{risk.riskPct.toFixed(2)}%</span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -4,8 +4,9 @@ import { DepthChart, LiquidityHeatmap } from './DepthViews';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useOrderStore } from '@/stores/useOrderStore';
-import { imbalance } from '@/lib/mock/orderbook';
-import { fmtPct, fmtPrice, fmtQty, priceDecimals } from '@/lib/format';
+import { imbalance, tickSize } from '@/lib/mock/orderbook';
+import { usePositionStore } from '@/stores/usePositionStore';
+import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice } from '@/lib/format';
 import type { OrderBookLevel } from '@/types';
 import { useTickFlash } from '@/app/useTickFlash';
 
@@ -35,6 +36,12 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
 
   const dec = priceDecimals(last);
   const flash = useTickFlash(last);
+  const working = usePositionStore((s) => s.workingOrders);
+  /** Size of the user's own resting orders at this price level (within half a tick). */
+  const mineAt = (price: number) => {
+    const half = tickSize(price) / 2 + 1e-12;
+    return working.filter((o) => o.symbol === symbol && Math.abs(o.limitPrice - price) <= half).reduce((s, o) => s + o.size, 0);
+  };
   const row = (l: OrderBookLevel, side: 'bid' | 'ask', i: number) => (
     <button
       key={`${side}-${i}`}
@@ -44,7 +51,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
       data-testid={`ob-${side}-${i}`}
     >
       <span className="ob-depth" style={{ width: `${(l.cumulative / (ladder?.maxCum ?? 1)) * 100}%` }} />
-      <span className="ob-price num" key={version}>{fmtPrice(l.price, dec)}</span>
+      <PriceCell key={version} text={fmtPrice(l.price, dec)} mine={mineAt(l.price)} />
       <span className="ob-size num">{fmtQty(l.size)}</span>
       <span className="ob-cum num faint">{fmtQty(l.cumulative)}</span>
     </button>
@@ -105,5 +112,17 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
         )}
       </div>
     </Panel>
+  );
+}
+
+/** Price with the moving digits emphasised; flags levels where the user has a resting order. */
+function PriceCell({ text, mine }: { text: string; mine: number }) {
+  const [lead, tail] = splitPrice(text);
+  return (
+    <span className="ob-price num">
+      {mine > 0 && <span className="ob-mine" title={`Your order: ${fmtQty(mine)}`} data-testid="ob-mine" />}
+      <span className="ob-lead">{lead}</span>
+      {tail}
+    </span>
   );
 }

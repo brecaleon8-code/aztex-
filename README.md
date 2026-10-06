@@ -98,6 +98,14 @@ src/
 | TWAP execution | ticket → Execution | Splits the parent order into equal child market orders over the chosen duration, averaging into one position. Progress, average price, cancel, and slippage vs arrival are reported on completion. |
 | News wire | `terminal/News.tsx` | Simulated headlines; filter to the selected symbol. |
 
+**Pro workflow.**
+- **Command palette** (⌘K / Ctrl K, or the search box in the top bar): fuzzy-jump to any symbol, page, workspace or panel, switch timeframe or chart style, toggle the volume profile or theme, change the data source, or flatten positions.
+- **Watchlist** rows carry a 24h sparkline (real 15m history from the active provider) and a 24h change pill, with bid/ask under the last price.
+- **Chart**: symbol watermark, a countdown to the forming candle's close under the last-price tag, resting limit orders drawn as labelled lines, and 24h high/low/volume in the header on wide screens.
+- **Order ticket** shows pre-trade risk: max loss at SL, target at TP, reward-to-risk ratio and risk as a % of equity (flagged above 2%).
+- **Order book** de-emphasises leading digits so the moving ones stand out, and marks levels where you have a resting order.
+- **Positions** show P/L in R multiples (relative to the entry→stop distance) and time in trade.
+
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
 Keyboard: **F1–F5** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.

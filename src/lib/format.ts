@@ -80,3 +80,15 @@ export function uid(prefix = ''): string {
 export function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
+
+/**
+ * Splits a formatted price into a de-emphasised lead and the significant tail (last 4 digits),
+ * the way professional ladders highlight the digits that actually move: "62,4" + "75.50".
+ */
+export function splitPrice(formatted: string, digits = 4): [string, string] {
+  let seen = 0;
+  for (let i = formatted.length - 1; i >= 0; i--) {
+    if (/\d/.test(formatted[i]) && ++seen === digits) return [formatted.slice(0, i), formatted.slice(i)];
+  }
+  return ['', formatted];
+}

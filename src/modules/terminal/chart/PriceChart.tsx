@@ -12,6 +12,8 @@ import { computeIndicator, indicatorLabel, type ComputedIndicator } from '@/lib/
 import { extent } from '@/lib/indicators/series';
 import { fmtCompact, fmtDate, fmtPct, fmtPrice, fmtTime, priceDecimals, textOn, clamp } from '@/lib/format';
 import { useChartLevels } from './useChartLevels';
+import { usePositionStore } from '@/stores/usePositionStore';
+import { TIMEFRAME_MS } from '@/lib/mock/candles';
 import { volumeProfile, type VolumeProfile } from '@/lib/orderflow/orderflow';
 
 const AXIS_W = 78;
@@ -29,6 +31,16 @@ export function PriceChart() {
   const colors = useThemeStore((s) => s.colors);
   const height = useLayoutStore((s) => s.chartHeight);
   const levels = useChartLevels();
+  const symbol = useMarketStore((s) => s.selected);
+  // Select the stable array, filter in render (a filtering selector would return a new array each call).
+  const allWorking = usePositionStore((s) => s.workingOrders);
+  const working = allWorking.filter((o) => o.symbol === symbol);
+  // Drives the candle-close countdown even when the feed is quiet.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
   const uidBase = useId().replace(/:/g, '');
 
   // Size the SVG to the measured pixel box (1 SVG unit = 1px) — never a stretched viewBox.
@@ -199,9 +211,17 @@ export function PriceChart() {
   if (!ready)
     return (
       <div className="chart no-select" ref={wrapRef}>
-        <div className="chart-msg" style={{ height: height + 26 }}>
-          {error ? `Could not load candles: ${error}` : 'Loading history…'}
-        </div>
+        {error ? (
+          <div className="chart-msg" style={{ height: height + 26 }}>
+            Could not load candles: {error}
+          </div>
+        ) : (
+          <div className="chart-skeleton" style={{ height: height + 26 }} aria-label="Loading chart">
+            {Array.from({ length: 36 }, (_, i) => (
+              <span key={i} style={{ height: `${22 + ((i * 37) % 50)}%`, animationDelay: `${(i % 12) * 60}ms` }} />
+            ))}
+          </div>
+        )}
       </div>
     );
 
@@ -248,6 +268,10 @@ export function PriceChart() {
             </linearGradient>
           </defs>
 
+          <text x={plotW / 2} y={plotH / 2} className="watermark" textAnchor="middle" dominantBaseline="middle">
+            {symbol}/USDT · {tf}
+          </text>
+
           {/* Grid + price axis */}
           {niceTicks(ys.min, ys.max, Math.max(3, Math.round(plotH / 60))).map((t) => (
             <g key={t}>
@@ -289,6 +313,15 @@ export function PriceChart() {
             {levels.map((l) => (
               <line key={l.key} x1={0} x2={plotW} y1={ys.toY(l.price)} y2={ys.toY(l.price)} stroke={l.fill} strokeWidth={1} strokeDasharray={l.draft ? '2 4' : '5 4'} opacity={l.draft ? 0.7 : 0.9} />
             ))}
+            {working.map((o) => (
+              <g key={o.id} className="working-line" data-testid="chart-working-order">
+                <line x1={0} x2={plotW} y1={ys.toY(o.limitPrice)} y2={ys.toY(o.limitPrice)} />
+                <rect x={6} y={ys.toY(o.limitPrice) - 9} width={118} height={18} rx={3} />
+                <text x={12} y={ys.toY(o.limitPrice) + 3.5} className="tag-text">
+                  {o.side === 'Long' ? 'Buy' : 'Sell'} limit {o.size < 1 ? o.size.toFixed(4) : o.size.toFixed(2)}
+                </text>
+              </g>
+            ))}
             {drawings.map((d) => (
               <DrawingShape key={d.id} d={d} xs={xs} ys={ys} plotW={plotW} dec={dec} />
             ))}
@@ -307,6 +340,7 @@ export function PriceChart() {
           ))}
           {/* Last price tag — drawn above the level flags */}
           <PriceTag x={plotW} y={ys.toY(lastC.close)} text={fmtPrice(candles[n - 1].close, dec)} fill={lastC.close >= lastC.open ? colors.bull : colors.bear} color={textOn(lastC.close >= lastC.open ? colors.bull : colors.bear)} plotH={plotH} />
+          <CloseCountdown x={plotW} y={ys.toY(lastC.close)} plotH={plotH} msLeft={candles[n - 1].time + TIMEFRAME_MS[tf] - now} />
           {hover && hover.x <= plotW && hover.y <= plotH && (
             <>
               <PriceTag x={plotW} y={hover.y} text={fmtPrice(ys.toPrice(hover.y), dec)} fill="var(--text)" color="var(--bg)" plotH={plotH} />
@@ -382,6 +416,23 @@ function ProfileLayer({ p, ys, plotW }: { p: VolumeProfile; ys: YScale; plotW: n
       <line x1={0} x2={plotW} y1={ys.toY(p.bins[p.vaLo].lo)} y2={ys.toY(p.bins[p.vaLo].lo)} className="vp-va-line" />
       <text x={4} y={ys.toY(p.bins[p.vaHi].hi) - 3} className="vp-label dim">VAH</text>
       <text x={4} y={ys.toY(p.bins[p.vaLo].lo) + 10} className="vp-label dim">VAL</text>
+    </g>
+  );
+}
+
+/** Time remaining until the forming candle closes, tucked under the last-price tag. */
+function CloseCountdown({ x, y, plotH, msLeft }: { x: number; y: number; plotH: number; msLeft: number }) {
+  const s = Math.max(0, Math.floor(msLeft / 1000));
+  const h = Math.floor(s / 3600);
+  const text = h > 0 ? `${h}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const cy = clamp(y, TAG_H / 2, plotH - TAG_H / 2) + TAG_H / 2 + 1;
+  if (cy + 14 > plotH) return null;
+  return (
+    <g className="countdown-tag" data-testid="candle-countdown">
+      <rect x={x + 6} y={cy} width={AXIS_W - 8} height={14} rx={3} />
+      <text x={x + 12} y={cy + 10.5} className="tag-text">
+        {text}
+      </text>
     </g>
   );
 }

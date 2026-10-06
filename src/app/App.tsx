@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { TopBar, AccountStrip } from './TopBar';
 import { GasTicker } from './GasTicker';
 import { useFunctionKeys } from './useFunctionKeys';
+import { CommandPalette } from './CommandPalette';
 import { ThemeSync } from './ThemeSync';
 import { startMarketFeed } from './marketFeed';
 import { startScannerFeed } from './scannerFeed';
@@ -50,6 +51,7 @@ export function App() {
       </main>
       {/* App-level overlay: visible regardless of route. */}
       <Toasts />
+      <CommandPalette />
     </div>
   );
 }

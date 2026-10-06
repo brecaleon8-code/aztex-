@@ -6,6 +6,9 @@ import { ASSET_UNIVERSE } from '@/lib/mock/assets';
 import { fmtPct, fmtPrice } from '@/lib/format';
 import { useTickFlash } from '@/app/useTickFlash';
 import type { Asset } from '@/types';
+import { Sparkline } from '@/components/ui/Sparkline';
+import { useThemeStore } from '@/stores/useThemeStore';
+import { useSpark } from './useSpark';
 
 export function Watchlist({ drag }: { drag?: PanelDragProps }) {
   const watchlist = useMarketStore((s) => s.watchlist);
@@ -19,42 +22,15 @@ export function Watchlist({ drag }: { drag?: PanelDragProps }) {
         <thead>
           <tr>
             <th>Symbol</th>
-            <th className="r">Last</th>
-            <th className="r">Bid / Ask</th>
-            <th className="r">24h</th>
-            <th />
+            <th>24h</th>
+            <th className="r">Last · Bid / Ask</th>
           </tr>
         </thead>
         <tbody>
           {watchlist.map((sym) => {
             const a = assets[sym];
             if (!a) return null;
-            return (
-              <tr key={sym} className={`clickable ${sym === selected ? 'selected' : ''}`} onClick={() => select(sym)} data-testid={`watch-${sym}`}>
-                <td>
-                  <div className="wl-sym">{sym}</div>
-                  <div className="label">{a.name}</div>
-                </td>
-                <LastCell a={a} />
-                <td className="r">
-                  <div className="num up" style={{ fontSize: 11 }}>{fmtPrice(a.bid)}</div>
-                  <div className="num down" style={{ fontSize: 11 }}>{fmtPrice(a.ask)}</div>
-                </td>
-                <td className={`r num ${a.change24h >= 0 ? 'up' : 'down'}`}>{fmtPct(a.change24h)}</td>
-                <td className="r" style={{ paddingLeft: 0 }}>
-                  <button
-                    className="btn ghost sm icon"
-                    aria-label={`Remove ${sym} from watchlist`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeWatch(sym);
-                    }}
-                  >
-                    <X size={12} />
-                  </button>
-                </td>
-              </tr>
-            );
+            return <WatchRow key={sym} a={a} selected={sym === selected} onSelect={() => select(sym)} onRemove={() => removeWatch(sym)} />;
           })}
         </tbody>
       </table>
@@ -63,12 +39,40 @@ export function Watchlist({ drag }: { drag?: PanelDragProps }) {
   );
 }
 
-function LastCell({ a }: { a: Asset }) {
+function WatchRow({ a, selected, onSelect, onRemove }: { a: Asset; selected: boolean; onSelect: () => void; onRemove: () => void }) {
   const f = useTickFlash(a.price);
+  const { values } = useSpark(a.symbol);
+  const { profit, loss } = useThemeStore((s) => s.colors);
   return (
-    <td className={`r num wl-last ${f.cls}`} key={f.key}>
-      {fmtPrice(a.price)}
-    </td>
+    <tr className={`clickable wl-row ${selected ? 'selected' : ''}`} onClick={onSelect} data-testid={`watch-${a.symbol}`}>
+      <td className="wl-sym-cell" title={a.name}>
+        <div className="wl-sym">{a.symbol}</div>
+        <span className={`wl-chg ${a.change24h >= 0 ? 'pos' : 'neg'}`}>{fmtPct(a.change24h)}</span>
+        <button
+          className="btn ghost sm icon wl-remove"
+          aria-label={`Remove ${a.symbol} from watchlist`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
+          <X size={12} />
+        </button>
+      </td>
+      <td className="wl-spark">
+        <Sparkline values={values} up={profit} down={loss} />
+      </td>
+      <td className="r">
+        <div className={`num wl-last ${f.cls}`} key={f.key}>
+          {fmtPrice(a.price)}
+        </div>
+        <div className="wl-ba mono">
+          <span className="up">{fmtPrice(a.bid)}</span>
+          <span className="faint">/</span>
+          <span className="down">{fmtPrice(a.ask)}</span>
+        </div>
+      </td>
+    </tr>
   );
 }
 

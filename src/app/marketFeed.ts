@@ -12,6 +12,19 @@ export function startMarketFeed(): Unsubscribe {
   const symbols = ASSET_UNIVERSE.map((a) => a.symbol);
   let provider: MarketDataProvider;
   let global: Unsubscribe[] = [];
+  let sparkTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** 24h of 15m closes per symbol — real history from whichever provider is active. */
+  const loadSparks = () => {
+    const p = provider;
+    for (const sym of symbols) {
+      p.getCandles(sym, '15m', 96)
+        .then((c) => {
+          if (p === provider) useMarketStore.getState().setSpark(sym, c.map((k) => k.close));
+        })
+        .catch(() => {});
+    }
+  };
   let scoped: Unsubscribe[] = [];
 
   const connectSymbol = () => {
@@ -48,6 +61,9 @@ export function startMarketFeed(): Unsubscribe {
       provider.onStatus((s) => useMarketStore.getState().setStatus(s)),
     ];
     connectSymbol();
+    loadSparks();
+    if (sparkTimer) clearInterval(sparkTimer);
+    sparkTimer = setInterval(loadSparks, 15 * 60_000);
   };
 
   connectProvider();
@@ -57,6 +73,7 @@ export function startMarketFeed(): Unsubscribe {
   });
 
   return () => {
+    if (sparkTimer) clearInterval(sparkTimer);
     unsub();
     global.forEach((f) => f());
     scoped.forEach((f) => f());

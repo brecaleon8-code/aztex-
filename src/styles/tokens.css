@@ -35,8 +35,8 @@
   --accent-3: var(--mark);
 
   --hl: rgba(255, 255, 255, 0.04); /* selected row (paired with a royal edge) */
-  --flash-up: rgba(61, 220, 151, 0.16);
-  --flash-down: rgba(255, 93, 93, 0.18);
+  --flash-up: rgba(61, 220, 151, 0.11);
+  --flash-down: rgba(255, 93, 93, 0.12);
   --hover: rgba(255, 255, 255, 0.03);
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 10px 28px -18px rgba(0, 0, 0, 0.9);
@@ -76,8 +76,8 @@
   --accent-3: var(--mark);
 
   --hl: rgba(21, 23, 26, 0.04);
-  --flash-up: rgba(15, 138, 85, 0.12);
-  --flash-down: rgba(200, 40, 40, 0.1);
+  --flash-up: rgba(15, 138, 85, 0.09);
+  --flash-down: rgba(200, 40, 40, 0.08);
   --hover: rgba(21, 23, 26, 0.03);
   --scrim: rgba(21, 23, 26, 0.2);
   --shadow: 0 1px 2px rgba(21, 23, 26, 0.04), 0 10px 26px -20px rgba(21, 23, 26, 0.22);

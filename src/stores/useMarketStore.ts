@@ -35,6 +35,8 @@ interface MarketState {
   bookHistory: OrderBookSnapshot[];
   /** Tape for the selected symbol, newest first. */
   trades: Trade[];
+  /** 24h of 15m closes per symbol (from the provider) for sparklines and 24h ranges. */
+  sparks: Record<string, number[]>;
   /** Real aggressor delta per candle open-time, accumulated from the tape. */
   deltaByTime: Record<number, number>;
   status: ConnectionStatus;
@@ -49,6 +51,7 @@ interface MarketState {
   upsertCandle: (key: string, c: Candle) => void;
   setBook: (b: OrderBookSnapshot) => void;
   pushTrades: (symbol: string, t: Trade[]) => void;
+  setSpark: (symbol: string, closes: number[]) => void;
   setStatus: (s: ConnectionStatus) => void;
 }
 
@@ -68,6 +71,7 @@ export const useMarketStore = create<MarketState>()(
       bookHistory: [],
       trades: [],
       deltaByTime: {},
+      sparks: {},
       status: { state: 'connecting', latencyMs: null },
       setProvider: (providerId) => set({ providerId, candles: [], candlesKey: '', book: null, bookHistory: [], trades: [], deltaByTime: {} }),
       select: (selected) => set((s) => (s.selected === selected ? s : { selected, book: null, bookHistory: [], trades: [], deltaByTime: {} })),
@@ -94,6 +98,7 @@ export const useMarketStore = create<MarketState>()(
           if (c.time > last.time) return { candles: [...s.candles, c] };
           return s;
         }),
+      setSpark: (symbol, closes) => set((s) => ({ sparks: { ...s.sparks, [symbol]: closes } })),
       setBook: (book) => set((s) => ({ book, bookVersion: s.bookVersion + 1, bookHistory: [...s.bookHistory, book].slice(-BOOK_HISTORY_MAX) })),
       pushTrades: (symbol, ts) =>
         set((s) => {

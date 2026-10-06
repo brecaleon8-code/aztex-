@@ -236,3 +236,42 @@ test('panels reorder by dragging their header and the layout persists', async ({
   await page.getByRole('menuitemcheckbox', { name: 'News' }).click();
   await expect(page.getByTestId('news')).toHaveCount(0);
 });
+
+test('pro polish: command palette, sparklines, risk panel, countdown, resting-order markers, R multiple', async ({ page }) => {
+  await page.goto('/terminal');
+  await page.evaluate(() => localStorage.clear());
+  await page.goto('/terminal');
+  await expect(page.getByTestId('price-chart')).toBeVisible();
+
+  // Watchlist sparklines load from provider history.
+  await expect(page.getByTestId('watch-BTC').locator('svg.spark path').first()).toBeAttached();
+  // Chart: live candle-close countdown + 24h stats.
+  await expect(page.getByTestId('candle-countdown')).toContainText(/\d\d:\d\d/);
+  await expect(page.getByTestId('stats24')).toContainText('24h H');
+  // Ticket: pre-trade risk with the default ±3.2% / ±1.6% levels → R:R 2.00.
+  await expect(page.getByTestId('risk-rr')).toHaveText('2.00');
+
+  // Resting limit order shows on the chart and in the book.
+  await page.getByTestId('ob-bid-8').click();
+  await page.getByTestId('place-order').click();
+  await expect(page.getByTestId('working-order')).toHaveCount(1);
+  await expect(page.getByTestId('chart-working-order')).toHaveCount(1);
+
+  // Positions show R multiple.
+  const cli = page.getByLabel('Command line');
+  await cli.fill('buy 0.01 btc');
+  await cli.press('Enter');
+  await expect(page.getByTestId('position-r').first()).toContainText('R');
+
+  // Command palette: fuzzy jump to a symbol, then switch workspace.
+  await page.keyboard.press('Control+k');
+  await expect(page.getByTestId('command-palette')).toBeVisible();
+  await page.getByLabel('Command palette search').fill('sol');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('command-palette')).toHaveCount(0);
+  await expect(page.getByTestId('chart-panel')).toContainText('SOL');
+  await page.getByTestId('palette-trigger').click();
+  await page.getByLabel('Command palette search').fill('order flow');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('ws-flow')).toHaveAttribute('aria-selected', 'true');
+});

@@ -26,32 +26,79 @@
   padding: 4px 2px;
 }
 
-/* Monitor */
+/* Watchlist */
 .watchlist td {
-  padding: 4px 10px;
+  padding: 6px 10px;
+  height: 46px;
 }
 .wl-sym {
   font-family: var(--font-mono);
   font-weight: 600;
+  font-size: 12.5px;
   color: var(--text);
 }
-.watchlist .label {
-  text-transform: none;
-  letter-spacing: 0;
+.wl-name {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.wl-spark {
+  width: 70px;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.spark {
+  display: block;
+}
+.spark-empty {
+  background: linear-gradient(90deg, transparent, var(--border-soft), transparent);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s linear infinite;
+  border-radius: 3px;
 }
 .wl-last {
+  display: inline-block;
   color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 0 2px;
+  border-radius: 3px;
 }
-.watchlist td:last-child,
-.watchlist th:last-child {
-  width: 24px;
-  padding-right: 4px;
+.wl-ba {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+  font-size: 10.5px;
+  margin-top: 1px;
 }
-.watchlist tr .btn.icon {
+.wl-sym-cell {
+  position: relative;
+}
+.wl-chg {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.wl-chg.pos {
+  color: var(--profit);
+  background: color-mix(in srgb, var(--profit) 10%, transparent);
+}
+.wl-chg.neg {
+  color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 10%, transparent);
+}
+.wl-remove {
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
   opacity: 0;
+  background: var(--panel-solid) !important;
 }
-.watchlist tr:hover .btn.icon,
-.watchlist tr .btn.icon:focus-visible {
+.wl-row:hover .wl-remove,
+.wl-remove:focus-visible {
   opacity: 1;
 }
 
@@ -581,4 +628,70 @@
 }
 .terminal-foot {
   padding-top: 8px;
+}
+
+/* Order book: emphasised digits + own-order marker */
+.ob-lead {
+  opacity: 0.55;
+}
+.ob-mine {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  vertical-align: 1px;
+}
+
+/* Ticket risk panel */
+.risk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+.risk-bar {
+  display: flex;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border);
+}
+.risk-bar-loss {
+  background: color-mix(in srgb, var(--loss) 70%, transparent);
+  transition: width 0.25s ease;
+}
+.risk-bar-gain {
+  background: color-mix(in srgb, var(--profit) 70%, transparent);
+  transition: width 0.25s ease;
+}
+.risk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.risk-grid > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+.warn-text {
+  color: var(--warn);
+}
+
+/* Positions meta */
+.pos-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.pos-r {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-alt);
 }

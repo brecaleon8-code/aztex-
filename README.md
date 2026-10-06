@@ -21,7 +21,7 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Price chart | Hand-rolled SVG (see "Charting decision" below) |
 | Simple charts | `recharts` (P/L mountain, dominance ring, comparison lines) |
 | Icons | `lucide-react` |
-| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). "Royal" visual language: green-black ground, royal-green brand used only for fills and active states, muted gold as a sparing highlight, and bright mint/red reserved for P/L so the brand never reads as profit. Modest 6–8px radii, quiet panel chrome, numbers carry the weight. "Ivory" is the separately tuned light theme. |
+| Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). "Graphite" visual language: a neutral grayish-black interface where royal green appears only as a deliberate hint (brand mark, active nav/workspace indicators, primary actions, focus rings, selected-row edge, chart entry flag and POC). Bright mint/red stay reserved for P/L direction, and one warm tone marks warnings. Modest 6–8px radii, quiet panel chrome. "Silver" is the separately tuned light theme. |
 | Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 

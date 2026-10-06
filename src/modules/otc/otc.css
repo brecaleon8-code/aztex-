@@ -34,7 +34,7 @@
   font-size: 12px;
 }
 .countdown.warn {
-  color: #FF8A5B;
+  color: var(--warn);
 }
 .countdown-bar {
   height: 3px;

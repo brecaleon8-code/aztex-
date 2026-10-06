@@ -23,20 +23,19 @@ export function CliBar() {
 
   return (
     <div className="cli" data-testid="cli">
-      <div className="cli-result" data-testid="cli-result">
-        {result ? (
+      {/* Result line appears only once something has run; the placeholder carries the hint. */}
+      <div className="cli-result" data-testid="cli-result" title={result?.text}>
+        {result && (
           <>
             <span className={result.ok ? 'cli-ok' : 'cli-err'}>{result.ok ? '✓' : '✗'}</span> {result.text}
           </>
-        ) : (
-          <span className="cli-dim">type help for commands · ↑/↓ history</span>
         )}
       </div>
       <label className="cli-line">
         <span className="cli-prompt">›</span>
         <input
           aria-label="Command line"
-          placeholder="Type a command — buy 0.1 btc, eth, watch sol, help   ( / )"
+          placeholder="Command · buy 0.1 btc · eth · help"
           spellCheck={false}
           autoComplete="off"
           value={value}

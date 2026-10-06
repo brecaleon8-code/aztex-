@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
-import { Segmented } from '@/components/ui/Segmented';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
@@ -23,6 +22,13 @@ const TOOLS: { tool: DrawingTool; icon: typeof Star; label: string }[] = [
 ];
 
 const TIMEFRAMES: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d'];
+const CHART_MODES: { value: ChartMode; label: string }[] = [
+  { value: 'candles', label: 'Candles' },
+  { value: 'heikin', label: 'Heikin-Ashi' },
+  { value: 'bars', label: 'OHLC bars' },
+  { value: 'line', label: 'Line' },
+  { value: 'area', label: 'Area' },
+];
 
 export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const symbol = useMarketStore((s) => s.selected);
@@ -72,6 +78,13 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
               <option key={t}>{t}</option>
             ))}
           </select>
+          <select className="input tf-select" value={mode} onChange={(e) => setMode(e.target.value as ChartMode)} aria-label="Chart mode" data-testid="chart-mode">
+            {CHART_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
           <button className="btn sm icon ghost" onClick={toggleChartMaximized} aria-label={chartMaximized ? 'Restore chart' : 'Maximize chart'}>
             {chartMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -107,19 +120,6 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
             </span>
           ))}
         </div>
-        <span className="spacer" />
-        <Segmented<ChartMode>
-          ariaLabel="Chart mode"
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: 'candles', label: 'Candles' },
-            { value: 'heikin', label: 'HA', title: 'Heikin-Ashi' },
-            { value: 'bars', label: 'Bars' },
-            { value: 'line', label: 'Line' },
-            { value: 'area', label: 'Area' },
-          ]}
-        />
       </div>
       <PriceChart />
       <ResizeHandle />

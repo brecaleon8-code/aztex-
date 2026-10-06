@@ -1,67 +1,86 @@
-/* Design tokens — "Royal". A green-black ground with a royal-green brand used for fills and active
-   states, muted gold as a sparing highlight, and bright mint/red reserved for P/L direction so
-   brand never reads as profit. "Ivory" is the separately tuned light palette (same token names). */
+/* Design tokens — "Graphite". A neutral grayish-black interface; royal green appears only as a
+   deliberate hint (brand mark, active indicators, primary actions, focus, key levels). Chrome is
+   otherwise colorless so data — and the mint/red reserved for P/L direction — carries the color.
+   "Silver" is the separately tuned light palette sharing the same token names. */
 :root,
 [data-theme='dark'] {
-  --bg: #070b09;
-  --bg2: #0a100d;
-  --panel: #0d1411;
-  --panel-solid: #0d1411;
-  --panel-head: #0d1411;
-  --panel-alt: #121b17;
-  --border: #1d2a24;
-  --border-soft: #16211c;
-  --text: #e8eee9;
-  --text-dim: #98a8a0;
-  --text-faint: #5e6f67;
+  --bg: #0c0d0f;
+  --bg2: #111214;
+  --panel: #151619;
+  --panel-solid: #151619;
+  --panel-head: #151619;
+  --panel-alt: #1b1c20;
+  --raised: #222428;
+  --border: #26282d;
+  --border-soft: #1e2024;
+  --text: #e6e7e9;
+  --text-dim: #9b9fa7;
+  --text-faint: #636770;
+
+  /* Royal green — used sparingly. */
   --royal: #0f6b4b;
-  --royal-hi: #138058;
-  --accent: #2fa477; /* royal green, lifted for legibility as text/icons */
-  --accent-soft: rgba(47, 164, 119, 0.14);
+  --royal-hi: #13805a;
+  --accent: #2c9b71; /* royal, lifted for legibility as text/icons on graphite */
+  --accent-soft: rgba(44, 155, 113, 0.13);
   --on-accent: #ffffff;
-  --gold: #c9a75a;
-  --amber: var(--gold);
-  --accent-2: #6aaed6;
-  --accent-3: var(--gold);
-  --hl: rgba(47, 164, 119, 0.1);
-  --flash-up: rgba(61, 220, 151, 0.18);
-  --flash-down: rgba(255, 93, 93, 0.2);
+
+  /* Neutral roles that used to carry colour. */
+  --mark: var(--accent); /* key levels (POC, entry), favourites */
+  --series: #d4d6da; /* line/area chart stroke */
+  --draw: #aeb4bd; /* user drawings */
+  --warn: #c9a14a; /* flagged / expiring — the only warm tone */
+  --amber: var(--text-dim);
+  --gold: var(--mark);
+  --accent-2: var(--text-dim);
+  --accent-3: var(--mark);
+
+  --hl: rgba(255, 255, 255, 0.04); /* selected row (paired with a royal edge) */
+  --flash-up: rgba(61, 220, 151, 0.16);
+  --flash-down: rgba(255, 93, 93, 0.18);
   --hover: rgba(255, 255, 255, 0.03);
   --scrim: rgba(0, 0, 0, 0.6);
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 10px 28px -18px rgba(0, 0, 0, 0.9);
   --chart-glow: none;
   --go: var(--royal);
-  --cancel: #c2393b;
+  --cancel: #b8383a;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --bg: #f2f0eb;
-  --bg2: #faf9f6;
+  --bg: #eceef0;
+  --bg2: #f7f8f9;
   --panel: #ffffff;
   --panel-solid: #ffffff;
   --panel-head: #ffffff;
-  --panel-alt: #f6f5f1;
-  --border: #e2dfd7;
-  --border-soft: #efede7;
-  --text: #13201a;
-  --text-dim: #4d5d55;
-  --text-faint: #8a958f;
+  --panel-alt: #f4f5f6;
+  --raised: #e9ebed;
+  --border: #dcdfe3;
+  --border-soft: #eceef0;
+  --text: #15171a;
+  --text-dim: #50555d;
+  --text-faint: #8a8f97;
+
   --royal: #0f6b4b;
   --royal-hi: #0c5a3f;
   --accent: #0f6b4b;
   --accent-soft: rgba(15, 107, 75, 0.08);
   --on-accent: #ffffff;
-  --gold: #9a7a2e;
-  --amber: var(--gold);
-  --accent-2: #2f6f9e;
-  --accent-3: var(--gold);
-  --hl: rgba(15, 107, 75, 0.07);
-  --flash-up: rgba(15, 138, 85, 0.14);
-  --flash-down: rgba(200, 40, 40, 0.12);
-  --hover: rgba(19, 32, 26, 0.035);
-  --scrim: rgba(19, 32, 26, 0.2);
-  --shadow: 0 1px 2px rgba(19, 32, 26, 0.04), 0 8px 24px -18px rgba(19, 32, 26, 0.18);
+
+  --mark: var(--accent);
+  --series: #2a2d32;
+  --draw: #5d6470;
+  --warn: #9a7420;
+  --amber: var(--text-dim);
+  --gold: var(--mark);
+  --accent-2: var(--text-dim);
+  --accent-3: var(--mark);
+
+  --hl: rgba(21, 23, 26, 0.04);
+  --flash-up: rgba(15, 138, 85, 0.12);
+  --flash-down: rgba(200, 40, 40, 0.1);
+  --hover: rgba(21, 23, 26, 0.03);
+  --scrim: rgba(21, 23, 26, 0.2);
+  --shadow: 0 1px 2px rgba(21, 23, 26, 0.04), 0 10px 26px -20px rgba(21, 23, 26, 0.22);
   --chart-glow: none;
   --go: var(--royal);
   --cancel: #b3261e;

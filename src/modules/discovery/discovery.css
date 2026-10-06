@@ -80,10 +80,10 @@
   animation: fade-in 0.35s ease;
 }
 .scan-row.flagged td:first-child {
-  box-shadow: inset 2px 0 0 #F5B84B;
+  box-shadow: inset 2px 0 0 var(--warn);
 }
 .flag-icon {
-  color: #F5B84B;
+  color: var(--warn);
   vertical-align: -1px;
 }
 .ev-type {
@@ -94,16 +94,16 @@
   color: var(--text-dim);
 }
 .ev-exchange_inflow svg {
-  color: #FF8A5B;
+  color: var(--text-faint);
 }
 .ev-exchange_outflow svg {
-  color: #3DD6C6;
+  color: var(--text-faint);
 }
 .ev-whale_move svg {
-  color: #4CC9F0;
+  color: var(--text-faint);
 }
 .ev-large_transfer svg {
-  color: #9D8CFF;
+  color: var(--text-faint);
 }
 .ext {
   color: var(--text-faint);

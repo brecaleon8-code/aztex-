@@ -29,7 +29,7 @@ button {
   cursor: pointer;
 }
 a {
-  color: var(--accent-2);
+  color: var(--accent);
 }
 h1,
 h2,
@@ -76,7 +76,7 @@ h3 {
   color: var(--text-faint);
 }
 .amber {
-  color: var(--amber);
+  color: var(--text-dim);
 }
 .up {
   color: var(--profit);

@@ -8,6 +8,7 @@
 
 /* ── Top bar ────────────────────────────────────────────────────────────────────────────── */
 .topbar {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
@@ -16,6 +17,17 @@
   padding: 0 14px;
   background: var(--bg2);
   border-bottom: 1px solid var(--border-soft);
+}
+/* The one ambient hint of brand: a faint royal hairline fading out from the left. */
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--royal) 0%, color-mix(in srgb, var(--royal) 40%, transparent) 22%, transparent 55%);
+  pointer-events: none;
 }
 .tb-brand {
   display: flex;

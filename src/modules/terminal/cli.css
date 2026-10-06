@@ -60,6 +60,9 @@
 .cli-go:hover {
   background: var(--royal-hi);
 }
+.cli-result:empty {
+  display: none;
+}
 .cli-result {
   order: 1;
   flex: 0 1 auto;

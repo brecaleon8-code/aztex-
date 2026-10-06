@@ -59,7 +59,8 @@
   background: var(--hover);
 }
 .contact.on {
-  background: var(--accent-soft);
+  background: var(--hl);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .contact-name {
   display: block;
@@ -144,7 +145,7 @@
   line-height: 1.45;
 }
 .msg.mine .bubble {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent-2) 16%, transparent));
+  background: var(--raised);
   border-color: color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 12px 12px 4px 12px;
 }
@@ -228,5 +229,5 @@
   margin-left: -8px;
 }
 .btn.liked {
-  color: #FF8A5B;
+  color: var(--warn);
 }

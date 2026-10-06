@@ -50,7 +50,7 @@ export function DepthChart({ book }: { book: OrderBookSnapshot }) {
         <path d={b.line} fill="none" stroke={profit} strokeWidth={1.2} />
         <path d={a.area} fill={loss} opacity={0.18} />
         <path d={a.line} fill="none" stroke={loss} strokeWidth={1.2} />
-        <line x1={x(mid)} x2={x(mid)} y1={0} y2={h - pad} stroke="var(--amber)" strokeDasharray="2 2" />
+        <line x1={x(mid)} x2={x(mid)} y1={0} y2={h - pad} stroke="var(--mark)" strokeDasharray="2 2" />
         <text x={x(mid)} y={11} textAnchor="middle" className="axis-text amber-fill">
           MID {fmtPrice(mid)}
         </text>
@@ -128,7 +128,7 @@ export function LiquidityHeatmap({ history }: { history: OrderBookSnapshot[] }) 
       }
     });
     // Mid trace
-    ctx.strokeStyle = '#c9a75a';
+    ctx.strokeStyle = '#e6e7e9';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     history.forEach((s, i) => {

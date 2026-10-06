@@ -13,8 +13,8 @@ export const DEFAULT_COLORS: AppearanceColors = {
 };
 
 /** Fixed categorical palette — independent of theme and of P/L colors (spec §3). */
-/** Series colors: gold, steel blue, lavender, rose, silver, slate — no greens/reds, so they never read as P/L. */
-export const CATEGORICAL = ['#C9A75A', '#6AAED6', '#A98BE0', '#D9A3C8', '#D7DBD9', '#8FB4CC'];
+/** Data-series colors: silver, steel, lavender, sand, rose, slate — no greens/reds, so they never read as P/L or brand. */
+export const CATEGORICAL = ['#CFD3D8', '#7FA7CF', '#B39CDB', '#D2AE72', '#DDA1BC', '#93A8BF'];
 
 interface ThemeState {
   theme: Theme;

@@ -28,7 +28,7 @@
   font-family: var(--font-mono);
 }
 .btn.starred {
-  color: var(--gold);
+  color: var(--mark);
 }
 .chart {
   position: relative;
@@ -104,16 +104,16 @@
 }
 .drawing line,
 .drawing rect {
-  stroke: var(--accent-2);
+  stroke: var(--draw);
   stroke-width: 1.2;
 }
 .drawing circle {
   fill: var(--panel);
-  stroke: var(--accent-2);
+  stroke: var(--draw);
   stroke-width: 1.2;
 }
 .drawing .drawing-fill {
-  fill: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  fill: color-mix(in srgb, var(--draw) 10%, transparent);
 }
 .drawing.preview {
   opacity: 0.6;
@@ -121,13 +121,13 @@
 .drawing-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  fill: var(--accent-2);
+  fill: var(--draw);
 }
 .drawing-text {
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
-  fill: var(--gold);
+  fill: var(--text);
 }
 .chart-text-input {
   position: absolute;
@@ -244,25 +244,25 @@
 }
 /* Volume profile */
 .vp-va {
-  fill: var(--accent);
-  opacity: 0.2;
+  fill: var(--text-dim);
+  opacity: 0.16;
 }
 .vp-out {
   fill: var(--text-faint);
-  opacity: 0.16;
+  opacity: 0.1;
 }
 .vp-poc {
-  fill: var(--gold);
-  opacity: 0.6;
+  fill: var(--mark);
+  opacity: 0.55;
 }
 .vp-poc-line {
-  stroke: var(--gold);
+  stroke: var(--mark);
   stroke-width: 1;
   stroke-dasharray: 6 3;
   opacity: 0.85;
 }
 .vp-va-line {
-  stroke: var(--accent);
+  stroke: var(--text-faint);
   stroke-width: 1;
   stroke-dasharray: 1 3;
   opacity: 0.5;
@@ -270,7 +270,7 @@
 .vp-label {
   font-family: var(--font-mono);
   font-size: 9.5px;
-  fill: var(--gold);
+  fill: var(--mark);
 }
 .vp-label.dim {
   opacity: 0.6;

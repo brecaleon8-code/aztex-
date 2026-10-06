@@ -239,12 +239,12 @@ export function PriceChart() {
               <rect x={0} y={0} width={plotW} height={plotH} />
             </clipPath>
             <linearGradient id={`line-${uidBase}`} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="var(--amber)" />
-              <stop offset="1" stopColor="var(--amber)" />
+              <stop offset="0" stopColor="var(--series)" />
+              <stop offset="1" stopColor="var(--series)" />
             </linearGradient>
             <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="var(--amber)" stopOpacity={0.22} />
-              <stop offset="1" stopColor="var(--amber)" stopOpacity={0} />
+              <stop offset="0" stopColor="var(--series)" stopOpacity={0.14} />
+              <stop offset="1" stopColor="var(--series)" stopOpacity={0} />
             </linearGradient>
           </defs>
 

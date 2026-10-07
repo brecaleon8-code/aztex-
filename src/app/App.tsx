@@ -8,6 +8,8 @@ import { DepositModal } from './DepositModal';
 import { ThemeSync } from './ThemeSync';
 import { startMarketFeed } from './marketFeed';
 import { startScannerFeed } from './scannerFeed';
+import { startNewsFeed } from './newsFeed';
+import { NewsDock } from './NewsDock';
 import { CliBar } from '@/modules/terminal/CliBar';
 import { Toasts } from '@/components/ui/Toasts';
 import { TerminalPage } from '@/modules/terminal/TerminalPage';
@@ -26,6 +28,7 @@ export function App() {
   const platform = useThemeStore((s) => s.platform);
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
+  useEffect(() => startNewsFeed(), []);
   useFunctionKeys();
 
   return (
@@ -38,6 +41,7 @@ export function App() {
         <GasTicker />
       </div>
       <main className="main">
+        <NewsDock side="left" />
         <div className="content">
           <Suspense fallback={<div className="empty">Loading…</div>}>
           <Routes>
@@ -53,6 +57,7 @@ export function App() {
           </Routes>
           </Suspense>
         </div>
+        <NewsDock side="right" />
       </main>
       {/* App-level overlay: visible regardless of route. */}
       <Toasts />

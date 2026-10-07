@@ -8,6 +8,7 @@ import { FEE_TIERS, fmtRate } from '@/lib/account/fees';
 import { Wordmark } from './Logo';
 import { MOD_KEY } from './CommandPalette';
 import { useTickFlash } from './useTickFlash';
+import { NewsToggle } from './NewsDock';
 import { useThemeStore, type Platform } from '@/stores/useThemeStore';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useWalletStore } from '@/stores/useWalletStore';
@@ -56,6 +57,7 @@ export function TopBar() {
         ))}
       </nav>
       <div className="spacer" />
+      <NewsToggle />
       <button className="palette-trigger" onClick={() => window.dispatchEvent(new Event('aztex:palette'))} data-testid="palette-trigger" aria-label="Open command palette">
         <Search size={13} />
         <span>Search or jump to…</span>

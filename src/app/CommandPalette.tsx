@@ -10,6 +10,7 @@ import { useChartStore } from '@/stores/useChartStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { flattenAll } from '@/stores/trading';
+import { useNewsStore } from '@/stores/useNewsStore';
 import { useUiStore } from '@/stores/useUiStore';
 import { PANEL_LABELS } from '@/modules/terminal/TerminalPage';
 import type { ChartMode, Timeframe } from '@/types';
@@ -138,6 +139,10 @@ export function CommandPalette() {
     cmds.push({ id: 'reset', group: 'Actions', label: 'Reset workspace layout', run: () => useLayoutStore.getState().resetLayout() });
     cmds.push({ id: 'src-mock', group: 'Actions', label: 'Data source: simulated', run: () => useMarketStore.getState().setProvider('mock') });
     cmds.push({ id: 'src-live', group: 'Actions', label: 'Data source: Binance live', run: () => useMarketStore.getState().setProvider('live') });
+    cmds.push({ id: 'news', group: 'Actions', label: 'Toggle news & calendar dock', hint: <kbd>Alt N</kbd>, keywords: 'headlines economic calendar events cpi fomc', run: () => useNewsStore.getState().toggleDock() });
+    cmds.push({ id: 'news-left', group: 'Actions', label: 'Pin news dock to the left', keywords: 'headlines calendar side', run: () => useNewsStore.setState({ pinned: true, collapsed: false, side: 'left' }) });
+    cmds.push({ id: 'news-right', group: 'Actions', label: 'Pin news dock to the right', keywords: 'headlines calendar side', run: () => useNewsStore.setState({ pinned: true, collapsed: false, side: 'right' }) });
+    cmds.push({ id: 'news-cal', group: 'Actions', label: 'Open economic calendar', keywords: 'events cpi nfp fomc ecb unlocks', run: () => useNewsStore.setState({ pinned: true, collapsed: false, tab: 'calendar' }) });
     cmds.push({ id: 'deposit', group: 'Actions', label: 'Add crypto (deposit)', keywords: 'deposit fund wallet address receive', run: () => useUiStore.getState().openDeposit() });
     cmds.push({ id: 'redeem', group: 'Actions', label: 'Redeem partner / LP code', keywords: 'referral fee tier discount', run: () => navigate('/account') });
     cmds.push({ id: 'new-strategy', group: 'Actions', label: 'Build a strategy / indicator', keywords: 'studio backtest custom', run: () => navigate('/studio') });

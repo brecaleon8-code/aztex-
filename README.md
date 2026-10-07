@@ -58,6 +58,23 @@ Market and marketable orders, closes, flattens and TWAP slices pay taker; restin
 - **Execution model (no look-ahead):** signals fill at the next bar's open; the stop is checked before the target within a bar; fees are charged on both sides.
 - **Formula language** additions: comparisons, `and`/`or`/`not`, and `rsi`, `highest`, `lowest`, `prev`, `cross_over`, `cross_under`, `abs`, `min`, `max`.
 
+## News & calendar dock
+
+Open it with the **News** button in the top bar, **Alt+N**, or the command palette. You can pin it to the **left or right** edge, and it stays there on every page and across reloads.
+
+- **Headlines tab.** A live wire covering crypto, macro, regulation, on-chain and markets news.
+  - **Filtering:** pick categories with the chips, set a minimum impact, or tick **My assets**. My assets keeps stories about your selected symbol, watchlist and open positions, plus high-impact macro news.
+  - **Reading:** click a headline for its summary, or click a symbol tag (▲/▼ shows sentiment) to open that symbol on the chart.
+  - **Scrolling:** while you're scrolled down, new stories wait behind a "N new" pill, so nothing shifts under your cursor.
+- **Calendar tab.** An economic and crypto calendar for yesterday through the next six days, in UTC.
+  - Economic events include CPI, NFP, Fed/ECB/BoE/BoJ decisions and PMIs. Crypto events include options expiries, token unlocks, upgrades and ETF deadlines.
+  - Each event shows impact bars, actual, forecast and previous values, and a countdown for anything in the next 24 hours. A "now" line marks the current time.
+  - When an event prints, the actual value is coloured **beat/miss** against the forecast (lower-is-better series such as CPI and unemployment are handled). The print also posts to the wire.
+- **Always on.** A "Next high impact" strip with a countdown sits at the top. High-impact events raise a toast 5 minutes before release and again when they print; the bell icon mutes these.
+- **Layout.** The dock is resizable (drag its inner edge; double-click resets the width). It collapses to a slim rail that still shows the unread count and the next-event countdown. On narrow screens and on the Mobile platform it floats over the page instead.
+
+**Data.** The wire and calendar are **simulated** (`src/lib/news/mockNews.ts`). A demo high-impact release is scheduled a few minutes after load so you can watch one print. The source sits behind a `NewsProvider` interface (`src/lib/news/types.ts`), so a production adapter can plug in a licensed headline socket and an economic-calendar API without UI changes. Feed wiring and alerts live in `src/app/newsFeed.ts`, the UI in `src/app/NewsDock.tsx`, and preferences in `useNewsStore` (only preferences are persisted).
+
 ## Studio scripts (Level 2 indicators)
 
 Power users can write indicators in plain **JavaScript**. In **Studio → My indicators**, switch *Language* to **Script**, or start from one of the examples (Keltner, Supertrend, Z‑score, Stochastic RSI, Volume pressure). A script runs once over the whole candle history and draws with `plot()`. For per-candle logic, use `each((i, prev) => …)`.

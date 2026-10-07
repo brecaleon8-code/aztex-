@@ -383,4 +383,40 @@ test.describe('Account features', () => {
     await expect(page.getByTestId('indicator-chip').filter({ hasText: 'Z test' })).toBeVisible();
     await expect(page.getByTestId('osc-value').last()).toHaveText(/^-?\d+\.\d{2}$/, { timeout: 10000 });
   });
+  test('News dock: pin left/right, live headlines, calendar, filters, collapse, persistence', async ({ page }) => {
+    await page.goto('/terminal');
+    await page.getByTestId('news-toggle').click();
+    const dock = page.getByTestId('news-dock');
+    await expect(dock).toBeVisible();
+    await expect(dock).toHaveClass(/right/);
+    await expect(page.getByTestId('news-story').first()).toBeVisible();
+    await expect(page.getByTestId('news-next')).toContainText('Next high impact');
+
+    // Filter to a single category.
+    await page.getByTestId('news-cat-regulation').click();
+    const cats = await page.getByTestId('news-story').locator('.nd-src').allInnerTexts();
+    expect(cats.length).toBeGreaterThan(0);
+    expect(new Set(cats)).toEqual(new Set(['Reg Watch']));
+
+    // Calendar with countdowns and a "now" marker.
+    await page.getByTestId('news-tab-calendar').click();
+    await expect(page.getByTestId('news-event').first()).toBeVisible();
+    await expect(page.getByTestId('news-calendar')).toContainText('Now ·');
+
+    // Swap sides; it stays pinned across pages and reloads.
+    await page.getByTestId('news-swap').click();
+    await expect(dock).toHaveClass(/left/);
+    await page.goto('/studio');
+    await expect(page.getByTestId('news-dock')).toHaveClass(/left/);
+    await page.reload();
+    await expect(page.getByTestId('news-dock')).toHaveClass(/left/);
+
+    // Collapse to a rail, expand, then close with the keyboard.
+    await page.getByLabel('Collapse to rail').click();
+    await expect(page.getByTestId('news-rail')).toBeVisible();
+    await page.getByLabel('Expand news').click();
+    await expect(page.getByTestId('news-dock')).toBeVisible();
+    await page.keyboard.press('Alt+KeyN');
+    await expect(page.getByTestId('news-dock')).toHaveCount(0);
+  });
 });

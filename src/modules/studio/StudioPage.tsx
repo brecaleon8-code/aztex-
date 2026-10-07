@@ -234,7 +234,10 @@ function StrategyLab() {
 
   // Re-run automatically as rules change or new candles arrive (cheap: a few hundred bars).
   useEffect(() => {
-    if (candles.length < 30) return setResult(null);
+    if (candles.length < 30) {
+      setResult(null);
+      return;
+    }
     setResult(backtest(draft as StrategyDef, candles, FEE_TIERS[tier].taker));
   }, [draft, candles, tier]);
 

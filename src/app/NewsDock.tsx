@@ -116,7 +116,9 @@ function DockPanel({ side }: { side: DockSide }) {
 
   // Opening the panel marks everything read; so does new news arriving while it is open.
   const storiesLen = useNewsStore((s) => s.stories.length);
-  useEffect(() => markSeen(), [storiesLen, markSeen]);
+  useEffect(() => {
+    markSeen();
+  }, [storiesLen, markSeen]);
 
   const drag = useRef<{ x: number; w: number } | null>(null);
   const onDown = (e: RPointerEvent<HTMLDivElement>) => {
@@ -300,7 +302,10 @@ function Calendar({ now }: { now: number }) {
   const [past, setPast] = useState(false);
   const list = events.filter((e) => e.impact >= calMinImpact && (kind === 'all' || e.kind === kind) && (past || e.time > now - 6 * 3600_000));
   const nowRef = useRef<HTMLDivElement>(null);
-  useEffect(() => nowRef.current?.scrollIntoView({ block: 'center' }), []);
+  useEffect(() => {
+    // Braces matter: newer browsers return a Promise from scrollIntoView, and an effect must not return one.
+    nowRef.current?.scrollIntoView({ block: 'center' });
+  }, []);
 
   const groups: { label: string; items: EconEvent[] }[] = [];
   for (const e of list) {

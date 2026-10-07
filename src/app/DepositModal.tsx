@@ -162,7 +162,9 @@ function CopyField({ label, value, warn, testId }: { label: string; value: strin
 function SimulateDeposit({ asset, network }: { asset: DepositAsset; network: DepositNetwork }) {
   const [amount, setAmount] = useState(asset.symbol === 'USDT' || asset.symbol === 'USDC' ? 1000 : asset.minDeposit * 20);
   const deposits = useWalletStore((s) => s.deposits);
-  useEffect(() => setAmount(asset.symbol === 'USDT' || asset.symbol === 'USDC' ? 1000 : +(asset.minDeposit * 20).toPrecision(3)), [asset.symbol, asset.minDeposit]);
+  useEffect(() => {
+    setAmount(asset.symbol === 'USDT' || asset.symbol === 'USDC' ? 1000 : +(asset.minDeposit * 20).toPrecision(3));
+  }, [asset.symbol, asset.minDeposit]);
   const below = amount < asset.minDeposit;
 
   const run = () => {

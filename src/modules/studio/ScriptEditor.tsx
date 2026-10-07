@@ -19,7 +19,10 @@ export function useScriptPreview(code: string, inputs: Record<string, number>, c
   const ready = candles.length > 0;
 
   useEffect(() => {
-    if (!ready || !code.trim()) return setResult(null);
+    if (!ready || !code.trim()) {
+      setResult(null);
+      return;
+    }
     let live = true;
     const t = setTimeout(() => {
       setRunning(true);

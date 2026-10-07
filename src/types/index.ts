@@ -124,7 +124,7 @@ export interface Drawing {
   text?: string;
 }
 
-export type IndicatorKind = 'sma' | 'ema' | 'bollinger' | 'rsi' | 'macd' | 'volume' | 'vwap' | 'cvd' | 'custom';
+export type IndicatorKind = 'sma' | 'ema' | 'bollinger' | 'rsi' | 'macd' | 'volume' | 'vwap' | 'cvd' | 'custom' | 'script';
 export interface IndicatorInstance {
   id: string;
   kind: IndicatorKind;
@@ -137,6 +137,8 @@ export interface IndicatorInstance {
   signal?: number;
   name?: string; // custom
   formula?: string; // for kind === 'custom'
+  script?: string; // for kind === 'script' — JavaScript run in the QuickJS/WASM sandbox
+  inputs?: Record<string, number>; // script input overrides
 }
 
 export type ChartMode = 'candles' | 'heikin' | 'bars' | 'line' | 'area';

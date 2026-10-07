@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FunctionSquare, Plus } from 'lucide-react';
 import { useChartStore } from '@/stores/useChartStore';
-import { useStudioStore } from '@/stores/useStudioStore';
+import { toChartIndicator, useStudioStore } from '@/stores/useStudioStore';
 import { CATEGORICAL } from '@/stores/useThemeStore';
 import { Segmented } from '@/components/ui/Segmented';
 import { compile } from '@/lib/indicators/formula';
@@ -62,13 +62,14 @@ export function IndicatorMenu() {
                       key={u.id}
                       className="menu-item"
                       onClick={() => {
-                        addIndicator({ kind: 'custom', type: u.type, color: u.color, name: u.name, formula: u.formula });
+                        addIndicator(toChartIndicator(u));
                         setOpen(false);
                       }}
                       data-testid="my-indicator"
                     >
                       <span className="chip" style={{ height: 8, width: 8, padding: 0, background: u.color, border: 0 }} />
                       <span className="grow">{u.name}</span>
+                      {u.lang === 'script' && <span className="label">js</span>}
                       <span className="label">{u.type === 'overlay' ? 'overlay' : 'pane'}</span>
                     </button>
                   ))}

@@ -58,6 +58,42 @@ Market and marketable orders, closes, flattens and TWAP slices pay taker; restin
 - **Execution model (no look-ahead):** signals fill at the next bar's open; the stop is checked before the target within a bar; fees are charged on both sides.
 - **Formula language** additions: comparisons, `and`/`or`/`not`, and `rsi`, `highest`, `lowest`, `prev`, `cross_over`, `cross_under`, `abs`, `min`, `max`.
 
+## Studio scripts (Level 2 indicators)
+
+Power users can write indicators in plain **JavaScript**. In **Studio → My indicators**, switch *Language* to **Script**, or start from one of the examples (Keltner, Supertrend, Z‑score, Stochastic RSI, Volume pressure). A script runs once over the whole candle history and draws with `plot()`. For per-candle logic, use `each((i, prev) => …)`.
+
+```js
+const len  = input('Length', 20, { min: 2, max: 200 });   // editable number
+const mult = input('ATR mult', 2, { step: 0.25 });
+const basis = ta.ema(close, len);
+plot(basis, { title: 'Basis', style: 'dashed' });
+plot(zip((b, a) => b + mult * a, basis, ta.atr(len)), { title: 'Upper' });
+hline(0);  log('bars', n);
+```
+
+The full API is listed under *Script reference* in the editor:
+
+- price arrays: `open/high/low/close/volume/time/hl2/hlc3/ohlc4`
+- `input`, `plot` (line, dashed or histogram), `hline`, `each`, `zip`, `nz`, `log`
+- `ta.*`: sma, ema, rma, wma, stdev, highest, lowest, sum, change, roc, rsi, tr, atr, vwap, crossover, crossunder
+
+**Security model.** No user code is ever evaluated by the page's JavaScript engine. The repo contains no `eval` or `new Function`, and a unit test enforces this.
+
+- **Separate engine.** Scripts run in [QuickJS](https://bellard.org/quickjs/) compiled to **WebAssembly** (`quickjs-emscripten`), inside a dedicated **Web Worker** (`src/lib/script/script.worker.ts`).
+- **Nothing to reach.** The VM has its own heap and no DOM, network, storage, timers or host objects. `fetch`, `XMLHttpRequest`, `window` and similar names are simply undefined there. The worker also removes its own network and storage globals as defence in depth.
+- **Hard limits per run.** Each run gets a fresh runtime with:
+  - a **32 MB memory cap**
+  - a **192 KB stack cap**
+  - a **1 s CPU interrupt**
+  - at most 20k characters of source
+  - at most 8 plots, 8 levels, 12 inputs and 50 log lines
+
+  If the worker itself stops answering, the host **terminates and replaces it** (`sandbox.ts`).
+- **Data only comes out.** The VM receives plain JSON and returns JSON. The host re-validates everything it gets back: plot shape, lengths, numeric values, colours and string lengths.
+- **Scheduling.** On the chart, scripts re-run at most once per second per indicator as live candles stream in. They re-run immediately when the code, the inputs or the symbol change.
+
+Code: `src/lib/script/` holds `engine.ts`, `prelude.ts` (the in-VM API), `templates.ts` and `useScriptRuns.ts`. The editor UI is in `src/modules/studio/ScriptEditor.tsx`. Tests: `engine.test.ts` covers limits, isolation, errors with line numbers and every template, and there is an e2e test.
+
 ## Brand
 
 The Aztex logo (`public/brand/aztex-logo.png`) is rebuilt as vectors in `src/app/Logo.tsx`: the full **wordmark** in the top bar and the pixel-**X** mark for the favicon. Colours sampled from the artwork:

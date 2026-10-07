@@ -2,6 +2,14 @@ import type { Candle, IndicatorInstance } from '@/types';
 import { compile, evaluate } from './formula';
 import { bollinger, ema, macd, rsi, sma, type Series } from './series';
 import { cvd, vwap } from '@/lib/orderflow/orderflow';
+import type { ScriptResult } from '@/lib/script/engine';
+
+/** A finished sandbox run plus the first candle time it was computed on (for re-alignment). */
+export interface ScriptRun {
+  result: ScriptResult;
+  t0: number;
+}
+const SCRIPT_PALETTE = ['#7FA7CF', '#B39CDB', '#D2AE72', '#DDA1BC', '#93A8BF', '#CFD3D8'];
 
 export interface ComputedLine {
   key: string;
@@ -24,6 +32,8 @@ export interface ComputedIndicator {
   /** Fixed y domain for bounded oscillators. */
   domain?: [number, number];
   error?: string;
+  /** Script result not available yet (first run in flight). */
+  pending?: boolean;
 }
 
 export function indicatorLabel(i: IndicatorInstance): string {
@@ -46,6 +56,8 @@ export function indicatorLabel(i: IndicatorInstance): string {
       return 'CVD';
     case 'custom':
       return i.name || 'Custom';
+    case 'script':
+      return i.name || 'Script';
   }
 }
 
@@ -53,7 +65,7 @@ export function indicatorLabel(i: IndicatorInstance): string {
  * Indicators are always computed on the FULL real-OHLC history (never the visible slice, never
  * Heikin-Ashi) so values stay accurate right up to the left edge of whatever window is shown.
  */
-export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors: { bull: string; bear: string }, realDelta: Record<number, number> = {}): ComputedIndicator {
+export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors: { bull: string; bear: string }, realDelta: Record<number, number> = {}, scriptRun?: ScriptRun): ComputedIndicator {
   const close = candles.map((c) => c.close);
   switch (i.kind) {
     case 'sma':
@@ -101,5 +113,29 @@ export function computeIndicator(i: IndicatorInstance, candles: Candle[], colors
       if (!r.ok) return { instance: i, lines: [], error: r.error };
       return { instance: i, lines: [{ key: 'custom', values: evaluate(r.ast, candles), color: i.color }] };
     }
+    case 'script':
+      return fromScript(i, candles, colors, scriptRun);
   }
+}
+
+/** Map a sandbox result onto the current candle array (it may have scrolled or grown since the run). */
+function fromScript(i: IndicatorInstance, candles: Candle[], colors: { bull: string; bear: string }, run?: ScriptRun): ComputedIndicator {
+  if (!run) return { instance: i, lines: [], pending: true };
+  const r = run.result;
+  if (!r.ok) return { instance: i, lines: [], error: r.line ? `${r.error} (line ${r.line})` : r.error };
+  const off = candles.findIndex((c) => c.time === run.t0);
+  if (off < 0 && candles.length && candles[0].time !== run.t0) return { instance: i, lines: [], pending: true };
+  const align = (v: (number | null)[]): Series => candles.map((_, k) => v[k - off] ?? null);
+  const lines: ComputedLine[] = [];
+  let bars: ComputedIndicator['bars'];
+  r.plots.forEach((p, k) => {
+    const color = p.color ?? (k === 0 ? i.color : SCRIPT_PALETTE[(k - 1) % SCRIPT_PALETTE.length]);
+    const values = align(p.values);
+    if (p.style === 'histogram' && i.type === 'oscillator' && !bars) {
+      bars = { values, colors: values.map((v) => (v == null ? null : p.color ? p.color : v >= 0 ? colors.bull : colors.bear)) };
+    } else {
+      lines.push({ key: `p${k}`, values, color, dashed: p.style === 'dashed', opacity: p.style === 'dashed' ? 0.85 : 1 });
+    }
+  });
+  return { instance: i, lines, bars, guides: r.hlines.length ? r.hlines.map((h) => h.value) : undefined };
 }

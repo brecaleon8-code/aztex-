@@ -352,4 +352,35 @@ test.describe('Account features', () => {
     await expect(page.getByTestId('indicator-chip').filter({ hasText: 'Range %' })).toBeVisible();
     await expect(page.getByTestId('strategy-marker').first()).toBeAttached({ timeout: 8000 });
   });
+  test('Studio scripts: sandboxed JavaScript indicator — preview, limits, errors, and on the chart', async ({ page }) => {
+    await page.goto('/studio');
+    await page.getByTestId('new-indicator').click();
+    await page.getByTestId('ind-name').fill('Z test');
+    await page.getByRole('group', { name: 'Indicator language' }).getByRole('button', { name: 'Script' }).click();
+    await page.getByTestId('script-template').selectOption({ label: 'Z-score' });
+    await expect(page.getByTestId('script-ok')).toContainText('1 plot', { timeout: 10000 });
+    await expect(page.getByTestId('script-preview')).toBeVisible();
+    await expect(page.getByTestId('script-inputs')).toContainText('Length');
+
+    // No network inside the sandbox.
+    await page.getByTestId('ind-script').fill('plot(close)\nfetch("https://example.com")');
+    await expect(page.getByTestId('script-error')).toContainText('fetch', { timeout: 10000 });
+    await expect(page.getByTestId('script-error')).toContainText('line 2');
+    await expect(page.getByTestId('ind-save')).toBeDisabled();
+
+    // Infinite loops are stopped; the page stays responsive.
+    await page.getByTestId('ind-script').fill('while (true) {}');
+    await expect(page.getByTestId('script-error')).toContainText('Time limit', { timeout: 10000 });
+    await expect(page.getByTestId('ind-name')).toBeEditable();
+
+    await page.getByTestId('script-template').selectOption({ label: 'Z-score' });
+    await expect(page.getByTestId('script-ok')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('ind-save').click();
+    await expect(page.getByTestId('indicator-item').filter({ hasText: 'Z test' })).toBeVisible();
+    await page.getByTestId('ind-add-chart').click();
+
+    await page.goto('/terminal');
+    await expect(page.getByTestId('indicator-chip').filter({ hasText: 'Z test' })).toBeVisible();
+    await expect(page.getByTestId('osc-value').last()).toHaveText(/^-?\d+\.\d{2}$/, { timeout: 10000 });
+  });
 });

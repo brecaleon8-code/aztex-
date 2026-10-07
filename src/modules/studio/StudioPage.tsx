@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
-import { Plus, Trash2, LineChart, Play, Save, Eye, EyeOff, Copy } from 'lucide-react';
+import { Plus, Trash2, LineChart, Play, Save, Eye, EyeOff, Copy, FileCode2 } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { Segmented } from '@/components/ui/Segmented';
 import { NumericField } from '@/components/ui/NumericField';
-import { useStudioStore, type UserIndicator } from '@/stores/useStudioStore';
+import { toChartIndicator, useStudioStore, type UserIndicator } from '@/stores/useStudioStore';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useFeeStore } from '@/stores/useFeeStore';
@@ -18,6 +18,8 @@ import { ASSET_UNIVERSE } from '@/lib/mock/assets';
 import { fmtPct, fmtPrice, fmtTime } from '@/lib/format';
 import type { Side, Timeframe } from '@/types';
 import { FormulaHelp, FormulaInput } from './FormulaInput';
+import { CodeEditor, ScriptConsole, ScriptHelp, ScriptInputs, ScriptPreview, ScriptStatus, useScriptPreview } from './ScriptEditor';
+import { BLANK_SCRIPT, SCRIPT_TEMPLATES } from '@/lib/script/templates';
 import './studio.css';
 
 const TIMEFRAMES: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d'];
@@ -41,18 +43,27 @@ export function StudioPage() {
 
 /* ── Indicators ─────────────────────────────────────────────────────────────────────────── */
 
-const blankIndicator = (): Omit<UserIndicator, 'id'> & { id?: string } => ({ name: '', formula: '', type: 'overlay', color: CATEGORICAL[1] });
+type IndDraft = Omit<UserIndicator, 'id'> & { id?: string };
+const blankIndicator = (): IndDraft => ({ name: '', formula: '', type: 'overlay', color: CATEGORICAL[1] });
 
 function IndicatorLibrary() {
   const { indicators, saveIndicator, deleteIndicator } = useStudioStore();
-  const [draft, setDraft] = useState<Omit<UserIndicator, 'id'> & { id?: string }>(indicators[0] ?? blankIndicator());
+  const [draft, setDraft] = useState<IndDraft>(indicators[0] ?? blankIndicator());
   const candles = useMarketStore((s) => s.candles);
-  const r = draft.formula.trim() ? compile(draft.formula) : null;
+  const symbol = useMarketStore((s) => s.selected);
+  const tf = useMarketStore((s) => s.timeframe);
+  const isScript = draft.lang === 'script';
+  const r = !isScript && draft.formula.trim() ? compile(draft.formula) : null;
   const preview = useMemo(() => (r?.ok ? evaluate(r.ast, candles).slice(-160) : []), [r, candles]);
-  const valid = !!draft.name.trim() && !!r?.ok;
+  const script = useScriptPreview(isScript ? (draft.script ?? '') : '', draft.inputs ?? {}, candles, `${symbol}:${tf}`);
+  const valid = !!draft.name.trim() && (isScript ? !!script.result?.ok : !!r?.ok);
 
-  const addToChart = (i: Omit<UserIndicator, 'id'>) => {
-    useChartStore.getState().addIndicator({ kind: 'custom', type: i.type, color: i.color, name: i.name, formula: i.formula });
+  const setLang = (lang: 'formula' | 'script') => setDraft((d) => ({ ...d, lang, script: lang === 'script' && !d.script?.trim() ? BLANK_SCRIPT : d.script }));
+  const applyTemplate = (t: (typeof SCRIPT_TEMPLATES)[number]) =>
+    setDraft((d) => ({ ...d, lang: 'script', script: t.code, inputs: {}, type: t.type, name: d.name.trim() ? d.name : t.name }));
+
+  const addToChart = (i: IndDraft) => {
+    useChartStore.getState().addIndicator(toChartIndicator(i));
     toast({ kind: 'success', title: 'Added to chart', detail: i.name });
   };
 
@@ -64,20 +75,63 @@ function IndicatorLibrary() {
             <span className="swatch-dot" style={{ background: i.color }} />
             <span className="grow">
               <span className="lib-name">{i.name}</span>
-              <span className="lib-formula mono">{i.formula}</span>
+              <span className="lib-formula mono">{i.lang === 'script' ? scriptSummary(i.script ?? '') : i.formula}</span>
             </span>
+            {i.lang === 'script' && <span className="lang-tag mono">JS</span>}
             <span className="label">{i.type === 'overlay' ? 'overlay' : 'pane'}</span>
           </div>
         ))}
         {indicators.length === 0 && <div className="empty">No saved indicators.</div>}
       </div>
 
-      <div className="editor">
-        <label className="field">
-          <span className="label">Name</span>
-          <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Trend strength" data-testid="ind-name" />
-        </label>
-        <FormulaInput label="Formula" value={draft.formula} onChange={(formula) => setDraft({ ...draft, formula })} placeholder="ema(close, 9) - ema(close, 21)" testId="ind-formula" />
+      <div className={`editor ${isScript ? 'script-mode' : ''}`}>
+        <div className="row">
+          <label className="field grow">
+            <span className="label">Name</span>
+            <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Trend strength" data-testid="ind-name" />
+          </label>
+          <div className="field">
+            <span className="label">Language</span>
+            <Segmented<'formula' | 'script'>
+              value={isScript ? 'script' : 'formula'}
+              onChange={setLang}
+              ariaLabel="Indicator language"
+              options={[
+                { value: 'formula', label: 'Formula' },
+                { value: 'script', label: 'Script' },
+              ]}
+            />
+          </div>
+        </div>
+        {isScript ? (
+          <>
+            <div className="row script-head">
+              <span className="label">
+                <FileCode2 size={11} /> JavaScript
+              </span>
+              <span className="spacer" />
+              <select
+                className="input tpl-select"
+                value=""
+                onChange={(e) => e.target.value !== '' && applyTemplate(SCRIPT_TEMPLATES[+e.target.value])}
+                aria-label="Script template"
+                data-testid="script-template"
+              >
+                <option value="">Examples…</option>
+                {SCRIPT_TEMPLATES.map((t, k) => (
+                  <option key={t.name} value={k}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <CodeEditor value={draft.script ?? ''} onChange={(code) => setDraft((d) => ({ ...d, script: code }))} errorLine={script.result && !script.result.ok ? script.result.line : undefined} testId="ind-script" />
+            <ScriptStatus result={script.result} running={script.running} onRun={script.rerun} />
+            <ScriptInputs result={script.result} values={draft.inputs ?? {}} onChange={(inputs) => setDraft((d) => ({ ...d, inputs }))} />
+          </>
+        ) : (
+          <FormulaInput label="Formula" value={draft.formula} onChange={(formula) => setDraft({ ...draft, formula })} placeholder="ema(close, 9) - ema(close, 21)" testId="ind-formula" />
+        )}
         <div className="row">
           <Segmented
             value={draft.type}
@@ -95,7 +149,8 @@ function IndicatorLibrary() {
             ))}
           </div>
         </div>
-        <FormulaPreview values={preview} color={draft.color} />
+        {isScript ? <ScriptPreview result={script.result} color={draft.color} /> : <FormulaPreview values={preview} color={draft.color} />}
+        {isScript && <ScriptConsole result={script.result} />}
         <div className="row">
           <button
             className="btn primary"
@@ -125,10 +180,16 @@ function IndicatorLibrary() {
             </button>
           )}
         </div>
-        <FormulaHelp />
+        {isScript ? <ScriptHelp /> : <FormulaHelp />}
       </div>
     </Panel>
   );
+}
+
+/** First meaningful line of a script, for the library list. */
+function scriptSummary(code: string): string {
+  const c = code.split('\n').find((l) => l.trim().startsWith('//'));
+  return c ? c.replace(/^\s*\/\/\s*/, '') : `${code.split('\n').length} lines of JavaScript`;
 }
 
 function FormulaPreview({ values, color }: { values: (number | null)[]; color: string }) {

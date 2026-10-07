@@ -15,6 +15,7 @@ import { useChartLevels } from './useChartLevels';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { TIMEFRAME_MS } from '@/lib/mock/candles';
 import { useStudioStore } from '@/stores/useStudioStore';
+import { useScriptRuns } from '@/lib/script/useScriptRuns';
 import { useFeeStore } from '@/stores/useFeeStore';
 import { FEE_TIERS } from '@/lib/account/fees';
 import { backtest, type BtTrade } from '@/lib/strategy/backtest';
@@ -88,7 +89,8 @@ export function PriceChart() {
   const display = useMemo(() => (mode === 'heikin' ? heikinAshi(candles) : candles), [candles, mode]);
   // Indicators: computed once on full real-OHLC history, then windowed at render.
   const deltaByTime = useMarketStore((s) => s.deltaByTime);
-  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, candles, colors, deltaByTime)), [indicators, candles, colors, deltaByTime]);
+  const scriptRuns = useScriptRuns(indicators, candles);
+  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, candles, colors, deltaByTime, scriptRuns[i.id])), [indicators, candles, colors, deltaByTime, scriptRuns]);
   const overlays = computed.filter((c) => c.instance.type === 'overlay');
   const oscillators = computed.filter((c) => c.instance.type === 'oscillator');
 
@@ -108,7 +110,7 @@ export function PriceChart() {
       if (c.high > hi) hi = c.high;
     }
     const ov = extent(
-      overlays.filter((o) => o.instance.kind !== 'custom' && o.instance.kind !== 'vwap').flatMap((o) => o.lines.map((l) => l.values)),
+      overlays.filter((o) => o.instance.kind !== 'custom' && o.instance.kind !== 'script' && o.instance.kind !== 'vwap').flatMap((o) => o.lines.map((l) => l.values)),
       start,
       end,
     );
@@ -255,6 +257,17 @@ export function PriceChart() {
     <div className="chart no-select" ref={wrapRef}>
       <Readout c={candles[readIdx]} prev={candles[readIdx - 1]} dec={dec} hovering={hoverIdx != null} />
       <div className="chart-main" style={{ height }}>
+        {overlays.some((o) => o.error) && (
+          <div className="chart-ind-errors" data-testid="overlay-error">
+            {overlays
+              .filter((o) => o.error)
+              .map((o) => (
+                <span key={o.instance.id}>
+                  <b>{indicatorLabel(o.instance)}</b> {o.error}
+                </span>
+              ))}
+          </div>
+        )}
         <svg
           ref={mainRef}
           width={width}
@@ -700,7 +713,7 @@ function OscillatorPane({ c, width, plotW, xs, start, end, hoverIdx }: { c: Comp
       <div className="osc-label">
         <span className="swatch" style={{ background: c.instance.color }} />
         <span>{indicatorLabel(c.instance)}</span>
-        {c.error ? <span className="error-text">{c.error}</span> : <span className="mono">{val == null ? '—' : c.instance.kind === 'volume' ? fmtCompact(val) : val.toFixed(2)}</span>}
+        {c.error ? <span className="error-text" data-testid="osc-error">{c.error}</span> : c.pending ? <span className="faint">running…</span> : <span className="mono" data-testid="osc-value">{val == null ? '—' : c.instance.kind === 'volume' ? fmtCompact(val) : val.toFixed(2)}</span>}
       </div>
     </div>
   );

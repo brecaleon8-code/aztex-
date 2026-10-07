@@ -275,3 +275,81 @@ test('pro polish: command palette, sparklines, risk panel, countdown, resting-or
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('ws-flow')).toHaveAttribute('aria-selected', 'true');
 });
+
+test.describe('Account features', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/terminal');
+    await page.evaluate(() => localStorage.clear());
+  });
+
+  test('Add crypto: pick coin + network, memo shown, simulated deposit credits holdings', async ({ page }) => {
+    await page.goto('/terminal');
+    await page.getByTestId('open-deposit').click();
+    const modal = page.getByTestId('deposit-modal');
+    await expect(modal).toContainText('Demo environment');
+    await page.getByTestId('dep-asset-USDT').click();
+    // Multi-network asset: must choose a network before an address is shown.
+    await expect(page.getByTestId('dep-address')).toHaveCount(0);
+    await page.getByTestId('dep-net-tron').click();
+    await expect(page.getByTestId('dep-address')).toHaveText(/^T[1-9A-HJ-NP-Za-km-z]{33}$/);
+    await expect(modal.locator('.dep-qr svg')).toBeVisible();
+    // Memo-based network shows a required tag.
+    await page.getByTestId('dep-asset-XRP').click();
+    await expect(page.getByTestId('dep-memo')).toHaveText(/^\d{9}$/);
+    await page.getByTestId('dep-simulate').click();
+    await expect(page.getByTestId('dep-history-row').first()).toContainText('Credited', { timeout: 6000 });
+    await page.keyboard.press('Escape');
+    await page.getByRole('link', { name: 'Account' }).click();
+    await expect(page.getByTestId('holding-XRP')).toBeVisible();
+  });
+
+  test('Partner codes: issue → redeem → lower fees; typos and reuse rejected; revoke resets tier', async ({ page }) => {
+    await page.goto('/account');
+    await expect(page.getByTestId('current-tier')).toHaveText('Standard');
+    await page.getByTestId('issue-partner').fill('Meridian Liquidity');
+    await page.getByTestId('issue-code').click();
+    const code = (await page.getByTestId('fresh-code').locator('.mono').innerText()).trim();
+    expect(code).toMatch(/^LP-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+
+    // A one-character typo fails the checksum before any lookup.
+    const typo = code.slice(0, -1) + (code.endsWith('A') ? 'B' : 'A');
+    await page.getByTestId('partner-code-input').fill(typo);
+    await expect(page.getByTestId('redeem-code')).toBeDisabled();
+
+    await page.getByTestId('partner-code-input').fill(code.toLowerCase());
+    await page.getByTestId('redeem-code').click();
+    await expect(page.getByTestId('current-tier')).toHaveText('Liquidity Provider');
+    await expect(page.getByTestId('tier-chip')).toContainText('Liquidity Provider');
+
+    // Ticket shows the LP taker fee.
+    await page.getByRole('link', { name: 'Terminal' }).click();
+    await expect(page.getByTestId('ticket-fee')).toBeVisible();
+    await expect(page.locator('.ticket-summary')).toContainText('Liquidity Provider taker');
+
+    // Revoking the applied code drops the account back to Standard.
+    await page.getByRole('link', { name: 'Account' }).click();
+    await page.getByTestId('registry-row').filter({ hasText: code }).getByRole('button', { name: 'Revoke' }).click();
+    await expect(page.getByTestId('current-tier')).toHaveText('Standard');
+  });
+
+  test('Studio: save a custom indicator, add it to the chart, backtest a strategy and plot its signals', async ({ page }) => {
+    await page.goto('/studio');
+    await page.getByTestId('new-indicator').click();
+    await page.getByTestId('ind-name').fill('Range %');
+    await page.getByTestId('ind-formula').fill('(high - low) / close * 100 >');
+    await expect(page.getByTestId('ind-formula-error')).toBeVisible();
+    await expect(page.getByTestId('ind-save')).toBeDisabled();
+    await page.getByTestId('ind-formula').fill('(high - low) / close * 100');
+    await page.getByTestId('ind-save').click();
+    await expect(page.getByTestId('indicator-item').filter({ hasText: 'Range %' })).toBeVisible();
+    await page.getByTestId('ind-add-chart').click();
+
+    await page.getByTestId('strategy-template').selectOption({ label: 'Donchian breakout' });
+    await expect(page.getByTestId('backtest-results')).toContainText('Net return');
+    await page.getByTestId('strat-chart').click();
+    await expect(page).toHaveURL(/\/terminal/);
+    await expect(page.getByTestId('chart-strategy-chip')).toContainText('Donchian breakout');
+    await expect(page.getByTestId('indicator-chip').filter({ hasText: 'Range %' })).toBeVisible();
+    await expect(page.getByTestId('strategy-marker').first()).toBeAttached({ timeout: 8000 });
+  });
+});

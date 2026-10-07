@@ -25,6 +25,39 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
+## Fees, partner codes, deposits & Studio
+
+**Fees.** Every fill is charged per tier (`lib/account/fees.ts`):
+
+| Tier | Maker | Taker |
+| --- | --- | --- |
+| Standard | 0.020% | 0.060% |
+| Partner | 0.010% | 0.040% |
+| Liquidity Provider | −0.005% (rebate) | 0.030% |
+
+Market and marketable orders, closes, flattens and TWAP slices pay taker; resting limit orders that later fill pay maker. The ticket shows the estimated fee, toasts show the fee or rebate charged, and the Account page tracks fees paid and rebates earned.
+
+**Partner / LP codes** (`lib/account/partnerCodes.ts`, Account page).
+- **Format:** `LP-XXXX-XXXX` or `PT-XXXX-XXXX`. An unambiguous alphabet plus a check character means typos are rejected before any lookup.
+- **Rules:** each account can redeem a code once, and codes support max uses, expiry and revocation. Revoking the code an account is on returns it to Standard.
+- **Issuing:** the "Partner codes" console issues codes.
+- **Demo codes:** two codes are pre-seeded so the flow can be tried immediately.
+- **⚠ Production:** issuance and redemption must move server-side (signed, permissioned, rate-limited, audited). In this build they run client-side against a mock registry for demonstration only — a client must never be able to grant itself a tier.
+
+**Add crypto** (`app/DepositModal.tsx`, `lib/account/deposit.ts`). The flow goes coin → network → address:
+- **Shown for each network:** a QR code, a required memo or destination tag where the network needs one (XRP, ATOM), the minimum deposit, confirmations needed and arrival time, and wrong-network warnings.
+- **Supported coins:** USDT and USDC on several networks, plus every listed coin.
+- **Crediting:** arrived USDT goes to the trading balance; other coins go to holdings, valued live and convertible to USDT on the Account page.
+- **⚠ Addresses are simulated** (derived, not keys) and labelled as such in the UI. Production replaces `depositAddress()` with the custody provider's per-account address API.
+
+**Studio** (`modules/studio`).
+- **Indicator library:** save named formulas with a live preview, then add them to the chart (they also appear under "My indicators" in the chart's indicator menu).
+- **Strategy builder:** entry and exit rules, direction, TP/SL %, and starter templates.
+- **Backtests:** run instantly on the selected symbol and timeframe and report net return vs buy & hold, win rate, profit factor, max drawdown, exposure, an equity curve and a trade list.
+- **Show on chart:** plots entry and exit markers on the Terminal chart.
+- **Execution model (no look-ahead):** signals fill at the next bar's open; the stop is checked before the target within a bar; fees are charged on both sides.
+- **Formula language** additions: comparisons, `and`/`or`/`not`, and `rsi`, `highest`, `lowest`, `prev`, `cross_over`, `cross_under`, `abs`, `min`, `max`.
+
 ## Brand
 
 The Aztex logo (`public/brand/aztex-logo.png`) is rebuilt as vectors in `src/app/Logo.tsx`: the full **wordmark** in the top bar and the pixel-**X** mark for the favicon. Colours sampled from the artwork:
@@ -120,7 +153,7 @@ src/
 
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
-Keyboard: **F1–F5** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+Keyboard: **F1–F7** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
 ## Charting decision
 

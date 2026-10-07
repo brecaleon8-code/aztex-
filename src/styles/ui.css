@@ -469,3 +469,10 @@ button.chip:hover {
 .app[data-platform='terminal'] .panel-code {
   display: inline-block;
 }
+.menu-group {
+  padding: 6px 8px 2px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}

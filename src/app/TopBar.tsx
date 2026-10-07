@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Sun, Moon, Search } from 'lucide-react';
+import { Sun, Moon, Search, Plus } from 'lucide-react';
+import { useHoldingsValue } from '@/stores/useHoldingsValue';
+import { useFeeStore } from '@/stores/useFeeStore';
+import { useUiStore } from '@/stores/useUiStore';
+import { FEE_TIERS, fmtRate } from '@/lib/account/fees';
 import { Wordmark } from './Logo';
 import { MOD_KEY } from './CommandPalette';
 import { useTickFlash } from './useTickFlash';
@@ -15,9 +19,11 @@ import { fmtSigned, fmtTime, fmtUsd } from '@/lib/format';
 export const NAV = [
   { to: '/terminal', key: 'F1', label: 'Terminal' },
   { to: '/discovery', key: 'F2', label: 'Data & Discovery' },
-  { to: '/community', key: 'F3', label: 'Community' },
-  { to: '/otc', key: 'F4', label: 'OTC Desk' },
-  { to: '/appearance', key: 'F5', label: 'Appearance' },
+  { to: '/studio', key: 'F3', label: 'Studio' },
+  { to: '/community', key: 'F4', label: 'Community' },
+  { to: '/otc', key: 'F5', label: 'OTC Desk' },
+  { to: '/account', key: 'F6', label: 'Account' },
+  { to: '/appearance', key: 'F7', label: 'Appearance' },
 ];
 
 function sessionLabel(h: number): string {
@@ -84,22 +90,23 @@ export function AccountStrip() {
   const balance = useWalletStore((s) => s.balance);
   const positions = usePositionStore((s) => s.positions);
   const realized = usePositionStore((s) => s.realized);
-  const [mode, setMode] = useState<null | 'deposit' | 'withdraw'>(null);
+  const [mode, setMode] = useState<null | 'withdraw'>(null);
   const [amount, setAmount] = useState('');
+  const holdingsValue = useHoldingsValue();
+  const tier = useFeeStore((s) => s.tier);
   const upnl = totalUnrealized(positions);
   const committed = committedNotional(positions);
-  const equity = balance + committed + upnl;
+  const equity = balance + committed + upnl + holdingsValue;
   const flash = useTickFlash(Math.round(equity * 100));
 
   const submit = () => {
     const n = Number(amount);
     const w = useWalletStore.getState();
-    const ok = mode === 'deposit' ? w.deposit(n) : w.withdraw(n);
-    if (ok) {
-      toast({ kind: 'success', title: mode === 'deposit' ? 'Deposit credited' : 'Withdrawal sent', detail: `${fmtUsd(n)} USDT` });
+    if (w.withdraw(n)) {
+      toast({ kind: 'success', title: 'Withdrawal sent', detail: `${fmtUsd(n)} USDT` });
       setMode(null);
       setAmount('');
-    } else toast({ kind: 'error', title: mode === 'deposit' ? 'Invalid amount' : 'Insufficient balance' });
+    } else toast({ kind: 'error', title: 'Insufficient balance' });
   };
 
   return (
@@ -132,13 +139,18 @@ export function AccountStrip() {
             <input autoFocus inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} aria-label={`${mode} amount`} />
             <span className="suffix">USDT</span>
           </span>
-          <button className="btn sm primary" onClick={submit}>{mode === 'deposit' ? 'Deposit' : 'Withdraw'}</button>
+          <button className="btn sm primary" onClick={submit}>Withdraw</button>
           <button className="btn sm ghost" onClick={() => setMode(null)}>Cancel</button>
         </span>
       ) : (
         <span className="row" style={{ gap: 4 }}>
-          <button className="btn sm" onClick={() => setMode('deposit')}>Deposit</button>
+          <button className="btn sm primary" onClick={() => useUiStore.getState().openDeposit()} data-testid="open-deposit">
+            <Plus size={12} /> Add crypto
+          </button>
           <button className="btn sm ghost" onClick={() => setMode('withdraw')}>Withdraw</button>
+          <NavLink to="/account" className={`tier-chip ${tier}`} title="Fee tier — redeem a partner code on the Account page" data-testid="tier-chip">
+            {FEE_TIERS[tier].label} · {fmtRate(FEE_TIERS[tier].taker)}
+          </NavLink>
         </span>
       )}
     </div>

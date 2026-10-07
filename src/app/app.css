@@ -193,3 +193,24 @@
     display: none;
   }
 }
+.tier-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tier-chip:hover {
+  color: var(--text);
+}
+.tier-chip.partner,
+.tier-chip.lp {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: var(--accent-soft);
+}

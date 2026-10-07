@@ -3,7 +3,9 @@
  * price; a real build routes these through a venue order API and reflects fills from its stream.
  */
 import type { AlgoOrder, Position, Side, WorkingOrder } from '@/types';
-import { fmtPrice, fmtQty, fmtSigned, uid } from '@/lib/format';
+import { fmtPrice, fmtQty, fmtSigned, fmtUsd, uid } from '@/lib/format';
+import { feeFor, type Liquidity } from '@/lib/account/fees';
+import { useFeeStore } from './useFeeStore';
 import { unrealizedPnl } from '@/lib/trading/pnl';
 import { useMarketStore } from './useMarketStore';
 import { usePositionStore } from './usePositionStore';
@@ -22,14 +24,24 @@ export interface OrderRequest {
   sl: number;
 }
 
-export type OrderResult = { ok: true; id: string } | { ok: false; error: string };
+export type OrderResult = { ok: true; id: string; fee?: number } | { ok: false; error: string };
 
 function sideWord(side: Side) {
   return side === 'Long' ? 'Buy' : 'Sell';
 }
 
-function openPosition(req: Omit<OrderRequest, 'limitPrice'>, entry: number): OrderResult {
-  if (!useWalletStore.getState().reserve(entry * req.size)) return { ok: false, error: 'Insufficient balance' };
+/** " · fee 0.60" / " · rebate 0.12" for toasts. */
+function feeNote(fee: number | undefined): string {
+  if (!fee) return '';
+  return fee > 0 ? ` · fee ${fmtUsd(fee, 2)}` : ` · rebate ${fmtUsd(-fee, 2)}`;
+}
+
+function openPosition(req: Omit<OrderRequest, 'limitPrice'>, entry: number, liq: Liquidity = 'taker'): OrderResult {
+  const notional = entry * req.size;
+  const fee = feeFor(notional, useFeeStore.getState().tier, liq);
+  if (notional + Math.max(0, fee) > useWalletStore.getState().balance + 1e-9) return { ok: false, error: 'Insufficient balance (incl. fees)' };
+  if (!useWalletStore.getState().reserve(notional)) return { ok: false, error: 'Insufficient balance' };
+  const charged = useFeeStore.getState().charge(notional, liq);
   const p: Position = {
     id: uid('pos_'),
     symbol: req.symbol,
@@ -46,7 +58,7 @@ function openPosition(req: Omit<OrderRequest, 'limitPrice'>, entry: number): Ord
     openedAt: Date.now(),
   };
   usePositionStore.getState().add(p);
-  return { ok: true, id: p.id };
+  return { ok: true, id: p.id, fee: charged };
 }
 
 export function placeOrder(req: OrderRequest): OrderResult {
@@ -57,7 +69,7 @@ export function placeOrder(req: OrderRequest): OrderResult {
 
   if (req.orderType === 'market') {
     const r = openPosition(req, fillPx);
-    if (r.ok) toast({ kind: 'success', title: `${sideWord(req.side)} market order placed`, detail: `${fmtQty(req.size)} ${req.symbol} @ ${fmtPrice(fillPx)}` });
+    if (r.ok) toast({ kind: 'success', title: `${sideWord(req.side)} market order placed`, detail: `${fmtQty(req.size)} ${req.symbol} @ ${fmtPrice(fillPx)}${feeNote(r.fee)}` });
     else toast({ kind: 'error', title: 'Order rejected', detail: r.error });
     return r;
   }
@@ -68,11 +80,11 @@ export function placeOrder(req: OrderRequest): OrderResult {
   const marketable = req.side === 'Long' ? lp >= asset.ask : lp <= asset.bid;
   if (marketable) {
     const r = openPosition(req, req.side === 'Long' ? Math.min(lp, asset.ask) : Math.max(lp, asset.bid));
-    if (r.ok) toast({ kind: 'success', title: `${sideWord(req.side)} limit order filled`, detail: `${fmtQty(req.size)} ${req.symbol} @ ${fmtPrice(lp)}` });
+    if (r.ok) toast({ kind: 'success', title: `${sideWord(req.side)} limit order filled`, detail: `${fmtQty(req.size)} ${req.symbol} @ ${fmtPrice(lp)}${feeNote(r.fee)}` });
     else toast({ kind: 'error', title: 'Order rejected', detail: r.error });
     return r;
   }
-  if (lp * req.size > useWalletStore.getState().balance + 1e-9) {
+  if (lp * req.size + Math.max(0, feeFor(lp * req.size, useFeeStore.getState().tier, 'maker')) > useWalletStore.getState().balance + 1e-9) {
     toast({ kind: 'error', title: 'Order rejected', detail: 'Insufficient balance' });
     return { ok: false, error: 'Insufficient balance' };
   }
@@ -87,9 +99,11 @@ export function cancelWorkingOrder(id: string) {
   if (o) toast({ kind: 'info', title: 'Order cancelled', detail: `${sideWord(o.side)} ${fmtQty(o.size)} ${o.symbol} @ ${fmtPrice(o.limitPrice)}` });
 }
 
+/** Return notional + P/L to the wallet and charge the taker fee on the exit. */
 function settle(p: Position, price: number): number {
   const pnl = unrealizedPnl(p.side, p.entry, price, p.size);
   useWalletStore.getState().settle(p.entry * p.size + pnl);
+  useFeeStore.getState().charge(price * p.size, 'taker');
   usePositionStore.getState().addRealized(pnl);
   return pnl;
 }
@@ -107,7 +121,7 @@ export function closePosition(id: string): Promise<void> {
         const asset = useMarketStore.getState().assets[live.symbol];
         const px = asset ? (live.side === 'Long' ? asset.bid : asset.ask) : live.current;
         const pnl = settle(live, px);
-        toast({ kind: pnl >= 0 ? 'success' : 'info', title: `Closed ${live.side.toLowerCase()} ${live.symbol}`, detail: `${fmtQty(live.size)} @ ${fmtPrice(px)} · P/L ${fmtSigned(pnl)} USDT` });
+        toast({ kind: pnl >= 0 ? 'success' : 'info', title: `Closed ${live.side.toLowerCase()} ${live.symbol}`, detail: `${fmtQty(live.size)} @ ${fmtPrice(px)} · P/L ${fmtSigned(pnl)} USDT${feeNote(feeFor(px * live.size, useFeeStore.getState().tier, 'taker'))}` });
       }
       resolve();
     }, CLOSE_ANIM_MS),
@@ -145,8 +159,9 @@ export function onPrices() {
     if (!a) continue;
     if (o.side === 'Long' ? a.ask <= o.limitPrice : a.bid >= o.limitPrice) {
       ps.removeWorking(o.id);
-      const r = openPosition({ symbol: o.symbol, side: o.side, orderType: 'limit', size: o.size, tp: o.tp, sl: o.sl }, o.limitPrice);
-      toast(r.ok ? { kind: 'success', title: `Limit order filled`, detail: `${sideWord(o.side)} ${fmtQty(o.size)} ${o.symbol} @ ${fmtPrice(o.limitPrice)}` } : { kind: 'error', title: 'Limit fill rejected', detail: r.error });
+      // A resting order that gets filled added liquidity: maker rate (a rebate for LPs).
+      const r = openPosition({ symbol: o.symbol, side: o.side, orderType: 'limit', size: o.size, tp: o.tp, sl: o.sl }, o.limitPrice, 'maker');
+      toast(r.ok ? { kind: 'success', title: `Limit order filled`, detail: `${sideWord(o.side)} ${fmtQty(o.size)} ${o.symbol} @ ${fmtPrice(o.limitPrice)}${feeNote(r.fee)}` } : { kind: 'error', title: 'Limit fill rejected', detail: r.error });
     }
   }
   const { tp, sl } = usePositionStore.getState().markToMarket(prices);
@@ -172,6 +187,7 @@ export interface TwapRequest {
 function increasePosition(id: string, add: number, px: number): boolean {
   const p = usePositionStore.getState().positions.find((x) => x.id === id);
   if (!p || !useWalletStore.getState().reserve(px * add)) return false;
+  useFeeStore.getState().charge(px * add, 'taker');
   const size = p.size + add;
   usePositionStore.getState().patch(id, { size, entry: (p.entry * p.size + px * add) / size });
   return true;

@@ -8,6 +8,8 @@ import { flattenAll, placeOrder, startTwap } from '@/stores/trading';
 import { fmtPct, fmtPrice, fmtQty, fmtUsd, priceDecimals } from '@/lib/format';
 import { pctFromEntry } from '@/lib/trading/pnl';
 import { riskReward, type RiskReward } from '@/lib/trading/risk';
+import { FEE_TIERS, feeFor, type Liquidity } from '@/lib/account/fees';
+import { useFeeStore } from '@/stores/useFeeStore';
 import type { OrderType, Side } from '@/types';
 import type { SizingMode } from '@/lib/trading/pnl';
 import { useTicket } from './useTicket';
@@ -26,6 +28,11 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
 
   const dec = priceDecimals(t.entry);
   const twap = t.orderType === 'market' && t.exec === 'twap';
+  const tier = useFeeStore((s) => s.tier);
+  // Market / marketable limit take liquidity; a limit that rests adds it.
+  const marketable = t.orderType === 'limit' && (t.side === 'Long' ? t.limitPx >= t.asset.ask : t.limitPx <= t.asset.bid);
+  const liq: Liquidity = t.orderType === 'market' || marketable ? 'taker' : 'maker';
+  const estFee = feeFor(t.notional, tier, liq);
 
   const submit = () => {
     if (phase !== 'idle') return;
@@ -50,7 +57,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   const slPct = pctFromEntry(t.sl, t.entry);
   const tpWrong = t.side === 'Long' ? t.tp <= t.entry : t.tp >= t.entry;
   const slWrong = t.side === 'Long' ? t.sl >= t.entry : t.sl <= t.entry;
-  const insufficient = t.notional > t.balance + 1e-9;
+  const insufficient = t.notional + Math.max(0, estFee) > t.balance + 1e-9;
 
   return (
     <Panel code="EMSX" title="Order Ticket" sub={`${t.symbol}/USDT`} drag={drag} testId="ticket">
@@ -165,6 +172,15 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
               <span className="label">Notional</span>
               <span className="spacer" />
               <span className={`num ${insufficient ? 'down' : ''}`}>{fmtUsd(t.notional)} USDT</span>
+            </div>
+            <div className="row">
+              <span className="label">
+                Est. fee · {FEE_TIERS[tier].label} {liq}
+              </span>
+              <span className="spacer" />
+              <span className={`num ${estFee < 0 ? 'up' : ''}`} data-testid="ticket-fee">
+                {estFee < 0 ? `+${fmtUsd(-estFee)} rebate` : `${fmtUsd(estFee)} USDT`}
+              </span>
             </div>
           </div>
         </div>

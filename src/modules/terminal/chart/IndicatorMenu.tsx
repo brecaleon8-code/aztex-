@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FunctionSquare, Plus } from 'lucide-react';
 import { useChartStore } from '@/stores/useChartStore';
+import { useStudioStore } from '@/stores/useStudioStore';
 import { CATEGORICAL } from '@/stores/useThemeStore';
 import { Segmented } from '@/components/ui/Segmented';
 import { compile } from '@/lib/indicators/formula';
@@ -27,6 +28,7 @@ export function IndicatorMenu() {
   const [custom, setCustom] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const addIndicator = useChartStore((s) => s.addIndicator);
+  const mine = useStudioStore((s) => s.indicators);
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +53,27 @@ export function IndicatorMenu() {
                   <span className="label">{p.type === 'overlay' ? 'overlay' : 'pane'}</span>
                 </button>
               ))}
+              {mine.length > 0 && (
+                <>
+                  <div className="divider" />
+                  <div className="menu-group">My indicators</div>
+                  {mine.map((u) => (
+                    <button
+                      key={u.id}
+                      className="menu-item"
+                      onClick={() => {
+                        addIndicator({ kind: 'custom', type: u.type, color: u.color, name: u.name, formula: u.formula });
+                        setOpen(false);
+                      }}
+                      data-testid="my-indicator"
+                    >
+                      <span className="chip" style={{ height: 8, width: 8, padding: 0, background: u.color, border: 0 }} />
+                      <span className="grow">{u.name}</span>
+                      <span className="label">{u.type === 'overlay' ? 'overlay' : 'pane'}</span>
+                    </button>
+                  ))}
+                </>
+              )}
               <div className="divider" />
               <button className="menu-item" onClick={() => setCustom(true)} data-testid="custom-indicator">
                 <FunctionSquare size={14} /> <span className="grow">Custom formula…</span>

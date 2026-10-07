@@ -14,6 +14,10 @@ import { fmtCompact, fmtDate, fmtPct, fmtPrice, fmtTime, priceDecimals, textOn, 
 import { useChartLevels } from './useChartLevels';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { TIMEFRAME_MS } from '@/lib/mock/candles';
+import { useStudioStore } from '@/stores/useStudioStore';
+import { useFeeStore } from '@/stores/useFeeStore';
+import { FEE_TIERS } from '@/lib/account/fees';
+import { backtest, type BtTrade } from '@/lib/strategy/backtest';
 import { volumeProfile, type VolumeProfile } from '@/lib/orderflow/orderflow';
 
 const AXIS_W = 78;
@@ -119,6 +123,15 @@ export function PriceChart() {
     () => (showProfile ? volumeProfile(candles, start, end, Math.max(16, Math.min(64, Math.round(plotH / 9)))) : null),
     [showProfile, candles, start, end, plotH],
   );
+
+  // Strategy signals from Studio, computed on the full history like indicators.
+  const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
+  const tier = useFeeStore((s) => s.tier);
+  const strategyTrades = useMemo(() => {
+    if (!chartStrategy || candles.length < 2) return null;
+    const r = backtest(chartStrategy, candles, FEE_TIERS[tier].taker);
+    return r.ok ? r.trades : null;
+  }, [chartStrategy, candles, tier]);
 
   // Interaction state.
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
@@ -310,6 +323,9 @@ export function PriceChart() {
             {overlays.map((o) => (
               <Overlay key={o.instance.id} c={o} xs={xs} ys={ys} start={start} end={end} />
             ))}
+            {strategyTrades && chartStrategy && (
+              <StrategyMarks trades={strategyTrades} candles={candles} xs={xs} ys={ys} start={start} end={end} color={chartStrategy.color} profit={colors.profit} loss={colors.loss} />
+            )}
             {levels.map((l) => (
               <line key={l.key} x1={0} x2={plotW} y1={ys.toY(l.price)} y2={ys.toY(l.price)} stroke={l.fill} strokeWidth={1} strokeDasharray={l.draft ? '2 4' : '5 4'} opacity={l.draft ? 0.7 : 0.9} />
             ))}
@@ -416,6 +432,33 @@ function ProfileLayer({ p, ys, plotW }: { p: VolumeProfile; ys: YScale; plotW: n
       <line x1={0} x2={plotW} y1={ys.toY(p.bins[p.vaLo].lo)} y2={ys.toY(p.bins[p.vaLo].lo)} className="vp-va-line" />
       <text x={4} y={ys.toY(p.bins[p.vaHi].hi) - 3} className="vp-label dim">VAH</text>
       <text x={4} y={ys.toY(p.bins[p.vaLo].lo) + 10} className="vp-label dim">VAL</text>
+    </g>
+  );
+}
+
+/** Entry ▲/▼ under/over the fill bar, exit dot at the exit price, a thin line joining them. */
+function StrategyMarks({ trades, candles, xs, ys, start, end, color, profit, loss }: { trades: BtTrade[]; candles: Candle[]; xs: XScale; ys: YScale; start: number; end: number; color: string; profit: string; loss: string }) {
+  return (
+    <g className="strategy-marks">
+      {trades
+        .filter((t) => t.exitIndex >= start && t.entryIndex < end)
+        .map((t) => {
+          const win = t.returnPct >= 0;
+          const ex = xs.toX(t.entryIndex);
+          const ec = candles[t.entryIndex];
+          const long = t.side === 'Long';
+          const ey = long ? ys.toY(ec.low) + 9 : ys.toY(ec.high) - 9;
+          const tri = long ? `M${ex},${ey - 5}L${ex - 5},${ey + 4}L${ex + 5},${ey + 4}Z` : `M${ex},${ey + 5}L${ex - 5},${ey - 4}L${ex + 5},${ey - 4}Z`;
+          const xx = xs.toX(t.exitIndex);
+          const xy = ys.toY(t.exitPrice);
+          return (
+            <g key={t.entryIndex} data-testid="strategy-marker">
+              <line x1={ex} y1={ys.toY(t.entryPrice)} x2={xx} y2={xy} stroke={win ? profit : loss} strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+              <path d={tri} fill={color} stroke="var(--panel)" strokeWidth={1} />
+              {t.reason !== 'end' && <circle cx={xx} cy={xy} r={3.5} fill="var(--panel)" stroke={win ? profit : loss} strokeWidth={1.6} />}
+            </g>
+          );
+        })}
     </g>
   );
 }

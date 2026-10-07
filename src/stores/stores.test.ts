@@ -6,6 +6,9 @@ import { usePositionStore } from './usePositionStore';
 import { useWalletStore, STARTING_BALANCE } from './useWalletStore';
 import { useCommunityStore, normalizeHandle } from './useCommunityStore';
 import { closePosition, flattenAll, onPrices, placeOrder, CLOSE_ANIM_MS } from './trading';
+import { useFeeStore } from './useFeeStore';
+import { FEE_TIERS } from '@/lib/account/fees';
+const TAKER = FEE_TIERS.standard.taker;
 import type { ScannerEvent } from '@/types';
 
 describe('layout reorder', () => {
@@ -57,6 +60,7 @@ describe('order → position → close settles into the wallet', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useWalletStore.setState({ balance: STARTING_BALANCE });
+    useFeeStore.setState({ tier: 'standard', appliedCode: null, feesPaid: 0, rebatesEarned: 0 });
     usePositionStore.setState({ positions: [], workingOrders: [], closing: {}, highlight: {}, pnlHistory: [], realized: 0 });
     const a = useMarketStore.getState().assets.BTC;
     useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, price: 100, bid: 99.5, ask: 100.5 } } });
@@ -74,7 +78,8 @@ describe('order → position → close settles into the wallet', () => {
     expect(r.ok).toBe(true);
     const p = usePositionStore.getState().positions[0];
     expect(p.entry).toBe(100.5);
-    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE - 1005);
+    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE - 1005 - 1005 * TAKER);
+    expect(useFeeStore.getState().feesPaid).toBeCloseTo(1005 * TAKER);
     setBtc(110);
     expect(usePositionStore.getState().positions[0].pnl).toBeCloseTo(95);
   });
@@ -88,8 +93,8 @@ describe('order → position → close settles into the wallet', () => {
     vi.advanceTimersByTime(CLOSE_ANIM_MS);
     await done;
     expect(usePositionStore.getState().positions).toHaveLength(0);
-    // entry 100.5, exit bid 109.5 → +90
-    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE + 90);
+    // entry 100.5, exit bid 109.5 → +90, minus taker fees on both fills
+    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE + 90 - (1005 + 1095) * TAKER);
     expect(usePositionStore.getState().realized).toBeCloseTo(90);
   });
 
@@ -115,7 +120,7 @@ describe('order → position → close settles into the wallet', () => {
   });
 
   it('rejects orders over the available balance', () => {
-    expect(placeOrder({ symbol: 'BTC', side: 'Long', orderType: 'market', size: 1e6, tp: 120, sl: 90 })).toMatchObject({ ok: false, error: 'Insufficient balance' });
+    expect(placeOrder({ symbol: 'BTC', side: 'Long', orderType: 'market', size: 1e6, tp: 120, sl: 90 })).toMatchObject({ ok: false, error: expect.stringMatching(/Insufficient balance/) });
     expect(usePositionStore.getState().positions).toHaveLength(0);
   });
 });
@@ -124,6 +129,7 @@ describe('TWAP execution', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useWalletStore.setState({ balance: STARTING_BALANCE });
+    useFeeStore.setState({ tier: 'standard', appliedCode: null, feesPaid: 0, rebatesEarned: 0 });
     usePositionStore.setState({ positions: [], workingOrders: [], algos: [], closing: {}, highlight: {}, pnlHistory: [], realized: 0 });
     const a = useMarketStore.getState().assets.BTC;
     useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, price: 100, bid: 99.5, ask: 100.5 } } });
@@ -144,7 +150,8 @@ describe('TWAP execution', () => {
     expect(p[0].entry).toBeCloseTo((100.5 + 3 * 110.5) / 4);
     const algo = usePositionStore.getState().algos[0];
     expect(algo).toMatchObject({ status: 'done', slicesDone: 4 });
-    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE - (100.5 * 2.5 + 3 * 110.5 * 2.5));
+    const notional = 100.5 * 2.5 + 3 * 110.5 * 2.5;
+    expect(useWalletStore.getState().balance).toBeCloseTo(STARTING_BALANCE - notional - notional * TAKER);
   });
 
   it('can be cancelled mid-flight', async () => {
@@ -156,5 +163,37 @@ describe('TWAP execution', () => {
     vi.advanceTimersByTime(5000);
     expect(usePositionStore.getState().positions[0].size).toBeCloseTo(2);
     expect(usePositionStore.getState().algos[0].status).toBe('cancelled');
+  });
+});
+
+describe('fee tiers via partner codes', () => {
+  beforeEach(() => {
+    useWalletStore.setState({ balance: STARTING_BALANCE });
+    usePositionStore.setState({ positions: [], workingOrders: [], algos: [], closing: {}, highlight: {}, pnlHistory: [], realized: 0 });
+    useFeeStore.setState({ tier: 'standard', appliedCode: null, feesPaid: 0, rebatesEarned: 0 });
+    const a = useMarketStore.getState().assets.BTC;
+    useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, price: 100, bid: 99.5, ask: 100.5 } } });
+  });
+
+  it('redeeming an LP code switches tier, lowers taker fees and pays maker rebates', () => {
+    const issued = useFeeStore.getState().issue({ tier: 'lp', partner: 'Test MM', maxUses: 1, expiresInDays: 30 });
+    const r = useFeeStore.getState().redeem(issued.code.toLowerCase());
+    expect(r).toMatchObject({ ok: true, tier: 'lp' });
+    placeOrder({ symbol: 'BTC', side: 'Long', orderType: 'market', size: 10, tp: 120, sl: 90 });
+    expect(useFeeStore.getState().feesPaid).toBeCloseTo(1005 * FEE_TIERS.lp.taker);
+    // Resting bid fills later → maker → rebate credited.
+    placeOrder({ symbol: 'BTC', side: 'Long', orderType: 'limit', size: 10, limitPrice: 95, tp: 120, sl: 90 });
+    const a = useMarketStore.getState().assets.BTC;
+    useMarketStore.setState({ assets: { ...useMarketStore.getState().assets, BTC: { ...a, price: 94, bid: 93.5, ask: 94.5 } } });
+    onPrices();
+    expect(useFeeStore.getState().rebatesEarned).toBeCloseTo(950 * -FEE_TIERS.lp.maker);
+  });
+
+  it('codes are single-use per account and revocation drops the tier', () => {
+    const issued = useFeeStore.getState().issue({ tier: 'partner', partner: 'IB', maxUses: 10, expiresInDays: null });
+    expect(useFeeStore.getState().redeem(issued.code).ok).toBe(true);
+    expect(useFeeStore.getState().redeem(issued.code)).toMatchObject({ ok: false, error: expect.stringMatching(/Already/) });
+    useFeeStore.getState().revoke(issued.code);
+    expect(useFeeStore.getState().tier).toBe('standard');
   });
 });

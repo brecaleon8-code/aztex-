@@ -7,6 +7,7 @@ import { useLayoutStore } from '@/stores/useLayoutStore';
 import { indicatorLabel } from '@/lib/indicators/compute';
 import { fmtCompact, fmtPct, fmtPrice } from '@/lib/format';
 import { useSpark } from '../useSpark';
+import { useStudioStore } from '@/stores/useStudioStore';
 import type { ChartMode, DrawingTool, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
 import { useTickFlash } from '@/app/useTickFlash';
@@ -39,6 +40,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const flash = useTickFlash(asset.price);
+  const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
   const spark = useSpark(symbol);
 
   // Drawings are anchored to this symbol/timeframe's candle indices — clear on switch.
@@ -122,6 +124,15 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
           VP
         </button>
         <IndicatorMenu />
+        {chartStrategy && (
+          <span className="chip strat-chip" data-testid="chart-strategy-chip" title="Strategy signals from Studio">
+            <span className="swatch" style={{ background: chartStrategy.color }} />
+            {chartStrategy.name}
+            <button aria-label="Hide strategy signals" onClick={() => useStudioStore.getState().setChartStrategy(null)}>
+              <X size={11} />
+            </button>
+          </span>
+        )}
         <div className="row" style={{ flexWrap: 'wrap', gap: 4 }}>
           {indicators.map((i) => (
             <span key={i.id} className="chip" data-testid="indicator-chip">

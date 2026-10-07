@@ -14,6 +14,8 @@ const PRE_ALERT_MS = 5 * 60_000;
 export function startNewsFeed(): () => void {
   const provider = new MockNewsProvider(ASSET_UNIVERSE.map((a) => a.symbol));
   const st = useNewsStore.getState;
+  // Start clean so a restart (React StrictMode in dev, hot reload) doesn't stack a second backlog.
+  useNewsStore.setState({ stories: [], events: [] });
   const stop = provider.start({
     onStories: (s) => st().addStories(s),
     onCalendar: (e) => st().setEvents(e),

@@ -6,6 +6,7 @@ import { useMarketStore } from '@/stores/useMarketStore';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { fmtEventValue, surprise, type EconEvent, type Impact, type NewsStory } from '@/lib/news/types';
 import { fmtTime } from '@/lib/format';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import './news-dock.css';
 
 /* ── Shared helpers ─────────────────────────────────────────────────────────────────────── */
@@ -70,7 +71,11 @@ export function NewsDock({ side }: { side: DockSide }) {
   const current = useNewsStore((s) => s.side);
   const collapsed = useNewsStore((s) => s.collapsed);
   if (!pinned || current !== side) return null;
-  return collapsed ? <DockRail side={side} /> : <DockPanel side={side} />;
+  return (
+    <ErrorBoundary variant="inline" label="News" onClose={() => useNewsStore.getState().setPinned(false)}>
+      {collapsed ? <DockRail side={side} /> : <DockPanel side={side} />}
+    </ErrorBoundary>
+  );
 }
 
 function DockRail({ side }: { side: DockSide }) {
@@ -300,8 +305,8 @@ function Calendar({ now }: { now: number }) {
   const groups: { label: string; items: EconEvent[] }[] = [];
   for (const e of list) {
     const label = dayLabel(e.time, now);
-    if (groups.at(-1)?.label !== label) groups.push({ label, items: [] });
-    groups.at(-1)!.items.push(e);
+    if (groups[groups.length - 1]?.label !== label) groups.push({ label, items: [] });
+    groups[groups.length - 1].items.push(e);
   }
   let nowPlaced = false;
 

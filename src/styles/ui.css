@@ -476,3 +476,52 @@ button.chip:hover {
   text-transform: uppercase;
   color: var(--text-faint);
 }
+
+/* Error boundary */
+.err-page {
+  max-width: 720px;
+  margin: 12vh auto 0;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  color: var(--text);
+}
+.err-page h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+.err-page p {
+  margin: 0 0 14px;
+  color: var(--text-dim);
+}
+.err-page pre {
+  margin: 0 0 16px;
+  padding: 12px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: var(--radius-md);
+  background: var(--bg2);
+  color: var(--loss);
+  font: 12px/1.5 var(--font-mono);
+  white-space: pre-wrap;
+}
+.err-page .row,
+.err-inline .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.err-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.err-inline code {
+  color: var(--loss);
+  font: 11.5px/1.4 var(--font-mono);
+  word-break: break-word;
+}

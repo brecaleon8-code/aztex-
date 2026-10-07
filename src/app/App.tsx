@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { TopBar, AccountStrip } from './TopBar';
 import { GasTicker } from './GasTicker';
 import { useFunctionKeys } from './useFunctionKeys';
@@ -26,6 +27,7 @@ const AppearancePage = lazy(() => import('@/modules/appearance/AppearancePage').
 
 export function App() {
   const platform = useThemeStore((s) => s.platform);
+  const { pathname } = useLocation();
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
   useEffect(() => startNewsFeed(), []);
@@ -43,6 +45,7 @@ export function App() {
       <main className="main">
         <NewsDock side="left" />
         <div className="content">
+          <ErrorBoundary key={pathname} variant="inline" label="This page">
           <Suspense fallback={<div className="empty">Loading…</div>}>
           <Routes>
             <Route path="/" element={<Navigate to="/terminal" replace />} />
@@ -56,6 +59,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/terminal" replace />} />
           </Routes>
           </Suspense>
+          </ErrorBoundary>
         </div>
         <NewsDock side="right" />
       </main>

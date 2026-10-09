@@ -64,6 +64,51 @@ export interface OrderBookSnapshot {
 export type Side = 'Long' | 'Short';
 export type OrderType = 'market' | 'limit';
 
+export type TimeInForce = 'GTC' | 'IOC' | 'FOK';
+export type OrderStatus = 'new' | 'partially_filled' | 'filled' | 'cancelled' | 'rejected';
+export type OrderKind = 'market' | 'limit' | 'take_profit' | 'stop_loss' | 'twap' | 'close';
+
+/** Every order the account sends, with its lifecycle and execution quality (the blotter). */
+export interface OrderRecord {
+  id: string;
+  symbol: string;
+  side: Side;
+  kind: OrderKind;
+  qty: number;
+  filledQty: number;
+  avgPx: number | null;
+  limitPrice?: number;
+  triggerPrice?: number;
+  tif: TimeInForce;
+  postOnly: boolean;
+  reduceOnly: boolean;
+  bracket: boolean;
+  parentId?: string;
+  positionId?: string;
+  status: OrderStatus;
+  reason?: string;
+  /** Mid price when the order was sent — the benchmark for slippage. */
+  arrivalMid: number;
+  fees: number;
+  createdAt: number;
+  updatedAt: number;
+  source: 'ticket' | 'cli' | 'book' | 'algo' | 'bracket' | 'close';
+}
+
+export interface FillRecord {
+  id: string;
+  orderId: string;
+  symbol: string;
+  side: Side;
+  price: number;
+  qty: number;
+  fee: number;
+  liquidity: 'maker' | 'taker';
+  time: number;
+  /** Priced beyond the visible book (model estimate). */
+  estimated: boolean;
+}
+
 export interface Position {
   id: string;
   symbol: string;
@@ -78,6 +123,10 @@ export interface Position {
   slHit: boolean;
   orderType: OrderType;
   openedAt: number;
+  /** TP/SL are live OCO exit orders (bracket) rather than alert levels. */
+  bracket?: boolean;
+  /** Entry order that opened it. */
+  orderId?: string;
 }
 
 export interface WorkingOrder {
@@ -89,6 +138,11 @@ export interface WorkingOrder {
   tp: number;
   sl: number;
   createdAt: number;
+  postOnly?: boolean;
+  reduceOnly?: boolean;
+  bracket?: boolean;
+  /** Fill into this position (the rest of a partially filled GTC order). */
+  positionId?: string;
 }
 
 /** A running execution algorithm (parent order). */
@@ -141,7 +195,7 @@ export interface IndicatorInstance {
   inputs?: Record<string, number>; // script input overrides
 }
 
-export type ChartMode = 'candles' | 'heikin' | 'bars' | 'line' | 'area';
+export type ChartMode = 'candles' | 'heikin' | 'bars' | 'line' | 'area' | 'renko' | 'footprint';
 
 export interface AppearanceColors {
   bull: string;

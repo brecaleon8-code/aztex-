@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type PanelId = 'watchlist' | 'chart' | 'orderbook' | 'tape' | 'ticket' | 'positions' | 'flow' | 'pnl' | 'news';
-export const ALL_PANELS: PanelId[] = ['watchlist', 'chart', 'orderbook', 'tape', 'ticket', 'positions', 'flow', 'pnl', 'news'];
+export type PanelId = 'watchlist' | 'chart' | 'orderbook' | 'tape' | 'ticket' | 'positions' | 'flow' | 'pnl' | 'news' | 'orders';
+export const ALL_PANELS: PanelId[] = ['watchlist', 'chart', 'orderbook', 'tape', 'ticket', 'positions', 'orders', 'flow', 'pnl', 'news'];
 
 /**
  * Workspaces curate which panels are on screen so the terminal stays data-rich without showing
@@ -15,7 +15,7 @@ export const WORKSPACES: { id: WorkspaceId; label: string; hint: string }[] = [
   { id: 'monitor', label: 'Monitor', hint: 'Portfolio, P/L and news' },
 ];
 export const DEFAULT_WORKSPACES: Record<WorkspaceId, PanelId[]> = {
-  trade: ['watchlist', 'chart', 'ticket', 'orderbook', 'positions'],
+  trade: ['watchlist', 'chart', 'ticket', 'orderbook', 'positions', 'orders'],
   flow: ['chart', 'orderbook', 'tape', 'flow', 'ticket'],
   monitor: ['watchlist', 'positions', 'pnl', 'news'],
 };
@@ -73,8 +73,16 @@ export const useLayoutStore = create<LayoutState>()(
     }),
     {
       name: 'aztex.layout',
-      version: 3,
-      migrate: () => ({ workspace: 'trade', workspaces: DEFAULT_WORKSPACES, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false }),
+      version: 4,
+      migrate: (state, version) => {
+        // v3 → v4: keep the user's arrangement and add the new Orders & fills blotter to Trade.
+        const s = state as Partial<LayoutState> | undefined;
+        if (version === 3 && s?.workspaces?.trade) {
+          const trade = s.workspaces.trade.includes('orders') ? s.workspaces.trade : [...s.workspaces.trade, 'orders' as PanelId];
+          return { ...s, workspaces: { ...s.workspaces, trade } } as LayoutState;
+        }
+        return { workspace: 'trade', workspaces: DEFAULT_WORKSPACES, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false } as LayoutState;
+      },
     },
   ),
 );

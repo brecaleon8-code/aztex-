@@ -44,6 +44,8 @@ const MODES: [ChartMode, string][] = [
   ['bars', 'OHLC bars'],
   ['line', 'Line'],
   ['area', 'Area'],
+  ['renko', 'Renko'],
+  ['footprint', 'Footprint (bid × ask)'],
 ];
 
 /** ⌘K / Ctrl+K: one fuzzy box for symbols, navigation, layout, chart settings and actions. */

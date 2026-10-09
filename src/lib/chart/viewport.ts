@@ -7,7 +7,7 @@ export interface Viewport {
   viewEnd: number;
 }
 
-export const MIN_VISIBLE = 15;
+export const MIN_VISIBLE = 8;
 export const ZOOM_IN = 0.83;
 export const ZOOM_OUT = 1.2;
 

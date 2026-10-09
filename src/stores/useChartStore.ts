@@ -11,6 +11,12 @@ interface ChartState {
   /** Volume-profile (VPVR) overlay on the price pane. */
   profile: boolean;
   toggleProfile: () => void;
+  /** Resting order-book liquidity drawn against the price axis. */
+  bookProfile: boolean;
+  toggleBookProfile: () => void;
+  /** Renko box size in price units; null = automatic (ATR 14). */
+  renkoBox: number | null;
+  setRenkoBox: (b: number | null) => void;
   setMode: (m: ChartMode) => void;
   setTool: (t: DrawingTool) => void;
   addIndicator: (i: Omit<IndicatorInstance, 'id'>) => void;
@@ -33,6 +39,10 @@ export const useChartStore = create<ChartState>()(
       drawings: [],
       profile: true,
       toggleProfile: () => set((s) => ({ profile: !s.profile })),
+      bookProfile: true,
+      toggleBookProfile: () => set((s) => ({ bookProfile: !s.bookProfile })),
+      renkoBox: null,
+      setRenkoBox: (renkoBox) => set({ renkoBox: renkoBox != null && renkoBox > 0 && Number.isFinite(renkoBox) ? renkoBox : null }),
       setMode: (mode) => set({ mode }),
       setTool: (tool) => set({ tool }),
       addIndicator: (i) => set((s) => ({ indicators: [...s.indicators, { ...i, id: uid('ind_') }] })),
@@ -41,6 +51,6 @@ export const useChartStore = create<ChartState>()(
       removeDrawing: (id) => set((s) => ({ drawings: s.drawings.filter((d) => d.id !== id) })),
       clearDrawings: () => set({ drawings: [] }),
     }),
-    { name: 'aztex.chart', version: 4, migrate: () => ({}), partialize: (s) => ({ mode: s.mode, indicators: s.indicators, profile: s.profile }) },
+    { name: 'aztex.chart', version: 4, migrate: () => ({}), partialize: (s) => ({ mode: s.mode, indicators: s.indicators, profile: s.profile, bookProfile: s.bookProfile }) },
   ),
 );

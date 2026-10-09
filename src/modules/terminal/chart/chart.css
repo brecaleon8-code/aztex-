@@ -378,3 +378,102 @@
   font-weight: 600;
   margin-right: 4px;
 }
+
+/* ── Footprint ───────────────────────────────────────────────────────────────── */
+.fp-text {
+  font-family: var(--font-mono);
+  fill: var(--text);
+  pointer-events: none;
+}
+.fp-est .fp-text {
+  fill: var(--text-dim);
+}
+.fp-sep {
+  fill: var(--text-faint);
+}
+.fp-imb {
+  font-weight: 700;
+}
+.fp-legend {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: 70%;
+  padding: 3px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.fp-legend b {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text);
+}
+.fp-legend .sw {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-radius: 2px;
+}
+.fp-legend .sw.live {
+  background: color-mix(in srgb, var(--bull) 60%, transparent);
+}
+.fp-legend .sw.est {
+  background: color-mix(in srgb, var(--bull) 18%, transparent);
+  outline: 1px dashed var(--text-faint);
+  outline-offset: -1px;
+}
+.fp-stats {
+  border-top: 1px solid var(--border);
+}
+.fp-stats svg {
+  display: block;
+}
+.fp-stat-text {
+  font: 9.5px var(--font-mono);
+  fill: var(--text);
+}
+
+/* ── Renko + order-book profile ─────────────────────────────────────────────── */
+.renko-next line {
+  stroke-dasharray: 2 4;
+  opacity: 0.55;
+}
+.renko-next text {
+  font: 10px var(--font-mono);
+  opacity: 0.85;
+}
+.ob-wall-text {
+  font: 9.5px var(--font-mono);
+  opacity: 0.9;
+}
+.renko-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+.renko-box .input {
+  width: 92px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+.fp-boundary line {
+  stroke: var(--accent);
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.fp-boundary text {
+  font: 10px var(--font-mono);
+  fill: var(--accent);
+}

@@ -16,8 +16,16 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-/** Cumulative depth: bid/ask step curves around the mid. */
-export function DepthChart({ book }: { book: OrderBookSnapshot }) {
+export interface DepthOrderMark {
+  buy: boolean;
+  qty: number;
+  avgPx: number;
+  worstPx: number;
+  label: string;
+}
+
+/** Cumulative depth: bid/ask step curves around the mid, with the ticket's order size marked. */
+export function DepthChart({ book, order }: { book: OrderBookSnapshot; order?: DepthOrderMark | null }) {
   const [ref, { w, h }] = useSize<HTMLDivElement>();
   const { profit, loss } = useThemeStore((s) => s.colors);
   const bids = book.bids;
@@ -57,6 +65,23 @@ export function DepthChart({ book }: { book: OrderBookSnapshot }) {
         <text x={4} y={h - 4} className="axis-text">{fmtPrice(lo)}</text>
         <text x={w - 4} y={h - 4} textAnchor="end" className="axis-text">{fmtPrice(hi)}</text>
         <text x={4} y={11} className="axis-text">Σ {fmtCompact(maxCum)}</text>
+        {order && (() => {
+          const touch = order.buy ? asks[0].price : bids[0].price;
+          const beyond = order.buy ? order.worstPx > hi : order.worstPx < lo;
+          const xw = Math.max(0, Math.min(w, x(order.worstPx)));
+          const xt = x(touch);
+          const x0 = Math.min(xt, xw);
+          return (
+            <g className="depth-order" data-testid="depth-order">
+              <rect x={x0} y={0} width={Math.max(1, Math.abs(xw - xt))} height={h - pad} fill="var(--accent)" opacity={0.1} />
+              <line x1={xw} x2={xw} y1={0} y2={h - pad} stroke="var(--accent)" strokeWidth={1.2} strokeDasharray="4 2" />
+              <text x={order.buy ? w - 4 : 4} y={26} textAnchor={order.buy ? 'end' : 'start'} className="axis-text depth-order-text">
+                {order.label}
+                {beyond ? ' →' : ''}
+              </text>
+            </g>
+          );
+        })()}
       </svg>
     );
   }

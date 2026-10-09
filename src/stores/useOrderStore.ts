@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { OrderType, Side } from '@/types';
+import type { OrderType, Side, TimeInForce } from '@/types';
 import type { SizingMode } from '@/lib/trading/pnl';
 
 /**
@@ -19,6 +19,16 @@ interface OrderState {
   exec: 'direct' | 'twap';
   twapMinutes: number;
   twapSlices: number;
+  tif: TimeInForce;
+  postOnly: boolean;
+  reduceOnly: boolean;
+  /** TP/SL go out as live OCO exit orders (on) or stay alert levels (off). */
+  bracket: boolean;
+  /** Market-order protection from the touch, bps. */
+  maxSlippageBps: number;
+  setTif: (t: TimeInForce) => void;
+  setFlag: (k: 'postOnly' | 'reduceOnly' | 'bracket', v: boolean) => void;
+  setMaxSlippage: (bps: number) => void;
   setExec: (e: 'direct' | 'twap') => void;
   setTwap: (p: { minutes?: number; slices?: number }) => void;
   setSide: (s: Side) => void;
@@ -47,6 +57,15 @@ export const useOrderStore = create<OrderState>()(
       exec: 'direct',
       twapMinutes: 5,
       twapSlices: 10,
+      tif: 'GTC',
+      postOnly: false,
+      reduceOnly: false,
+      bracket: true,
+      maxSlippageBps: 50,
+      // Post-only orders must be able to rest, so they're always GTC (as on most venues).
+      setTif: (tif) => set(tif === 'GTC' ? { tif } : { tif, postOnly: false }),
+      setFlag: (k, v) => set(k === 'postOnly' && v ? { postOnly: true, tif: 'GTC' } : ({ [k]: v } as Pick<OrderState, typeof k>)),
+      setMaxSlippage: (bps) => set({ maxSlippageBps: Math.max(1, Math.min(1000, Math.round(bps))) }),
       setExec: (exec) => set({ exec }),
       setTwap: ({ minutes, slices }) => set((s) => ({ twapMinutes: minutes ?? s.twapMinutes, twapSlices: slices ?? s.twapSlices })),
       setSide: (side) => set({ side, tp: null, sl: null }),
@@ -61,7 +80,7 @@ export const useOrderStore = create<OrderState>()(
     }),
     {
       name: 'aztex.ticket',
-      partialize: (s) => ({ sizingMode: s.sizingMode, pctValue: s.pctValue, usdtValue: s.usdtValue, twapMinutes: s.twapMinutes, twapSlices: s.twapSlices }),
+      partialize: (s) => ({ sizingMode: s.sizingMode, pctValue: s.pctValue, usdtValue: s.usdtValue, twapMinutes: s.twapMinutes, twapSlices: s.twapSlices, tif: s.tif, bracket: s.bracket, maxSlippageBps: s.maxSlippageBps }),
     },
   ),
 );

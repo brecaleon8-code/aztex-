@@ -3,6 +3,8 @@ import { createProvider, type MarketDataProvider } from '@/lib/data';
 import type { Unsubscribe } from '@/lib/data/provider';
 import { HISTORY_LIMIT, candlesKeyOf, useMarketStore } from '@/stores/useMarketStore';
 import { onPrices } from '@/stores/trading';
+import { useFootprintStore } from '@/stores/useFootprintStore';
+import { TIMEFRAME_MS } from '@/lib/mock/candles';
 
 /**
  * Wires the active MarketDataProvider to the stores. Re-subscribes the symbol-scoped streams when
@@ -40,10 +42,14 @@ export function startMarketFeed(): Unsubscribe {
       .catch((e: unknown) => {
         if (useMarketStore.getState().candlesKey === key) setCandles(key, [], e instanceof Error ? e.message : String(e));
       });
+    useFootprintStore.getState().reset(key, TIMEFRAME_MS[timeframe], useMarketStore.getState().assets[selected]?.price ?? 1);
     scoped = [
       provider.subscribeCandles(selected, timeframe, (c) => upsertCandle(key, c)),
       provider.subscribeOrderBook(selected, setBook),
-      provider.subscribeTrades(selected, (ts) => useMarketStore.getState().pushTrades(selected, ts)),
+      provider.subscribeTrades(selected, (ts) => {
+        useMarketStore.getState().pushTrades(selected, ts);
+        useFootprintStore.getState().add(key, ts);
+      }),
     ];
   };
 

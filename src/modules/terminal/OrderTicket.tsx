@@ -1,25 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, RotateCcw, Layers } from 'lucide-react';
+import { Check, Loader2, RotateCcw, Layers, AlertTriangle, Ban } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { Segmented } from '@/components/ui/Segmented';
 import { NumericField } from '@/components/ui/NumericField';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { flattenAll, placeOrder, startTwap } from '@/stores/trading';
+import type { ExecPreview } from '@/lib/trading/execution';
 import { fmtPct, fmtPrice, fmtQty, fmtUsd, priceDecimals } from '@/lib/format';
 import { pctFromEntry } from '@/lib/trading/pnl';
 import { riskReward, type RiskReward } from '@/lib/trading/risk';
-import { FEE_TIERS, feeFor, type Liquidity } from '@/lib/account/fees';
+import { FEE_TIERS } from '@/lib/account/fees';
 import { useFeeStore } from '@/stores/useFeeStore';
-import type { OrderType, Side } from '@/types';
+import type { OrderType, Side, TimeInForce } from '@/types';
 import type { SizingMode } from '@/lib/trading/pnl';
-import { useTicket } from './useTicket';
+import { useTicketPreview } from './useTicket';
+import { useMarketStore } from '@/stores/useMarketStore';
 
 export const PLACING_MS = 450;
 export const PLACED_MS = 1400;
 type Phase = 'idle' | 'placing' | 'placed';
 
 export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
-  const t = useTicket();
+  // Priced on every book update with the same model the router fills with.
+  const { t, req, pv } = useTicketPreview();
   const hasPositions = usePositionStore((s) => s.positions.length > 0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [flattening, setFlattening] = useState(false);
@@ -29,10 +32,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   const dec = priceDecimals(t.entry);
   const twap = t.orderType === 'market' && t.exec === 'twap';
   const tier = useFeeStore((s) => s.tier);
-  // Market / marketable limit take liquidity; a limit that rests adds it.
-  const marketable = t.orderType === 'limit' && (t.side === 'Long' ? t.limitPx >= t.asset.ask : t.limitPx <= t.asset.bid);
-  const liq: Liquidity = t.orderType === 'market' || marketable ? 'taker' : 'maker';
-  const estFee = feeFor(t.notional, tier, liq);
+  const estFee = pv.takerFee + pv.makerFee;
 
   const submit = () => {
     if (phase !== 'idle') return;
@@ -41,8 +41,8 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
       setTimeout(() => {
         const r =
           twap
-            ? startTwap({ symbol: t.symbol, side: t.side, size: t.size, durationMs: t.twapMinutes * 60_000, slices: t.twapSlices, tp: t.tp, sl: t.sl })
-            : placeOrder({ symbol: t.symbol, side: t.side, orderType: t.orderType, size: t.size, limitPrice: t.limitPx, tp: t.tp, sl: t.sl });
+            ? startTwap({ symbol: t.symbol, side: t.side, size: t.size, durationMs: t.twapMinutes * 60_000, slices: t.twapSlices, tp: t.tp, sl: t.sl, bracket: t.bracket })
+            : placeOrder(req);
         if (!r.ok) {
           setPhase('idle');
           return;
@@ -57,7 +57,8 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   const slPct = pctFromEntry(t.sl, t.entry);
   const tpWrong = t.side === 'Long' ? t.tp <= t.entry : t.tp >= t.entry;
   const slWrong = t.side === 'Long' ? t.sl >= t.entry : t.sl <= t.entry;
-  const insufficient = t.notional + Math.max(0, estFee) > t.balance + 1e-9;
+  const insufficient = !t.reduceOnly && (twap ? t.notional : pv.required) > t.balance + 1e-9;
+  const exitsOn = !t.reduceOnly;
 
   return (
     <Panel code="EMSX" title="Order Ticket" sub={`${t.symbol}/USDT`} drag={drag} testId="ticket">
@@ -101,6 +102,23 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
                 Best ask <span className="num down">{fmtPrice(t.asset.ask)}</span>
               </button>
             </div>
+            <div className="row">
+              <span className="label" title="Time in force: GTC rests until filled or cancelled · IOC fills what it can now and cancels the rest · FOK fills completely now or not at all">
+                TIF
+              </span>
+              <Segmented<TimeInForce>
+                ariaLabel="Time in force"
+                value={t.tif}
+                onChange={t.setTif}
+                options={[
+                  { value: 'GTC', label: 'GTC', title: 'Good till cancelled — the unfilled part rests on the book' },
+                  { value: 'IOC', label: 'IOC', title: 'Immediate or cancel — fill what you can now, cancel the rest' },
+                  { value: 'FOK', label: 'FOK', title: 'Fill or kill — fill completely now, or not at all' },
+                ]}
+              />
+              <span className="spacer" />
+              <Toggle on={t.postOnly} onChange={(v) => t.setFlag('postOnly', v)} label="Post-only" title="Maker-only: rejected instead of taking liquidity if it would cross the spread" testId="post-only" />
+            </div>
           </div>
         ) : (
           <div className="col" style={{ gap: 6 }}>
@@ -123,12 +141,32 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
                 <NumericField label="Slices" value={t.twapSlices} min={2} onCommit={(v) => t.setTwap({ slices: Math.round(v) })} ariaLabel="TWAP slices" testId="twap-slices" />
               </div>
             )}
-            <div className="ticket-market row">
-              <span className="label">{twap ? 'Arrival px' : 'Est. fill'}</span>
-              <span className="spacer" />
-              <span className="num">{fmtPrice(t.entry)}</span>
-              {twap && <span className="num faint">· child {fmtQty(t.size / Math.max(2, t.twapSlices))} / {((t.twapMinutes * 60) / Math.max(2, t.twapSlices)).toFixed(0)}s</span>}
-            </div>
+            {twap ? (
+              <div className="ticket-market row">
+                <span className="label">Arrival px</span>
+                <span className="spacer" />
+                <span className="num">{fmtPrice(t.entry)}</span>
+                <span className="num faint">· child {fmtQty(t.size / Math.max(2, t.twapSlices))} / {((t.twapMinutes * 60) / Math.max(2, t.twapSlices)).toFixed(0)}s</span>
+              </div>
+            ) : (
+              <div className="row">
+                <span className="label" title="Market orders stop filling beyond this distance from the best price; the rest is cancelled">
+                  Slippage limit
+                </span>
+                <span className="spacer" />
+                <input
+                  className="input mono slip-input"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={t.maxSlippageBps}
+                  onChange={(e) => Number.isFinite(e.target.valueAsNumber) && t.setMaxSlippage(e.target.valueAsNumber)}
+                  aria-label="Max slippage in basis points"
+                  data-testid="max-slippage"
+                />
+                <span className="label">bp</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -162,32 +200,38 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
               ))}
             </div>
           )}
+          <div className="row ticket-flags">
+            <Toggle on={t.reduceOnly} onChange={(v) => t.setFlag('reduceOnly', v)} label="Reduce-only" title={`Only closes existing ${t.side === 'Long' ? 'short' : 'long'} ${t.symbol} exposure — never opens or flips a position`} testId="reduce-only" />
+            <Toggle on={t.bracket && exitsOn} disabled={!exitsOn} onChange={(v) => t.setFlag('bracket', v)} label="Bracket TP/SL" title="Send take-profit (limit) and stop-loss (stop-market) as live one-cancels-other exit orders. Off: TP/SL are alerts only." testId="bracket" />
+          </div>
           <div className="ticket-summary">
             <div className="row">
               <span className="label">Size</span>
               <span className="spacer" />
-              <span className="num" data-testid="ticket-size">{fmtQty(t.size)} {t.symbol}</span>
+              <span className="num" data-testid="ticket-size">{fmtQty(t.reduceOnly ? pv.qty : t.size)} {t.symbol}</span>
             </div>
             <div className="row">
               <span className="label">Notional</span>
               <span className="spacer" />
-              <span className={`num ${insufficient ? 'down' : ''}`}>{fmtUsd(t.notional)} USDT</span>
+              <span className={`num ${insufficient ? 'down' : ''}`}>{fmtUsd(twap || !pv.ok ? t.notional : pv.notional)} USDT</span>
             </div>
-            <div className="row">
-              <span className="label">
-                Est. fee · {FEE_TIERS[tier].label} {liq}
-              </span>
-              <span className="spacer" />
-              <span className={`num ${estFee < 0 ? 'up' : ''}`} data-testid="ticket-fee">
-                {estFee < 0 ? `+${fmtUsd(-estFee)} rebate` : `${fmtUsd(estFee)} USDT`}
-              </span>
-            </div>
+            {twap ? (
+              <div className="row">
+                <span className="label">Est. fee · {FEE_TIERS[tier].label} taker</span>
+                <span className="spacer" />
+                <span className="num" data-testid="ticket-fee">{fmtUsd(t.notional * FEE_TIERS[tier].taker)} USDT</span>
+              </div>
+            ) : (
+              <PreTrade pv={pv} tierLabel={FEE_TIERS[tier].label} symbol={t.symbol} estFee={estFee} />
+            )}
           </div>
         </div>
 
+        {exitsOn ? (
+        <>
         <div className="ticket-levels">
           <NumericField
-            label="Take profit"
+            label={t.bracket ? 'Take profit · limit' : 'TP alert'}
             value={t.tp}
             decimals={dec}
             onCommit={(v) => t.setTp(v)}
@@ -196,7 +240,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
             hint={<span className={tpWrong ? 'down' : 'up'}>{fmtPct(tpPct)} from entry</span>}
           />
           <NumericField
-            label="Stop loss"
+            label={t.bracket ? 'Stop loss · stop' : 'SL alert'}
             value={t.sl}
             decimals={dec}
             onCommit={(v) => t.setSl(v)}
@@ -214,11 +258,17 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
         </div>
 
         <RiskPanel risk={riskReward(t.side, t.entry, t.tp, t.sl, t.size, t.equity)} />
+        </>
+        ) : (
+          <div className="ticket-note" data-testid="reduce-note">
+            Reduce-only closes {t.side === 'Long' ? 'short' : 'long'} {t.symbol} exposure (oldest first). No exit orders are attached.
+          </div>
+        )}
 
         <button
           className={`btn lg primary place-btn ${phase} ${t.side === 'Long' ? 'long' : 'short'}`}
           onClick={submit}
-          disabled={phase !== 'idle' || !(t.size > 0) || insufficient || tpWrong || slWrong}
+          disabled={phase !== 'idle' || !(t.size > 0) || insufficient || (exitsOn && (tpWrong || slWrong)) || (!twap && !pv.ok)}
           data-testid="place-order"
         >
           {phase === 'placing' ? (
@@ -231,11 +281,14 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
             </>
           ) : (
             <>
-              {twap ? 'Start TWAP' : t.side === 'Long' ? 'Buy' : 'Sell'} {twap ? (t.side === 'Long' ? 'buy' : 'sell') : t.orderType === 'market' ? 'market' : 'limit'} · {fmtQty(t.size)} {t.symbol}
+              {twap ? 'Start TWAP' : t.side === 'Long' ? 'Buy' : 'Sell'} {twap ? (t.side === 'Long' ? 'buy' : 'sell') : t.orderType === 'market' ? 'market' : 'limit'}
+              {!twap && t.orderType === 'limit' && t.tif !== 'GTC' ? ` ${t.tif}` : ''}
+              {!twap && t.orderType === 'limit' && t.postOnly ? ' · post-only' : ''}
+              {t.reduceOnly ? ' · reduce-only' : ''} · {fmtQty(t.reduceOnly ? pv.qty : t.size)} {t.symbol}
             </>
           )}
         </button>
-        {insufficient && <span className="error-text">Notional exceeds available balance</span>}
+        {insufficient && <span className="error-text">Notional + fees exceed available balance</span>}
 
         {hasPositions && (
           <button
@@ -284,6 +337,117 @@ function RiskPanel({ risk }: { risk: RiskReward }) {
           <span className={`num ${risk.riskPct > 2 ? 'warn-text' : ''}`}>{risk.riskPct.toFixed(2)}%</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Toggle({ on, onChange, label, title, testId, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; title?: string; testId?: string; disabled?: boolean }) {
+  return (
+    <button type="button" className={`tk-toggle ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => onChange(!on)} title={title} data-testid={testId} disabled={disabled}>
+      <span className="tk-box" aria-hidden>
+        {on && <Check size={10} strokeWidth={3} />}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+const fmtBp = (v: number) => (Math.abs(v) < 0.05 ? '0.0 bp' : `${v >= 0 ? '' : '−'}${Math.abs(v) < 10 ? Math.abs(v).toFixed(1) : Math.round(Math.abs(v))} bp`);
+
+/** What the order would do right now against the visible book: price, slippage, fees, depth consumed. */
+function PreTrade({ pv, tierLabel, symbol, estFee }: { pv: ExecPreview; tierLabel: string; symbol: string; estFee: number }) {
+  const t = pv.take;
+  return (
+    <div className="pretrade" data-testid="exec-preview">
+      {t.filled > 0 && (
+        <>
+          <div className="row">
+            <span className="label">Est. avg price</span>
+            <span className="spacer" />
+            <span className="num" data-testid="exec-avg">
+              {fmtPrice(t.avgPx!)}
+            </span>
+          </div>
+          <div className="row">
+            <span className="label">Worst · levels</span>
+            <span className="spacer" />
+            <span className="num">
+              {fmtPrice(t.worstPx!)} · {t.levels}
+              {t.beyondBook ? '+' : ''}
+            </span>
+          </div>
+          <div className="row">
+            <span className="label" title="Average fill vs best price (touch). Impact adds the half-spread (vs mid).">
+              Slippage · impact
+            </span>
+            <span className="spacer" />
+            <span className={`num ${pv.slippageBps > 5 ? 'warn-text' : ''}`} data-testid="exec-slippage">
+              {fmtBp(pv.slippageBps)} · {fmtBp(pv.impactBps)}
+            </span>
+          </div>
+          <DepthUse pv={pv} />
+        </>
+      )}
+      {pv.restQty > 0 && pv.restPx != null && (
+        <div className="row">
+          <span className="label">Rests on book</span>
+          <span className="spacer" />
+          <span className="num">
+            {fmtQty(pv.restQty)} {symbol} @ {fmtPrice(pv.restPx)}
+          </span>
+        </div>
+      )}
+      <div className="row">
+        <span className="label">
+          Est. fee · {tierLabel} {pv.liquidity === 'none' ? '' : pv.liquidity}
+        </span>
+        <span className="spacer" />
+        <span className={`num ${estFee < 0 ? 'up' : ''}`} data-testid="ticket-fee">
+          {estFee < 0 ? `+${fmtUsd(-estFee)} rebate` : `${fmtUsd(estFee)} USDT`}
+        </span>
+      </div>
+      <div className="row">
+        <span className="label">Spread</span>
+        <span className="spacer" />
+        <span className="num faint">{fmtBp(pv.spreadBps)}</span>
+      </div>
+      {pv.warnings.map((w) => (
+        <div key={w} className="pt-warn">
+          <AlertTriangle size={11} /> {w}
+        </div>
+      ))}
+      {!pv.ok && pv.reject && (
+        <div className="pt-reject" data-testid="exec-reject">
+          <Ban size={11} /> {pv.reject}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Mini depth bars: each visible level on the side being taken, with the part this order consumes. */
+function DepthUse({ pv }: { pv: ExecPreview }) {
+  const legs = pv.take.legs.filter((l) => !l.estimated);
+  if (!legs.length) return null;
+  const n = Math.min(10, Math.max(legs.length + 2, 5));
+  const book = useMarketStore.getState().book;
+  const side = pv.touch >= pv.mid ? book?.asks : book?.bids;
+  const levels = (side ?? []).slice(0, n);
+  if (!levels.length) return null;
+  const max = Math.max(...levels.map((l) => l.size));
+  return (
+    <div className="depth-use" aria-label="Book levels this order would consume" title="Book levels on the side you'd take; filled part = what this order consumes">
+      {levels.map((l) => {
+        const used = legs.find((g) => Math.abs(g.price - l.price) <= Math.abs(l.price) * 1e-9)?.qty ?? 0;
+        return (
+          <span key={l.price} className="du-col">
+            <span className="du-bar" style={{ height: `${(l.size / max) * 100}%` }}>
+              <span className="du-used" style={{ height: `${(Math.min(used, l.size) / l.size) * 100}%` }} />
+            </span>
+          </span>
+        );
+      })}
+      {pv.take.beyondBook && <span className="du-more">+ beyond book</span>}
     </div>
   );
 }

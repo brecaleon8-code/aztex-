@@ -7,6 +7,12 @@ export function priceDecimals(price: number): number {
   return 5;
 }
 
+/** A price *step* (box size, row size, tick): no trailing zeros — "100", "2.5", "0.0005". */
+export function fmtStep(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  return (+v.toPrecision(6)).toLocaleString('en-US', { maximumFractionDigits: 10 });
+}
+
 export function fmtPrice(price: number, decimals = priceDecimals(price)): string {
   if (!Number.isFinite(price)) return '—';
   return price.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

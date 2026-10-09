@@ -13,6 +13,8 @@ const LIVELINESS = 4;
 interface SymState {
   price: number;
   prev: number;
+  /** Base quantity traded during the last tick — shared by candles and the tape so they agree. */
+  tickQty: number;
   open24: number;
   vol24: number;
 }
@@ -32,7 +34,7 @@ export class MockProvider implements MarketDataProvider {
       const r = mulberry32(hashSeed(a.symbol + ':24h'));
       const price = BASE_PRICES[a.symbol];
       const change = (r() - 0.45) * 0.09;
-      this.state.set(a.symbol, { price, prev: price, open24: price / (1 + change), vol24: price * a.supply * (0.015 + r() * 0.04) });
+      this.state.set(a.symbol, { price, prev: price, tickQty: 0, open24: price / (1 + change), vol24: price * a.supply * (0.015 + r() * 0.04) });
     }
     this.timers.push(setInterval(() => this.step(), TICK_MS));
     this.timers.push(
@@ -49,6 +51,7 @@ export class MockProvider implements MarketDataProvider {
       s.prev = s.price;
       s.price *= Math.exp(gaussian(this.rand) * v);
       s.vol24 *= 1 + (this.rand() - 0.5) * 0.002;
+      s.tickQty = (s.vol24 / s.price / 86_400) * (TICK_MS / 1000) * (0.4 + this.rand() * 1.2) * (Math.abs(Math.log(s.price / s.prev)) > v * 1.5 ? 2 : 1);
     }
     this.tickListeners.forEach((cb) => cb(this.state));
   }
@@ -82,8 +85,7 @@ export class MockProvider implements MarketDataProvider {
         const bucket = Math.floor(now / step) * step;
         series = [{ time: bucket, open: s.price, high: s.price, low: s.price, close: s.price, volume: 0 }];
       }
-      const qty = (s.vol24 / s.price / 86_400) * (TICK_MS / 1000) * (0.4 + this.rand() * 1.2);
-      series = applyTick(series, s.price, now, step, qty).slice(-2);
+      series = applyTick(series, s.price, now, step, s.tickQty).slice(-2);
       onCandle(series[series.length - 1]);
     };
     // Seed from the history's last candle so the forming candle continues it seamlessly.
@@ -102,13 +104,14 @@ export class MockProvider implements MarketDataProvider {
       // Aggressor mix leans with the tick's direction; count ~ Poisson(5); sizes heavy-tailed.
       const up = s.price >= s.prev;
       const n = 1 + Math.floor(-Math.log(Math.max(1e-9, this.rand())) * 5);
-      const unit = s.vol24 / s.price / 86_400 / 5;
+      // Heavy-tailed weights, normalised so the prints add up to the tick's traded quantity.
+      const w = Array.from({ length: n }, () => Math.exp(gaussian(this.rand) * 0.9) * (this.rand() < 0.04 ? 12 + this.rand() * 30 : 1));
+      const wSum = w.reduce((a, b) => a + b, 0) || 1;
       const now = Date.now();
       const trades: Trade[] = [];
       for (let i = 0; i < n; i++) {
         const buy = this.rand() < (up ? 0.64 : 0.36);
-        const block = this.rand() < 0.04 ? 12 + this.rand() * 30 : 1;
-        const size = unit * Math.exp(gaussian(this.rand) * 0.9) * block;
+        const size = (s.tickQty * w[i]) / wSum;
         const px = s.prev + (s.price - s.prev) * ((i + 1) / n);
         const half = (px * (SPREAD[symbol] ?? 0.0002)) / 2;
         trades.push({ id: `${symbol}-${now}-${seq++}`, symbol, price: buy ? px + half : px - half, size, side: buy ? 'buy' : 'sell', time: now - (n - i) * 40 });

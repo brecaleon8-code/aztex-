@@ -11,6 +11,7 @@ import { PnlChart } from './PnlChart';
 import { TimeSales } from './TimeSales';
 import { OrderFlow } from './OrderFlow';
 import { News } from './News';
+import { Blotter } from './Blotter';
 import './terminal.css';
 
 const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
@@ -23,6 +24,7 @@ const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
   tape: (d) => <TimeSales drag={d} />,
   flow: (d) => <OrderFlow drag={d} />,
   news: (d) => <News drag={d} />,
+  orders: (d) => <Blotter drag={d} />,
 };
 
 export const PANEL_LABELS: Record<PanelId, string> = {
@@ -35,6 +37,7 @@ export const PANEL_LABELS: Record<PanelId, string> = {
   tape: 'Time & sales',
   flow: 'Order flow',
   news: 'News',
+  orders: 'Orders & fills',
 };
 
 /** Flex basis per panel; order comes from the persisted layout store (flexbox `order`). */
@@ -58,6 +61,8 @@ function panelStyle(id: PanelId, maximized: boolean): CSSProperties {
       return { flex: '2 1 420px' };
     case 'pnl':
       return { flex: '1 1 360px' };
+    case 'orders':
+      return { flex: '2 1 460px' };
   }
 }
 

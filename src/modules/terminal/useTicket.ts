@@ -4,6 +4,7 @@ import { useWalletStore } from '@/stores/useWalletStore';
 import { useHoldingsValue } from '@/stores/useHoldingsValue';
 import { usePositionStore, committedNotional, totalUnrealized } from '@/stores/usePositionStore';
 import { positionSize, suggestedLevels } from '@/lib/trading/pnl';
+import { previewFor, type OrderRequest } from '@/stores/trading';
 
 /** Derived order-ticket values shared by the ticket and the chart's draft levels. */
 export function useTicket() {
@@ -25,4 +26,25 @@ export function useTicket() {
   const { notional, size } = positionSize(t.sizingMode, sizingValue, equity, entry);
 
   return { ...t, symbol, asset, entry, limitPx, tp, sl, suggested, sizingValue, notional, size, equity, balance };
+}
+
+/** The ticket as an order request, priced against the live book (re-renders on every book update). */
+export function useTicketPreview() {
+  const t = useTicket();
+  useMarketStore((s) => s.bookVersion);
+  const req: OrderRequest = {
+    symbol: t.symbol,
+    side: t.side,
+    orderType: t.orderType,
+    size: t.size,
+    limitPrice: t.limitPx,
+    tp: t.tp,
+    sl: t.sl,
+    tif: t.tif,
+    postOnly: t.postOnly,
+    reduceOnly: t.reduceOnly,
+    bracket: t.bracket,
+    maxSlippageBps: t.maxSlippageBps,
+  };
+  return { t, req, pv: previewFor(req) };
 }

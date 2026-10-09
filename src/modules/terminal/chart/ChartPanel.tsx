@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { atrBox } from '@/lib/chart/renko';
 import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { indicatorLabel } from '@/lib/indicators/compute';
-import { fmtCompact, fmtPct, fmtPrice } from '@/lib/format';
+import { fmtCompact, fmtPct, fmtPrice, fmtStep } from '@/lib/format';
 import { useSpark } from '../useSpark';
 import { useStudioStore } from '@/stores/useStudioStore';
 import type { ChartMode, DrawingTool, Timeframe } from '@/types';
@@ -30,6 +31,8 @@ const CHART_MODES: { value: ChartMode; label: string }[] = [
   { value: 'bars', label: 'OHLC bars' },
   { value: 'line', label: 'Line' },
   { value: 'area', label: 'Area' },
+  { value: 'renko', label: 'Renko' },
+  { value: 'footprint', label: 'Footprint' },
 ];
 
 export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
@@ -37,7 +40,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const asset = useMarketStore((s) => s.assets[s.selected]);
   const tf = useMarketStore((s) => s.timeframe);
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
-  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile } = useChartStore();
+  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile, bookProfile, toggleBookProfile } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const flash = useTickFlash(asset.price);
   const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
@@ -123,6 +126,10 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
         <button className={`btn sm ${profile ? 'active' : ''}`} onClick={toggleProfile} aria-pressed={profile} title="Volume profile (POC / value area)" data-testid="toggle-vp">
           VP
         </button>
+        <button className={`btn sm ${bookProfile ? 'active' : ''}`} onClick={toggleBookProfile} aria-pressed={bookProfile} title="Order-book profile: resting liquidity by price" data-testid="toggle-ob">
+          OB
+        </button>
+        {mode === 'renko' && <RenkoBoxControl />}
         <IndicatorMenu />
         {chartStrategy && (
           <span className="chip strat-chip" data-testid="chart-strategy-chip" title="Strategy signals from Studio">
@@ -148,6 +155,43 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
       <PriceChart />
       <ResizeHandle />
     </Panel>
+  );
+}
+
+/** Renko box size: automatic (ATR 14 of the loaded history) or a fixed price step. */
+function RenkoBoxControl() {
+  const candles = useMarketStore((s) => s.candles);
+  const renkoBox = useChartStore((s) => s.renkoBox);
+  const setRenkoBox = useChartStore((s) => s.setRenkoBox);
+  const auto = useMemo(() => atrBox(candles), [candles]);
+  const [draft, setDraft] = useState('');
+  useEffect(() => {
+    setDraft(renkoBox == null ? '' : String(renkoBox));
+  }, [renkoBox]);
+  const commit = () => {
+    const v = parseFloat(draft);
+    setRenkoBox(Number.isFinite(v) && v > 0 ? v : null);
+  };
+  return (
+    <label className="renko-box" title="Renko box size. Leave empty for automatic (ATR 14).">
+      <span className="faint">Box</span>
+      <input
+        className="input mono"
+        inputMode="decimal"
+        value={draft}
+        placeholder={auto ? `auto ${fmtStep(auto)}` : 'auto'}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        aria-label="Renko box size"
+        data-testid="renko-box"
+      />
+      {renkoBox != null && (
+        <button className="btn sm ghost" onClick={() => setRenkoBox(null)} title="Back to automatic (ATR)">
+          Auto
+        </button>
+      )}
+    </label>
   );
 }
 

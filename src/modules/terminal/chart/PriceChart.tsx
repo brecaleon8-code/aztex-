@@ -10,7 +10,7 @@ import { clampViewport, onSeriesGrow, pan, zoom, ZOOM_IN, ZOOM_OUT, type Viewpor
 import { fibLevels, flagPath, linePath, makeXScale, makeYScale, niceTicks, type XScale, type YScale } from '@/lib/chart/scale';
 import { computeIndicator, indicatorLabel, type ComputedIndicator } from '@/lib/indicators/compute';
 import { extent } from '@/lib/indicators/series';
-import { fmtCompact, fmtDate, fmtPct, fmtPrice, fmtTime, priceDecimals, textOn, clamp } from '@/lib/format';
+import { fmtCompact, fmtDate, fmtPct, fmtPrice, fmtStep, fmtTime, priceDecimals, textOn, clamp } from '@/lib/format';
 import { useChartLevels } from './useChartLevels';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { TIMEFRAME_MS } from '@/lib/mock/candles';
@@ -20,11 +20,18 @@ import { useFeeStore } from '@/stores/useFeeStore';
 import { FEE_TIERS } from '@/lib/account/fees';
 import { backtest, type BtTrade } from '@/lib/strategy/backtest';
 import { volumeProfile, type VolumeProfile } from '@/lib/orderflow/orderflow';
+import { atrBox, renko } from '@/lib/chart/renko';
+import { rowSizeFor } from '@/lib/orderflow/footprint';
+import { useFootprintStore } from '@/stores/useFootprintStore';
+import { barFootprint, BookProfileLayer, FootprintLayer, FootprintStats, type BarFootprint } from './FootprintLayer';
 
 const AXIS_W = 78;
 const TIME_H = 22;
 const OSC_H = 90;
 const DEFAULT_VISIBLE = 90;
+const VISIBLE_BY_MODE: Partial<Record<string, number>> = { footprint: 12, renko: 60 };
+/** Footprint cells get unreadable (and expensive) beyond this many bars; fall back to candles. */
+const FOOTPRINT_MAX_BARS = 90;
 const TAG_H = 18;
 
 export function PriceChart() {
@@ -32,7 +39,8 @@ export function PriceChart() {
   const key = useMarketStore((s) => s.candlesKey);
   const error = useMarketStore((s) => s.candlesError);
   const tf = useMarketStore((s) => s.timeframe);
-  const { mode, tool, indicators, drawings, addDrawing, profile: showProfile } = useChartStore();
+  const { mode, tool, indicators, drawings, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = useChartStore();
+  const book = useMarketStore((s) => s.book);
   const colors = useThemeStore((s) => s.colors);
   const height = useLayoutStore((s) => s.chartHeight);
   const levels = useChartLevels();
@@ -61,8 +69,15 @@ export function PriceChart() {
     return () => ro.disconnect();
   }, []);
 
+  // Renko replaces the time axis with bricks; everything indexed below works on `series`.
+  const renkoRes = useMemo(() => (mode === 'renko' ? renko(candles, renkoBox ?? atrBox(candles)) : null), [mode, candles, renkoBox]);
+  const series = renkoRes ? renkoRes.bricks : candles;
+  const realLast = candles[candles.length - 1];
+  const vkey = `${key}|${renkoRes ? `renko:${renkoRes.box}` : mode === 'footprint' ? 'fp' : 'time'}`;
+  const defaultVisible = VISIBLE_BY_MODE[mode] ?? DEFAULT_VISIBLE;
+
   // Viewport over the full series.
-  const n = candles.length;
+  const n = series.length;
   const [vpState, setVp] = useState<Viewport>({ visibleCount: DEFAULT_VISIBLE, viewEnd: 0 });
   const vp = clampViewport(vpState, n);
   const vpRef = useRef(vp);
@@ -71,10 +86,10 @@ export function PriceChart() {
   nRef.current = n;
   const seen = useRef({ key: '', n: 0 });
   useEffect(() => {
-    if (key !== seen.current.key) {
+    if (vkey !== seen.current.key) {
       if (n > 0) {
-        setVp(clampViewport({ visibleCount: DEFAULT_VISIBLE, viewEnd: n }, n));
-        seen.current = { key, n };
+        setVp(clampViewport({ visibleCount: defaultVisible, viewEnd: n }, n));
+        seen.current = { key: vkey, n };
       }
       return;
     }
@@ -84,13 +99,13 @@ export function PriceChart() {
       setVp((v) => onSeriesGrow(v, prev, n));
       seen.current.n = n;
     }
-  }, [key, n]);
+  }, [vkey, n, defaultVisible]);
 
-  const display = useMemo(() => (mode === 'heikin' ? heikinAshi(candles) : candles), [candles, mode]);
+  const display = useMemo(() => (mode === 'heikin' ? heikinAshi(series) : series), [series, mode]);
   // Indicators: computed once on full real-OHLC history, then windowed at render.
   const deltaByTime = useMarketStore((s) => s.deltaByTime);
-  const scriptRuns = useScriptRuns(indicators, candles);
-  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, candles, colors, deltaByTime, scriptRuns[i.id])), [indicators, candles, colors, deltaByTime, scriptRuns]);
+  const scriptRuns = useScriptRuns(indicators, series);
+  const computed = useMemo(() => indicators.map((i) => computeIndicator(i, series, colors, deltaByTime, scriptRuns[i.id])), [indicators, series, colors, deltaByTime, scriptRuns]);
   const overlays = computed.filter((c) => c.instance.type === 'overlay');
   const oscillators = computed.filter((c) => c.instance.type === 'oscillator');
 
@@ -118,22 +133,43 @@ export function PriceChart() {
       lo = Math.min(lo, ov[0]);
       hi = Math.max(hi, ov[1]);
     }
+    // At the live edge keep the real price (and, for Renko, the next-brick thresholds) in view.
+    if (end >= display.length && realLast) {
+      const extra = renkoRes?.nextUp != null && renkoRes.nextDown != null ? [realLast.close, renkoRes.nextUp, renkoRes.nextDown] : [realLast.close];
+      for (const p of extra) {
+        lo = Math.min(lo, p);
+        hi = Math.max(hi, p);
+      }
+    }
     return makeYScale(lo, hi, 10, plotH - 6);
-  }, [display, overlays, start, end, plotH]);
+  }, [display, overlays, start, end, plotH, realLast, renkoRes]);
 
   const profile = useMemo(
-    () => (showProfile ? volumeProfile(candles, start, end, Math.max(16, Math.min(64, Math.round(plotH / 9)))) : null),
-    [showProfile, candles, start, end, plotH],
+    () => (showProfile ? volumeProfile(series, start, end, Math.max(16, Math.min(64, Math.round(plotH / 9)))) : null),
+    [showProfile, series, start, end, plotH],
   );
 
   // Strategy signals from Studio, computed on the full history like indicators.
   const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
   const tier = useFeeStore((s) => s.tier);
   const strategyTrades = useMemo(() => {
-    if (!chartStrategy || candles.length < 2) return null;
-    const r = backtest(chartStrategy, candles, FEE_TIERS[tier].taker);
+    if (!chartStrategy || series.length < 2) return null;
+    const r = backtest(chartStrategy, series, FEE_TIERS[tier].taker);
     return r.ok ? r.trades : null;
-  }, [chartStrategy, candles, tier]);
+  }, [chartStrategy, series, tier]);
+
+  // Footprint: live tape for bars we fully observed, OHLCV estimate otherwise.
+  const fp = useFootprintStore();
+  const tfMs = TIMEFRAME_MS[tf];
+  const fpActive = mode === 'footprint' && vp.visibleCount <= FOOTPRINT_MAX_BARS;
+  const rowSize = useMemo(() => (fpActive ? rowSizeFor(fp.tick, (13 * (ys.max - ys.min)) / Math.max(1, plotH)) : 0), [fpActive, fp.tick, ys, plotH]);
+  const fpBars = useMemo(() => {
+    const m = new Map<number, BarFootprint>();
+    if (!fpActive || !(rowSize > 0)) return m;
+    const raw = fp.key === key ? fp.bars : {};
+    for (let i = Math.max(0, start); i < Math.min(end, display.length); i++) m.set(i, barFootprint(display[i], raw, fp.tick, rowSize, tfMs, fp.key === key ? fp.since : null));
+    return m;
+  }, [fpActive, rowSize, fp.key, fp.bars, fp.tick, fp.since, key, start, end, display, tfMs]);
 
   // Interaction state.
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
@@ -230,6 +266,10 @@ export function PriceChart() {
           <div className="chart-msg" style={{ height: height + 26 }}>
             Could not load candles: {error}
           </div>
+        ) : renkoRes && candles.length > 0 ? (
+          <div className="chart-msg" style={{ height: height + 26 }} data-testid="renko-empty">
+            No Renko bricks yet: price hasn't moved a full {fmtStep(renkoRes.box)} box. Choose a smaller box size.
+          </div>
         ) : (
           <div className="chart-skeleton" style={{ height: height + 26 }} aria-label="Loading chart">
             {Array.from({ length: 36 }, (_, i) => (
@@ -242,8 +282,11 @@ export function PriceChart() {
 
   const hoverIdx = hover && hover.x <= plotW && hover.y <= plotH + TIME_H ? clamp(xs.toIndex(hover.x), Math.max(0, start), end - 1) : null;
   const readIdx = hoverIdx ?? n - 1;
-  const dec = priceDecimals(candles[n - 1].close);
-  const lastC = display[n - 1];
+  const dec = priceDecimals(series[n - 1].close);
+  // The live price always comes from the real last candle (Renko / Heikin-Ashi closes aren't trade prices).
+  const liveUp = realLast.close >= realLast.open;
+  const liveCol = liveUp ? colors.bull : colors.bear;
+  const fpOn = fpActive && fpBars.size > 0;
   const cw = xs.candleWidth;
   const bodyW = Math.max(1, Math.min(18, cw * 0.68));
   const clipId = `clip-${uidBase}`;
@@ -255,7 +298,7 @@ export function PriceChart() {
 
   return (
     <div className="chart no-select" ref={wrapRef}>
-      <Readout c={candles[readIdx]} prev={candles[readIdx - 1]} dec={dec} hovering={hoverIdx != null} />
+      <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />
       <div className="chart-main" style={{ height }}>
         {overlays.some((o) => o.error) && (
           <div className="chart-ind-errors" data-testid="overlay-error">
@@ -313,7 +356,7 @@ export function PriceChart() {
               <g key={i}>
                 <line x1={xs.toX(i)} x2={xs.toX(i)} y1={0} y2={plotH} className="grid" />
                 <text x={xs.toX(i)} y={plotH + 15} className="axis-text" textAnchor="middle">
-                  {fmtT(candles[i].time)}
+                  {fmtT(series[i].time)}
                 </text>
               </g>
             ))}
@@ -324,13 +367,34 @@ export function PriceChart() {
             {hoverIdx != null && <rect x={xs.toX(hoverIdx) - cw / 2} y={0} width={cw} height={plotH} className="hover-col" />}
             {profile && <ProfileLayer p={profile} ys={ys} plotW={plotW} />}
             <g>
-              <Series display={display} visible={visible} xs={xs} ys={ys} mode={mode} bodyW={bodyW} bull={colors.bull} bear={colors.bear} areaId={areaId} lineId={`line-${uidBase}`} plotH={plotH} start={start} end={end} />
+              {fpOn ? (
+                <FootprintLayer display={display} bars={fpBars} visible={visible} xs={xs} ys={ys} rowSize={rowSize} bull={colors.bull} bear={colors.bear} profit={colors.profit} loss={colors.loss} />
+              ) : (
+                <Series display={display} visible={visible} xs={xs} ys={ys} mode={mode} bodyW={bodyW} bull={colors.bull} bear={colors.bear} areaId={areaId} lineId={`line-${uidBase}`} plotH={plotH} start={start} end={end} />
+              )}
             </g>
+            {showBook && book && <BookProfileLayer book={book} ys={ys} plotW={plotW} plotH={plotH} bull={colors.bull} bear={colors.bear} />}
+            {renkoRes && renkoRes.nextUp != null && renkoRes.nextDown != null && (
+              <g className="renko-next" data-testid="renko-next">
+                <line x1={0} x2={plotW} y1={ys.toY(renkoRes.nextUp)} y2={ys.toY(renkoRes.nextUp)} stroke={colors.bull} />
+                <line x1={0} x2={plotW} y1={ys.toY(renkoRes.nextDown)} y2={ys.toY(renkoRes.nextDown)} stroke={colors.bear} />
+                <text x={6} y={ys.toY(renkoRes.nextUp) - 4} fill={colors.bull}>
+                  next brick ▲ {fmtPrice(renkoRes.nextUp, dec)}
+                </text>
+                <text x={6} y={ys.toY(renkoRes.nextDown) + 11} fill={colors.bear}>
+                  next brick ▼ {fmtPrice(renkoRes.nextDown, dec)}
+                </text>
+              </g>
+            )}
             {end >= n && (
               <g className="live-mark">
-                <line x1={0} x2={plotW} y1={ys.toY(lastC.close)} y2={ys.toY(lastC.close)} stroke={lastC.close >= lastC.open ? colors.bull : colors.bear} strokeDasharray="1 3" opacity={0.6} />
-                <circle className="last-ring" cx={xs.toX(n - 1)} cy={ys.toY(lastC.close)} r={3} fill="none" stroke={lastC.close >= lastC.open ? colors.bull : colors.bear} strokeWidth={1.5} />
-                <circle cx={xs.toX(n - 1)} cy={ys.toY(lastC.close)} r={2.6} fill={lastC.close >= lastC.open ? colors.bull : colors.bear} />
+                <line x1={0} x2={plotW} y1={ys.toY(realLast.close)} y2={ys.toY(realLast.close)} stroke={liveCol} strokeDasharray="1 3" opacity={0.6} />
+                {!renkoRes && (
+                  <>
+                    <circle className="last-ring" cx={xs.toX(n - 1)} cy={ys.toY(realLast.close)} r={3} fill="none" stroke={liveCol} strokeWidth={1.5} />
+                    <circle cx={xs.toX(n - 1)} cy={ys.toY(realLast.close)} r={2.6} fill={liveCol} />
+                  </>
+                )}
               </g>
             )}
             {overlays.map((o) => (
@@ -368,8 +432,8 @@ export function PriceChart() {
             <PriceTag key={l.key} x={plotW} y={ys.toY(l.price)} text={fmtPrice(l.price, dec)} label={l.label} fill={l.fill} color={l.text} plotH={plotH} />
           ))}
           {/* Last price tag — drawn above the level flags */}
-          <PriceTag x={plotW} y={ys.toY(lastC.close)} text={fmtPrice(candles[n - 1].close, dec)} fill={lastC.close >= lastC.open ? colors.bull : colors.bear} color={textOn(lastC.close >= lastC.open ? colors.bull : colors.bear)} plotH={plotH} />
-          <CloseCountdown x={plotW} y={ys.toY(lastC.close)} plotH={plotH} msLeft={candles[n - 1].time + TIMEFRAME_MS[tf] - now} />
+          <PriceTag x={plotW} y={ys.toY(realLast.close)} text={fmtPrice(realLast.close, dec)} fill={liveCol} color={textOn(liveCol)} plotH={plotH} />
+          {!renkoRes && <CloseCountdown x={plotW} y={ys.toY(realLast.close)} plotH={plotH} msLeft={realLast.time + TIMEFRAME_MS[tf] - now} />}
           {hover && hover.x <= plotW && hover.y <= plotH && (
             <>
               <PriceTag x={plotW} y={hover.y} text={fmtPrice(ys.toPrice(hover.y), dec)} fill="var(--text)" color="var(--bg)" plotH={plotH} />
@@ -377,7 +441,7 @@ export function PriceChart() {
                 <g>
                   <rect x={xs.toX(hoverIdx) - 46} y={plotH + 2} width={92} height={TAG_H} rx={4} fill="var(--text)" />
                   <text x={xs.toX(hoverIdx)} y={plotH + 15} textAnchor="middle" className="tag-text" fill="var(--bg)">
-                    {tf === '1d' ? fmtDate(candles[hoverIdx].time) : `${fmtDate(candles[hoverIdx].time).slice(5)} ${fmtTime(candles[hoverIdx].time, false)}`}
+                    {tf === '1d' ? fmtDate(series[hoverIdx].time) : `${fmtDate(series[hoverIdx].time).slice(5)} ${fmtTime(series[hoverIdx].time, false)}`}
                   </text>
                 </g>
               )}
@@ -416,7 +480,27 @@ export function PriceChart() {
           </button>
         )}
         {pending && <div className="chart-hint">Click to place second point · Esc to cancel</div>}
+        {mode === 'footprint' && (
+          <div className="fp-legend" data-testid="footprint-legend">
+            {fpOn ? (
+              <>
+                <span>
+                  <b>sell | buy</b> per {fmtStep(rowSize)} row · {symbol}
+                </span>
+                <span>
+                  <i className="sw live" /> live tape{fp.key === key && fp.since ? ` since ${fmtTime(fp.since, false)}` : ''}
+                </span>
+                <span>
+                  <i className="sw est" /> estimated from OHLCV
+                </span>
+              </>
+            ) : (
+              <span>Zoom in to {FOOTPRINT_MAX_BARS} bars or fewer to see the footprint</span>
+            )}
+          </div>
+        )}
       </div>
+      {fpOn && <FootprintStats bars={fpBars} visible={visible} xs={xs} width={width} plotW={plotW} bull={colors.bull} bear={colors.bear} />}
 
       {oscillators.map((o) => (
         <OscillatorPane key={o.instance.id} c={o} width={width} plotW={plotW} xs={xs} start={start} end={end} hoverIdx={hoverIdx} />
@@ -493,7 +577,7 @@ function CloseCountdown({ x, y, plotH, msLeft }: { x: number; y: number; plotH: 
   );
 }
 
-function Readout({ c, prev, dec, hovering }: { c: Candle; prev?: Candle; dec: number; hovering: boolean }) {
+function Readout({ c, prev, dec, hovering, unit }: { c: Candle; prev?: Candle; dec: number; hovering: boolean; unit?: string }) {
   const chg = prev ? ((c.close - prev.close) / prev.close) * 100 : ((c.close - c.open) / c.open) * 100;
   const cls = c.close >= c.open ? 'bull' : 'bear';
   return (
@@ -505,6 +589,7 @@ function Readout({ c, prev, dec, hovering }: { c: Candle; prev?: Candle; dec: nu
       <span><span className="faint">C</span> <span className={cls}>{fmtPrice(c.close, dec)}</span></span>
       <span><span className="faint">Vol</span> {fmtCompact(c.volume)}</span>
       <span className={chg >= 0 ? 'bull' : 'bear'}>{fmtPct(chg)}</span>
+      {unit && <span className="faint">{unit}</span>}
     </div>
   );
 }

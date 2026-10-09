@@ -420,3 +420,81 @@ test.describe('Account features', () => {
     await expect(page.getByTestId('news-dock')).toHaveCount(0);
   });
 });
+
+test.describe('Charts & execution', () => {
+  test('Renko and footprint chart modes, order-book profile', async ({ page }) => {
+    await freshTerminal(page);
+    await expect(page.getByTestId('book-profile')).toBeAttached();
+    await page.getByTestId('chart-mode').selectOption('renko');
+    await expect(page.getByTestId('renko-next')).toContainText('next brick');
+    await expect(page.getByTestId('ohlcv')).toContainText('Brick · box');
+    // A fixed box size re-bricks the series; clearing it returns to automatic (ATR).
+    await page.getByTestId('renko-box').fill('5');
+    await page.getByTestId('renko-box').press('Enter');
+    await expect(page.getByTestId('ohlcv')).toContainText('box 5');
+    await page.getByRole('button', { name: 'Auto', exact: true }).click();
+    await page.getByTestId('chart-mode').selectOption('footprint');
+    await expect(page.getByTestId('footprint')).toBeAttached();
+    await expect(page.getByTestId('footprint-legend')).toContainText('sell | buy');
+    await expect(page.getByTestId('footprint-stats')).toContainText('Delta vol');
+    await expect(page.locator('.fp-bar[data-source="est"]').first()).toBeAttached();
+    // Live tape builds the newest bar's footprint.
+    await expect(page.locator('.fp-bar[data-source="partial"], .fp-bar[data-source="live"]').first()).toBeAttached({ timeout: 8000 });
+    await page.getByTestId('chart-mode').selectOption('candles');
+  });
+
+  test('Pre-trade preview, TIF / post-only / reduce-only / bracket, blotter and TCA', async ({ page }) => {
+    await freshTerminal(page);
+    // Pre-trade: priced against the book.
+    await expect(page.getByTestId('exec-avg')).toBeVisible();
+    await expect(page.getByTestId('exec-slippage')).toContainText('bp');
+    await expect(page.getByTestId('ticket-fee')).toContainText('USDT');
+
+    // Market buy with a bracket → two armed OCO exits in the blotter.
+    await page.getByTestId('place-order').click();
+    await expect(page.getByTestId('position-row')).toHaveCount(1);
+    await expect(page.getByTestId('blotter-open-row')).toHaveCount(2);
+    await expect(page.getByTestId('blotter-open')).toContainText('OCO');
+
+    // FOK limit at the bid can't fill now → preview rejects and the button is disabled.
+    await page.getByRole('button', { name: 'Limit', exact: true }).click();
+    await page.getByRole('group', { name: 'Time in force' }).getByRole('button', { name: 'FOK' }).click();
+    await expect(page.getByTestId('exec-reject')).toContainText('FOK');
+    await expect(page.getByTestId('place-order')).toBeDisabled();
+    // Post-only forces GTC and rests as maker (well below the market so it can't fill mid-test).
+    const bid = Number(await page.getByTestId('limit-price').inputValue());
+    await page.getByTestId('limit-price').fill(String(Math.round(bid * 0.95)));
+    await page.getByTestId('limit-price').press('Enter');
+    await page.getByTestId('post-only').click();
+    await expect(page.getByRole('group', { name: 'Time in force' }).getByRole('button', { name: 'GTC' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('place-order')).toContainText('post-only');
+    await page.getByTestId('place-order').click();
+    await expect(page.getByTestId('blotter-open-row')).toHaveCount(3);
+
+    // Reduce-only sell closes the long; no exits are attached to it.
+    await page.getByTestId('post-only').click();
+    await page.getByRole('button', { name: 'Market', exact: true }).click();
+    await page.getByRole('button', { name: 'Sell / Short' }).click();
+    await page.getByTestId('reduce-only').click();
+    await expect(page.getByTestId('reduce-note')).toBeVisible();
+    await expect(page.getByTestId('bracket')).toBeDisabled();
+    await page.getByTestId('place-order').click();
+    await expect(page.getByTestId('position-row')).toHaveCount(0, { timeout: 4000 });
+    // Bracket legs were cancelled with the position; only the resting post-only bid remains.
+    await expect(page.getByTestId('blotter-open-row')).toHaveCount(1);
+
+    // History, fills and execution quality.
+    await page.getByRole('group', { name: 'Blotter view' }).getByRole('button', { name: 'Orders' }).click();
+    await expect(page.getByTestId('blotter-orders')).toContainText('RO');
+    await expect(page.getByTestId('blotter-order-row').first()).toHaveAttribute('data-status', 'filled');
+    await page.getByRole('group', { name: 'Blotter view' }).getByRole('button', { name: 'Fills' }).click();
+    await expect(page.getByTestId('blotter-fill-row').first()).toBeVisible();
+    await page.getByRole('group', { name: 'Blotter view' }).getByRole('button', { name: 'Quality' }).click();
+    await expect(page.getByTestId('blotter-tca')).toContainText('Avg slippage vs arrival');
+
+    // Depth chart marks where a market order of the ticket's size would sweep to.
+    await page.getByTestId('reduce-only').click();
+    await page.getByRole('group', { name: 'Book view' }).getByRole('button', { name: 'Depth' }).click();
+    await expect(page.getByTestId('depth-order')).toBeAttached();
+  });
+});

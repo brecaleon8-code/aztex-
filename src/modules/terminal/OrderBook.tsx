@@ -9,6 +9,7 @@ import { usePositionStore } from '@/stores/usePositionStore';
 import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice } from '@/lib/format';
 import type { OrderBookLevel } from '@/types';
 import { useTickFlash } from '@/app/useTickFlash';
+import { useTicketPreview } from './useTicket';
 
 const LEVELS = 10;
 
@@ -23,6 +24,15 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   const limitPrice = useOrderStore((s) => s.limitPrice);
   const orderType = useOrderStore((s) => s.orderType);
   const limitFromBook = useOrderStore((s) => s.limitFromBook);
+  // What the ticket's order would take right now — marked on the ladder and the depth chart.
+  const { t, pv } = useTicketPreview();
+  const taking = pv.ok && pv.take.filled > 0 && t.symbol === symbol;
+  const takeSide: 'bid' | 'ask' = t.side === 'Long' ? 'ask' : 'bid';
+  const takenAt = (price: number) => (taking ? (pv.take.legs.find((l) => !l.estimated && Math.abs(l.price - price) <= Math.abs(price) * 1e-9)?.qty ?? 0) : 0);
+  const depthMark =
+    taking && pv.take.avgPx != null && pv.take.worstPx != null
+      ? { buy: t.side === 'Long', qty: pv.take.filled, avgPx: pv.take.avgPx, worstPx: pv.take.worstPx, label: `${fmtQty(pv.take.filled)} → avg ${fmtPrice(pv.take.avgPx)} · ${Math.abs(pv.slippageBps) < 0.05 ? '0.0' : pv.slippageBps.toFixed(1)} bp` }
+      : null;
 
   const ladder = useMemo(() => {
     if (!book) return null;
@@ -45,9 +55,9 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
   const row = (l: OrderBookLevel, side: 'bid' | 'ask', i: number) => (
     <button
       key={`${side}-${i}`}
-      className={`ob-row ${side} ${orderType === 'limit' && limitPrice != null && Math.abs(limitPrice - l.price) < 1e-9 ? 'chosen' : ''}`}
+      className={`ob-row ${side} ${orderType === 'limit' && limitPrice != null && Math.abs(limitPrice - l.price) < 1e-9 ? 'chosen' : ''} ${side === takeSide && takenAt(l.price) > 0 ? 'taken' : ''}`}
       onClick={() => limitFromBook(l.price)}
-      title="Set as limit price"
+      title={side === takeSide && takenAt(l.price) > 0 ? `Your ticket would take ${fmtQty(takenAt(l.price))} here · click to set as limit price` : 'Set as limit price'}
       data-testid={`ob-${side}-${i}`}
     >
       <span className="ob-depth" style={{ width: `${(l.cumulative / (ladder?.maxCum ?? 1)) * 100}%` }} />
@@ -78,7 +88,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
         />
       }
     >
-      {view === 'depth' && book && <DepthChart book={book} />}
+      {view === 'depth' && book && <DepthChart book={book} order={depthMark} />}
       {view === 'heat' && <LiquidityHeatmap history={history} />}
       <div className="ob no-select" hidden={view !== 'dom'}>
         <div className="ob-head label">

@@ -5,9 +5,10 @@
   background: var(--scrim);
   backdrop-filter: blur(2px);
   display: flex;
+  align-items: flex-start; /* size to the results, not the full max-height */
   justify-content: center;
   padding-top: 12vh;
-  animation: fade-in 0.12s ease;
+  animation: fade-in var(--t-med) var(--ease);
 }
 .palette {
   width: min(620px, calc(100vw - 32px));
@@ -15,11 +16,11 @@
   display: flex;
   flex-direction: column;
   background: var(--panel-solid);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  box-shadow: var(--pop-shadow);
   overflow: hidden;
-  animation: palette-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: palette-in var(--t-med) var(--ease);
 }
 @keyframes palette-in {
   from { opacity: 0; transform: translateY(-8px) scale(0.985); }
@@ -31,7 +32,7 @@
   gap: 10px;
   padding: 0 14px;
   height: 50px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--line-soft);
 }
 .palette-input input {
   flex: 1;

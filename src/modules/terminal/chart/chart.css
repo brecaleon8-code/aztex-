@@ -212,7 +212,7 @@
   align-items: center;
   justify-content: center;
   cursor: ns-resize;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line-soft);
   touch-action: none;
   user-select: none;
 }
@@ -433,7 +433,7 @@
   outline-offset: -1px;
 }
 .fp-stats {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line-soft);
 }
 .fp-stats svg {
   display: block;
@@ -587,7 +587,7 @@
   display: flex;
   flex-direction: column;
   background: var(--panel-solid);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.55);
 }

@@ -5,10 +5,11 @@
   flex-direction: column;
   min-width: 0;
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow);
   overflow: hidden;
+  transition: border-color var(--t-med) var(--ease);
 }
 .panel:hover {
   z-index: 5;
@@ -24,9 +25,9 @@
   row-gap: 4px;
   align-items: center;
   gap: 8px;
-  padding: 0 10px 0 12px;
-  min-height: 38px;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 0 10px 0 14px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--line-soft);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -50,7 +51,7 @@
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
   color: var(--text);
   white-space: nowrap;
 }
@@ -71,7 +72,7 @@
   flex: none;
   margin-left: -4px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--t-med) var(--ease);
 }
 .panel:hover .grip {
   opacity: 0.8;
@@ -103,21 +104,33 @@
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
-  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease),
+    opacity var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
 }
+/* Hover lifts any button by a faint ink overlay, so coloured buttons keep their own fill. */
 .btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+  border-color: var(--line-strong);
+  background-image: linear-gradient(var(--btn-tint), var(--btn-tint));
 }
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(0.5px) scale(0.985);
 }
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+a.btn,
+a.chip {
+  text-decoration: none;
 }
 .btn.sm {
   height: 24px;
@@ -148,7 +161,8 @@
   color: var(--text-dim);
 }
 .btn.ghost:hover:not(:disabled) {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-color: transparent;
   color: var(--text);
 }
 .btn.icon {
@@ -164,9 +178,10 @@
 .btn.danger:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--loss) 50%, var(--border));
 }
-.btn.active {
+.btn.active,
+.btn.active:hover:not(:disabled) {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
   color: var(--accent);
 }
 
@@ -177,7 +192,7 @@
   padding: 2px;
   border-radius: var(--radius-md);
   background: var(--panel-alt);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--line-soft);
   user-select: none;
 }
 .seg-thumb {
@@ -185,8 +200,12 @@
   top: 2px;
   bottom: 2px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-  transition: left 0.18s ease, width 0.18s ease;
+  background: var(--seg-thumb);
+  box-shadow: var(--seg-shadow);
+  transition:
+    left var(--t-med) var(--ease),
+    width var(--t-med) var(--ease),
+    background-color var(--t-med) var(--ease);
 }
 .seg-btn {
   position: relative;
@@ -204,9 +223,14 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  transition: color var(--t-fast) var(--ease);
 }
 .seg-btn:hover {
   color: var(--text);
+}
+.seg-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .seg-btn[aria-pressed='true'] {
   color: var(--text);
@@ -247,10 +271,16 @@
   background: var(--panel-alt);
   padding: 0 9px;
   gap: 6px;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+.input-wrap:hover:not(:focus-within) {
+  border-color: var(--line-strong);
 }
 .input-wrap:focus-within {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .input-wrap.invalid {
@@ -279,10 +309,22 @@
   padding: 0 9px;
   outline: 0;
   min-width: 0;
+  transition:
+    border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+.input:hover:not(:focus):not(:disabled) {
+  border-color: var(--line-strong);
 }
 .input:focus {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.input::placeholder,
+.input-wrap input::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
 }
 textarea.input {
   height: auto;
@@ -290,8 +332,29 @@ textarea.input {
   resize: vertical;
   line-height: 1.45;
 }
-select.input {
-  padding-right: 4px;
+/* One drawn chevron for every dropdown instead of each platform's native arrow. */
+select.input,
+select.tb-select,
+select.nd-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 24px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-faint) 50%),
+    linear-gradient(135deg, var(--text-faint) 50%, transparent 50%);
+  background-position:
+    calc(100% - 13px) 52%,
+    calc(100% - 9px) 52%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+select.input:hover,
+select.tb-select:hover,
+select.nd-select:hover {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
 }
 select option {
   background: var(--panel-solid);
@@ -310,6 +373,10 @@ select option {
   font-size: 11.5px;
   color: var(--text-dim);
   white-space: nowrap;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
 }
 .chip .swatch {
   width: 7px;
@@ -327,8 +394,12 @@ select option {
   color: var(--text);
 }
 button.chip:hover {
-  border-color: var(--border);
+  border-color: var(--line-strong);
   color: var(--text);
+}
+button.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .chip.on {
   color: var(--text);
@@ -371,12 +442,11 @@ button.chip:hover {
 .table th {
   text-align: left;
   font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
   white-space: nowrap;
   position: sticky;
   top: 0;
@@ -384,10 +454,13 @@ button.chip:hover {
   z-index: 1;
 }
 .table td {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-soft);
   white-space: nowrap;
-  height: 28px;
+  height: 30px;
+}
+.table tbody tr {
+  transition: background-color var(--t-fast) var(--ease);
 }
 .table tr:last-child td {
   border-bottom: 0;
@@ -407,10 +480,11 @@ button.chip:hover {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .empty {
-  padding: 26px 12px;
+  padding: 28px 16px;
   text-align: center;
   color: var(--text-faint);
   font-size: 12px;
+  line-height: 1.55;
 }
 .error-text {
   color: var(--loss);
@@ -418,7 +492,7 @@ button.chip:hover {
 }
 .divider {
   height: 1px;
-  background: var(--border-soft);
+  background: var(--line-soft);
   margin: 4px 0;
 }
 
@@ -427,10 +501,12 @@ button.chip:hover {
   position: absolute;
   z-index: 30;
   background: var(--panel-solid);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--pop-shadow);
   padding: 4px;
+  animation: pop-in var(--t-med) var(--ease);
+  transform-origin: top;
 }
 .menu-item {
   display: flex;
@@ -443,10 +519,11 @@ button.chip:hover {
   border-radius: var(--radius-sm);
   text-align: left;
   font-size: 12.5px;
+  transition: background-color var(--t-fast) var(--ease);
 }
 .menu-item:hover,
 .menu-item.hl {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 .check {
   width: 15px;
@@ -456,6 +533,9 @@ button.chip:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
 }
 .check.on {
   background: var(--royal);
@@ -470,9 +550,9 @@ button.chip:hover {
   display: inline-block;
 }
 .menu-group {
-  padding: 6px 8px 2px;
+  padding: 8px 8px 3px;
   font-size: 10.5px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
@@ -482,7 +562,7 @@ button.chip:hover {
   max-width: 720px;
   margin: 12vh auto 0;
   padding: 28px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--panel);
   color: var(--text);

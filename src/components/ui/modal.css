@@ -7,17 +7,17 @@
   justify-content: center;
   padding: 7vh 16px 16px;
   background: var(--scrim);
-  backdrop-filter: blur(2px);
-  animation: fade-in 0.12s ease;
+  backdrop-filter: blur(3px);
+  animation: fade-in var(--t-med) var(--ease);
   overflow-y: auto;
 }
 .modal {
   max-width: 100%;
   background: var(--panel-solid);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
-  animation: palette-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+  box-shadow: var(--pop-shadow);
+  animation: palette-in var(--t-med) var(--ease);
 }
 .modal-head {
   display: flex;
@@ -25,7 +25,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 16px 16px 12px 20px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--line-soft);
 }
 .modal-title {
   font-size: 16px;

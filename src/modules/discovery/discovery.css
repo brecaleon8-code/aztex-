@@ -9,6 +9,20 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: var(--gap);
 }
+/* The comparison chart grows to the row's height (set by Market share) instead of leaving a gap. */
+.disc-compare > .panel-body {
+  display: flex;
+  flex-direction: column;
+}
+.compare-plot {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+}
+.compare-plot-inner {
+  position: absolute;
+  inset: 0;
+}
 .disc-scanner {
   grid-column: 1 / -1;
   display: grid;

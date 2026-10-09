@@ -17,9 +17,9 @@
   padding: 10px 8px 10px 12px;
   border-radius: var(--radius-lg);
   background: var(--panel-solid);
-  border: 1px solid var(--border);
-  box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.55);
-  animation: fade-in 0.15s ease;
+  border: 1px solid var(--line);
+  box-shadow: var(--pop-shadow);
+  animation: fade-up var(--t-med) var(--ease);
 }
 .toast > svg {
   margin-top: 1px;

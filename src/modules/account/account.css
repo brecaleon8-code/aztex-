@@ -7,9 +7,16 @@
 .acct-console {
   grid-column: 1 / -1;
 }
+/* Fees spans both left-hand rows so Deposit history tucks straight under Balances (no gap). */
+.acct-fees {
+  grid-row: span 2;
+}
 @media (max-width: 1100px) {
   .acct-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .acct-fees {
+    grid-row: auto;
   }
 }
 .bal-summary {
@@ -79,9 +86,14 @@
 }
 .issue-form {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 10px;
+}
+/* Fields align by their labels (one carries a hint below); the button lines up with the inputs. */
+.issue-form > .btn {
+  margin-top: 20px;
+  height: 30px;
 }
 .fresh-code {
   display: flex;

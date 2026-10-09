@@ -16,7 +16,7 @@
   height: 48px;
   padding: 0 14px;
   background: var(--bg2);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--line-soft);
 }
 /* The one ambient hint of brand: a faint royal hairline fading out from the left. */
 .topbar::after {
@@ -56,9 +56,27 @@
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
+  transition: color var(--t-fast) var(--ease);
+}
+/* A soft pill behind the hovered tab; the active tab keeps its royal underline. */
+.nav-tab::before {
+  content: '';
+  position: absolute;
+  inset: 9px 3px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease);
+  pointer-events: none;
 }
 .nav-tab:hover {
   color: var(--text);
+}
+.nav-tab:hover::before {
+  opacity: 1;
+}
+.nav-tab:focus-visible {
+  outline-offset: -8px;
 }
 .nav-tab.active {
   color: var(--text);
@@ -72,6 +90,11 @@
   height: 2px;
   border-radius: 2px;
   background: var(--accent);
+  animation: nav-ink var(--t-med) var(--ease);
+}
+@keyframes nav-ink {
+  from { transform: scaleX(0.4); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 .tb-status {
   display: flex;
@@ -87,11 +110,19 @@
 }
 .tb-select {
   height: 26px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--panel-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background-color: var(--panel-alt);
   font-size: 12px;
-  padding: 0 4px;
+  padding: 0 4px 0 9px;
+  outline: 0;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.tb-select:hover {
+  border-color: var(--line-strong);
+}
+.tb-select:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 .live-dot.off {
   background: var(--text-faint);
@@ -105,7 +136,7 @@
   align-items: center;
   gap: 18px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--line-soft);
   background: var(--bg);
 }
 .acct {
@@ -134,7 +165,7 @@
   font-size: 11.5px;
   white-space: nowrap;
   padding-left: 16px;
-  border-left: 1px solid var(--border-soft);
+  border-left: 1px solid var(--line-soft);
 }
 .gas-item .mono {
   font-size: 11.5px;
@@ -153,6 +184,11 @@
   min-width: 0;
   overflow: auto;
   padding: 12px 14px 14px;
+  scroll-behavior: smooth;
+}
+/* Pages ease in on navigation instead of snapping. No fill mode: nothing lingers afterwards. */
+.content > * {
+  animation: fade-up var(--t-med) var(--ease);
 }
 .page-head {
   position: relative;
@@ -160,17 +196,19 @@
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  margin: 2px 2px 14px;
+  margin: 4px 2px 16px;
 }
 .page-head h1 {
   font-size: 22px;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
 }
 .page-head p {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   color: var(--text-dim);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 /* Cosmetic platform previews. */
@@ -227,14 +265,18 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   font-size: 11px;
   color: var(--text-dim);
   text-decoration: none;
   white-space: nowrap;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
 }
 .tier-chip:hover {
   color: var(--text);
+  border-color: var(--line-strong);
 }
 .tier-chip.partner,
 .tier-chip.lp {

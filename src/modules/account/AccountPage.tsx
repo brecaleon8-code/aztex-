@@ -136,7 +136,7 @@ function FeeTier() {
   };
 
   return (
-    <Panel title="Fees & partner programme" testId="fee-tier">
+    <Panel title="Fees & partner programme" className="acct-fees" testId="fee-tier">
       <div className="tier-card">
         <div className="tier-icon">
           <BadgePercent size={18} />

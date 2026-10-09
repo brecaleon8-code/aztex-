@@ -58,26 +58,28 @@ export function ComparisonChart() {
           );
         })}
       </div>
-      <div style={{ height: 280 }}>
-        {comparison.length === 0 ? (
-          <div className="empty">Toggle up to {MAX_COMPARE} assets to compare.</div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="var(--border-soft)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={(t: number) => fmtDate(t).slice(5)} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} minTickGap={28} />
-              <YAxis tickFormatter={(v: number) => fmtPct(v, 0)} width={48} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: 'color-mix(in srgb, var(--panel-solid) 85%, transparent)', backdropFilter: 'blur(16px)', border: '1px solid var(--border)', borderRadius: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}
-                labelFormatter={(t) => fmtDate(Number(t))}
-                formatter={(v, name) => [fmtPct(Number(v)), String(name)]}
-              />
-              {comparison.map((c) => (
-                <Line key={c.symbol} dataKey={c.symbol} stroke={c.color} strokeWidth={1.7} dot={false} isAnimationActive={false} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+      <div className="compare-plot">
+        <div className="compare-plot-inner">
+          {comparison.length === 0 ? (
+            <div className="empty">Toggle up to {MAX_COMPARE} assets to compare.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="var(--border-soft)" vertical={false} />
+                <XAxis dataKey="time" tickFormatter={(t: number) => fmtDate(t).slice(5)} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} minTickGap={28} />
+                <YAxis tickFormatter={(v: number) => fmtPct(v, 0)} width={48} tick={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-faint)' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: 'color-mix(in srgb, var(--panel-solid) 85%, transparent)', backdropFilter: 'blur(16px)', border: '1px solid var(--border)', borderRadius: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}
+                  labelFormatter={(t) => fmtDate(Number(t))}
+                  formatter={(v, name) => [fmtPct(Number(v)), String(name)]}
+                />
+                {comparison.map((c) => (
+                  <Line key={c.symbol} dataKey={c.symbol} stroke={c.color} strokeWidth={1.7} dot={false} isAnimationActive={false} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
     </Panel>
   );

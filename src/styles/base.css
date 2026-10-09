@@ -14,9 +14,14 @@ body {
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.45;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Firefox scrollbars; WebKit below. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--thumb) transparent;
 }
 button,
 input,
@@ -30,6 +35,14 @@ button {
 }
 a {
   color: var(--accent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color var(--t-fast) var(--ease);
+}
+/* A consistent, soft focus ring for anything keyboard-focusable that has no ring of its own. */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
 }
 h1,
 h2,
@@ -43,16 +56,21 @@ h3 {
   color: var(--on-accent);
 }
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--thumb);
   border-radius: 8px;
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   background-clip: padding-box;
 }
-::-webkit-scrollbar-track {
+::-webkit-scrollbar-thumb:hover {
+  background: var(--thumb-hover);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -129,10 +147,10 @@ h3 {
   100% { background-color: transparent; }
 }
 .tick-up {
-  animation: tick-up 0.5s ease-out;
+  animation: tick-up 0.7s var(--ease);
 }
 .tick-down {
-  animation: tick-down 0.5s ease-out;
+  animation: tick-down 0.7s var(--ease);
 }
 @keyframes flash-row {
   0% { background-color: var(--accent-soft); }
@@ -155,6 +173,14 @@ h3 {
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-3px) scale(0.985); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes ring-pulse {
   0% { r: 3; opacity: 0.9; }
@@ -181,11 +207,17 @@ h3 {
 /* Paper mode: luminous P/L hues are too pale as text on paper — deepen text only; fills stay literal. */
 [data-theme='light'] .up,
 [data-theme='light'] .bull,
-[data-theme='light'] .ob-row.bid .ob-price {
+[data-theme='light'] .ob-row.bid .ob-price,
+[data-theme='light'] .badge.long,
+[data-theme='light'] .wl-chg.pos,
+[data-theme='light'] .oc-kind-chip.k-exchange_outflow {
   color: color-mix(in srgb, var(--profit) 55%, #00230f);
 }
 [data-theme='light'] .down,
 [data-theme='light'] .bear,
-[data-theme='light'] .ob-row.ask .ob-price {
+[data-theme='light'] .ob-row.ask .ob-price,
+[data-theme='light'] .badge.short,
+[data-theme='light'] .wl-chg.neg,
+[data-theme='light'] .oc-kind-chip.k-exchange_inflow {
   color: color-mix(in srgb, var(--loss) 75%, #3a0000);
 }

@@ -150,13 +150,12 @@
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
   padding: 3px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-soft);
 }
 .ob-head span {
   color: var(--text-faint);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  letter-spacing: 0.01em;
 }
 .ob-head span:not(:first-child) {
   text-align: right;
@@ -175,6 +174,7 @@
   border: 0;
   background: transparent;
   text-align: left;
+  transition: background-color var(--t-fast) var(--ease);
 }
 .ob-row:hover {
   background: var(--hover);
@@ -189,9 +189,10 @@
   right: 0;
   top: 2px;
   bottom: 2px;
-  opacity: 0.14;
+  opacity: 0.12;
   border-radius: 2px;
   pointer-events: none;
+  transition: width var(--t-med) var(--ease);
 }
 .ob-row.ask .ob-depth {
   background: var(--loss);
@@ -207,7 +208,7 @@
 }
 .ob-price {
   position: relative;
-  animation: flash-row 0.4s steps(2, end);
+  animation: flash-row 0.6s var(--ease);
   justify-self: start;
 }
 .ob-size,
@@ -220,8 +221,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border-top: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
   background: var(--panel-alt);
 }
 .ob-last {
@@ -235,7 +236,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line-soft);
 }
 .imb-bar {
   flex: 1;
@@ -835,13 +836,12 @@
   z-index: 1;
   padding: 6px 8px;
   background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-soft);
   color: var(--text-faint);
-  font-size: 10px;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 500;
   text-align: left;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 .bl-table td {
@@ -1017,12 +1017,21 @@
   height: 100%;
   min-height: 200px;
 }
-/* The place-order button stays in view while the ticket scrolls. */
+/* The place-order button stays in view while the ticket scrolls. The second shadow fills the
+   panel's bottom padding beneath it so scrolled fields never peek out under the button. */
 .terminal.fit .ticket .place-btn {
   position: sticky;
   bottom: 0;
   z-index: 2;
-  box-shadow: 0 -10px 12px -2px var(--panel);
+  box-shadow:
+    0 -12px 14px -4px var(--panel),
+    0 var(--pad) 0 var(--pad) var(--panel);
+}
+.terminal.fit .ticket .place-btn:focus-visible {
+  box-shadow:
+    var(--focus-ring),
+    0 -12px 14px -4px var(--panel),
+    0 var(--pad) 0 var(--pad) var(--panel);
 }
 /* Inner lists use the panel's own scroll in fit mode (no nested fixed-height scrollers). */
 .terminal.fit .tape,

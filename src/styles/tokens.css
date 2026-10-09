@@ -43,6 +43,16 @@
   --chart-glow: none;
   --go: var(--royal);
   --cancel: #b8383a;
+  /* Hairlines: translucent so they sit softly on any surface (panel, raised, hover). */
+  --line: rgba(255, 255, 255, 0.065); /* panel outlines */
+  --line-soft: rgba(255, 255, 255, 0.042); /* dividers inside a panel: heads, table rows */
+  --line-strong: rgba(255, 255, 255, 0.11); /* hovered controls */
+  --thumb: rgba(255, 255, 255, 0.1);
+  --thumb-hover: rgba(255, 255, 255, 0.2);
+  --pop-shadow: 0 18px 48px -14px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --btn-tint: rgba(255, 255, 255, 0.04);
+  --seg-thumb: rgba(255, 255, 255, 0.085);
+  --seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color-scheme: dark;
 }
 
@@ -84,6 +94,15 @@
   --chart-glow: none;
   --go: var(--royal);
   --cancel: #b3261e;
+  --line: rgba(21, 23, 26, 0.09);
+  --line-soft: rgba(21, 23, 26, 0.06);
+  --line-strong: rgba(21, 23, 26, 0.18);
+  --thumb: rgba(21, 23, 26, 0.14);
+  --thumb-hover: rgba(21, 23, 26, 0.26);
+  --pop-shadow: 0 18px 44px -16px rgba(21, 23, 26, 0.28), 0 0 0 1px rgba(21, 23, 26, 0.08);
+  --btn-tint: rgba(21, 23, 26, 0.035);
+  --seg-thumb: #ffffff;
+  --seg-shadow: 0 1px 2px rgba(21, 23, 26, 0.1), 0 0 0 1px rgba(21, 23, 26, 0.06);
   color-scheme: light;
 }
 
@@ -91,13 +110,18 @@
   --font-display: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --radius-panel: 8px;
+  --radius-panel: 10px;
   --radius-sm: 5px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
   --gap: 8px;
   --pad: 12px;
   --cli-h: 0px;
+  /* Motion: one easing and two speeds everywhere, so hovers and state changes feel of a piece. */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 140ms;
+  --t-med: 220ms;
+  --focus-ring: 0 0 0 3px var(--accent-soft), 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
   /* P/L palette — overwritten at runtime from the Appearance store (literal hex). */
   --bull: #3ddc97;
   --bear: #ff5d5d;

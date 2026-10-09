@@ -13,6 +13,7 @@ import type { ChartMode, DrawingTool, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
 import { useTickFlash } from '@/app/useTickFlash';
 import { IndicatorMenu } from './IndicatorMenu';
+import { useTerminalFit } from '../fitContext';
 import './chart.css';
 
 const TOOLS: { tool: DrawingTool; icon: typeof Star; label: string }[] = [
@@ -42,6 +43,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
   const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile, bookProfile, toggleBookProfile } = useChartStore();
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
+  const fit = useTerminalFit();
   const flash = useTickFlash(asset.price);
   const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
   const spark = useSpark(symbol);
@@ -57,6 +59,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
       testId="chart-panel"
       drag={drag}
       flush
+      bodyClassName={fit ? 'chart-body' : ''}
       title={
         <span className="chart-hero">
           <span className="chart-sym">
@@ -140,7 +143,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
             </button>
           </span>
         )}
-        <div className="row" style={{ flexWrap: 'wrap', gap: 4 }}>
+        <div className="row chart-chips" style={{ flexWrap: 'wrap', gap: 4 }}>
           {indicators.map((i) => (
             <span key={i.id} className="chip" data-testid="indicator-chip">
               <span className="swatch" style={{ background: i.color }} />
@@ -152,8 +155,8 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
           ))}
         </div>
       </div>
-      <PriceChart />
-      <ResizeHandle />
+      <PriceChart fill={!!fit} />
+      {fit ? fit.bottomH > 0 && !chartMaximized && <RowSplitHandle height={fit.height} bottomH={fit.bottomH} /> : <ResizeHandle />}
     </Panel>
   );
 }
@@ -195,6 +198,36 @@ function RenkoBoxControl() {
   );
 }
 
+/** Fit-to-screen: dragging the chart's bottom edge moves the split between the chart row and the bottom row. */
+function RowSplitHandle({ height, bottomH }: { height: number; bottomH: number }) {
+  const start = useRef<{ y: number; bottomH: number } | null>(null);
+  const setBottomFrac = useLayoutStore((s) => s.setBottomFrac);
+  return (
+    <div
+      className="chart-resize"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize chart row"
+      title="Drag to resize the chart row · double-click to reset"
+      data-testid="row-split"
+      onPointerDown={(e) => {
+        // Keep the browser from starting a native drag / text selection mid-resize.
+        e.preventDefault();
+        start.current = { y: e.clientY, bottomH };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (start.current) setBottomFrac((start.current.bottomH - (e.clientY - start.current.y)) / height);
+      }}
+      onPointerUp={() => (start.current = null)}
+      onPointerCancel={() => (start.current = null)}
+      onDoubleClick={() => setBottomFrac(0.26)}
+    >
+      <span />
+    </div>
+  );
+}
+
 function ResizeHandle() {
   const start = useRef<{ y: number; h: number } | null>(null);
   return (
@@ -204,6 +237,8 @@ function ResizeHandle() {
       aria-orientation="horizontal"
       aria-label="Resize chart"
       onPointerDown={(e) => {
+        // Keep the browser from starting a native drag / text selection mid-resize.
+        e.preventDefault();
         start.current = { y: e.clientY, h: useLayoutStore.getState().chartHeight };
         e.currentTarget.setPointerCapture(e.pointerId);
       }}

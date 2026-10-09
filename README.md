@@ -204,6 +204,18 @@ src/
 - **Order book** de-emphasises leading digits so the moving ones stand out, and marks levels where you have a resting order.
 - **Positions** show P/L in R multiples (relative to the entry→stop distance) and time in trade.
 
+**Fits the screen.** On desktop widths the Terminal is sized to the window rather than being a long page:
+
+- The panels share the visible height: a main row (watchlist, chart, ticket, book…) and a bottom row (positions, orders & fills). Each panel scrolls inside itself, so the page itself doesn't scroll.
+- The chart fills its panel, and indicator panes shrink on short screens so the whole chart is always visible.
+- The order book shows as many levels as fit.
+- The ticket's Buy/Sell button stays pinned in view.
+- Drag the chart's bottom edge to trade height between the chart row and the bottom row; double-click it to reset.
+- **Maximize** makes the chart fill exactly one screen.
+- If more panels are switched on than fit side by side, they continue in rows below.
+- Narrow windows and the Mobile preview keep a normal scrolling stack.
+- The layout logic is in `lib/layout/fit.ts` (unit-tested).
+
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions, orders & fills), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
 Keyboard: **F1–F8** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.

@@ -133,3 +133,17 @@ kbd {
 .palette-trigger .spacer {
   flex: 1;
 }
+.palette-trigger,
+.palette-trigger kbd {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Narrower desktops: keep the trigger compact (icon + shortcut) rather than wrapping. */
+@media (max-width: 1640px) {
+  .palette-trigger {
+    min-width: 0;
+  }
+  .palette-trigger > span:not(.spacer) {
+    display: none;
+  }
+}

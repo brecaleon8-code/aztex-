@@ -28,13 +28,17 @@ import { barFootprint, BookProfileLayer, FootprintLayer, FootprintStats, type Ba
 const AXIS_W = 78;
 const TIME_H = 22;
 const OSC_H = 90;
+/** Fixed readout row height in fill mode, and the footprint Total/Delta strip. */
+const READOUT_H = 26;
+const FP_STATS_H = 38;
 const DEFAULT_VISIBLE = 90;
 const VISIBLE_BY_MODE: Partial<Record<string, number>> = { footprint: 12, renko: 60 };
 /** Footprint cells get unreadable (and expensive) beyond this many bars; fall back to candles. */
 const FOOTPRINT_MAX_BARS = 90;
 const TAG_H = 18;
 
-export function PriceChart() {
+/** `fill`: size to the parent's height (fit-to-screen Terminal) instead of the stored chart height. */
+export function PriceChart({ fill = false }: { fill?: boolean }) {
   const candles = useMarketStore((s) => s.candles);
   const key = useMarketStore((s) => s.candlesKey);
   const error = useMarketStore((s) => s.candlesError);
@@ -42,7 +46,7 @@ export function PriceChart() {
   const { mode, tool, indicators, drawings, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = useChartStore();
   const book = useMarketStore((s) => s.book);
   const colors = useThemeStore((s) => s.colors);
-  const height = useLayoutStore((s) => s.chartHeight);
+  const storeHeight = useLayoutStore((s) => s.chartHeight);
   const levels = useChartLevels();
   const symbol = useMarketStore((s) => s.selected);
   // Select the stable array, filter in render (a filtering selector would return a new array each call).
@@ -59,13 +63,18 @@ export function PriceChart() {
   // Size the SVG to the measured pixel box (1 SVG unit = 1px) — never a stretched viewBox.
   const wrapRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<SVGSVGElement>(null);
-  const [width, setWidth] = useState(0);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const width = box.w;
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setWidth(Math.floor(e.contentRect.width)));
+    const ro = new ResizeObserver(([e]) => {
+      const next = { w: Math.floor(e.contentRect.width), h: Math.floor(e.contentRect.height) };
+      setBox((b) => (b.w === next.w && b.h === next.h ? b : next));
+    });
     ro.observe(el);
-    setWidth(Math.floor(el.getBoundingClientRect().width));
+    const r = el.getBoundingClientRect();
+    setBox({ w: Math.floor(r.width), h: Math.floor(r.height) });
     return () => ro.disconnect();
   }, []);
 
@@ -108,6 +117,17 @@ export function PriceChart() {
   const computed = useMemo(() => indicators.map((i) => computeIndicator(i, series, colors, deltaByTime, scriptRuns[i.id])), [indicators, series, colors, deltaByTime, scriptRuns]);
   const overlays = computed.filter((c) => c.instance.type === 'overlay');
   const oscillators = computed.filter((c) => c.instance.type === 'oscillator');
+
+  // Fill mode: split the measured height between the price pane, indicator panes and the
+  // footprint strip so the whole chart is always on screen. Indicator panes shrink on short screens.
+  const fpWanted = mode === 'footprint' && vp.visibleCount <= FOOTPRINT_MAX_BARS;
+  let oscH = OSC_H;
+  let height = storeHeight;
+  if (fill && box.h > 0) {
+    const avail = box.h - READOUT_H - (fpWanted ? FP_STATS_H : 0);
+    if (oscillators.length) oscH = Math.max(52, Math.min(OSC_H, Math.floor((avail * 0.24) / Math.max(1, oscillators.length * 0.75))));
+    height = Math.max(150, avail - oscillators.length * oscH);
+  }
 
   const plotW = Math.max(10, width - AXIS_W);
   const plotH = height - TIME_H;
@@ -161,7 +181,7 @@ export function PriceChart() {
   // Footprint: live tape for bars we fully observed, OHLCV estimate otherwise.
   const fp = useFootprintStore();
   const tfMs = TIMEFRAME_MS[tf];
-  const fpActive = mode === 'footprint' && vp.visibleCount <= FOOTPRINT_MAX_BARS;
+  const fpActive = fpWanted;
   const rowSize = useMemo(() => (fpActive ? rowSizeFor(fp.tick, (13 * (ys.max - ys.min)) / Math.max(1, plotH)) : 0), [fpActive, fp.tick, ys, plotH]);
   const fpBars = useMemo(() => {
     const m = new Map<number, BarFootprint>();
@@ -261,17 +281,17 @@ export function PriceChart() {
 
   if (!ready)
     return (
-      <div className="chart no-select" ref={wrapRef}>
+      <div className={`chart no-select ${fill ? 'fill' : ''}`} ref={wrapRef}>
         {error ? (
-          <div className="chart-msg" style={{ height: height + 26 }}>
+          <div className="chart-msg" style={{ height: fill ? Math.max(200, box.h) : height + 26 }}>
             Could not load candles: {error}
           </div>
         ) : renkoRes && candles.length > 0 ? (
-          <div className="chart-msg" style={{ height: height + 26 }} data-testid="renko-empty">
+          <div className="chart-msg" style={{ height: fill ? Math.max(200, box.h) : height + 26 }} data-testid="renko-empty">
             No Renko bricks yet: price hasn't moved a full {fmtStep(renkoRes.box)} box. Choose a smaller box size.
           </div>
         ) : (
-          <div className="chart-skeleton" style={{ height: height + 26 }} aria-label="Loading chart">
+          <div className="chart-skeleton" style={{ height: fill ? Math.max(200, box.h) : height + 26 }} aria-label="Loading chart">
             {Array.from({ length: 36 }, (_, i) => (
               <span key={i} style={{ height: `${22 + ((i * 37) % 50)}%`, animationDelay: `${(i % 12) * 60}ms` }} />
             ))}
@@ -297,7 +317,7 @@ export function PriceChart() {
   const fmtT = (ms: number) => (tf === '1d' ? fmtDate(ms) : tf === '4h' || tf === '1h' ? `${fmtDate(ms).slice(5)} ${fmtTime(ms, false)}` : fmtTime(ms, false));
 
   return (
-    <div className="chart no-select" ref={wrapRef}>
+    <div className={`chart no-select ${fill ? 'fill' : ''}`} ref={wrapRef}>
       <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />
       <div className="chart-main" style={{ height }}>
         {overlays.some((o) => o.error) && (
@@ -503,7 +523,7 @@ export function PriceChart() {
       {fpOn && <FootprintStats bars={fpBars} visible={visible} xs={xs} width={width} plotW={plotW} bull={colors.bull} bear={colors.bear} />}
 
       {oscillators.map((o) => (
-        <OscillatorPane key={o.instance.id} c={o} width={width} plotW={plotW} xs={xs} start={start} end={end} hoverIdx={hoverIdx} />
+        <OscillatorPane key={o.instance.id} c={o} h={oscH} width={width} plotW={plotW} xs={xs} start={start} end={end} hoverIdx={hoverIdx} />
       ))}
     </div>
   );
@@ -755,7 +775,7 @@ function DrawingShape({ d, xs, ys, plotW, dec, preview }: { d: Drawing; xs: XSca
   }
 }
 
-function OscillatorPane({ c, width, plotW, xs, start, end, hoverIdx }: { c: ComputedIndicator; width: number; plotW: number; xs: XScale; start: number; end: number; hoverIdx: number | null }) {
+function OscillatorPane({ c, h: OSC_H, width, plotW, xs, start, end, hoverIdx }: { c: ComputedIndicator; h: number; width: number; plotW: number; xs: XScale; start: number; end: number; hoverIdx: number | null }) {
   const all = [...c.lines.map((l) => l.values), ...(c.bars ? [c.bars.values] : [])];
   let dom = c.domain ?? extent(all, start, end) ?? [0, 1];
   if (c.bars) dom = [Math.min(0, dom[0]), Math.max(0, dom[1])];

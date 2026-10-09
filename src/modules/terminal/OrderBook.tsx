@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { DepthChart, LiquidityHeatmap } from './DepthViews';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
@@ -10,6 +10,7 @@ import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice } from '@/lib/forma
 import type { OrderBookLevel } from '@/types';
 import { useTickFlash } from '@/app/useTickFlash';
 import { useTicketPreview } from './useTicket';
+import { useTerminalFit } from './fitContext';
 
 const LEVELS = 10;
 
@@ -34,15 +35,37 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
       ? { buy: t.side === 'Long', qty: pv.take.filled, avgPx: pv.take.avgPx, worstPx: pv.take.worstPx, label: `${fmtQty(pv.take.filled)} → avg ${fmtPrice(pv.take.avgPx)} · ${Math.abs(pv.slippageBps) < 0.05 ? '0.0' : pv.slippageBps.toFixed(1)} bp` }
       : null;
 
+  // Fit-to-screen: show as many levels per side as the panel has room for (no inner scrolling).
+  const fit = useTerminalFit();
+  const obRef = useRef<HTMLDivElement>(null);
+  const [levels, setLevels] = useState(LEVELS);
+  useLayoutEffect(() => {
+    const ob = obRef.current;
+    const body = ob?.parentElement;
+    if (!fit || !ob || !body) {
+      setLevels(LEVELS);
+      return;
+    }
+    const measure = () => {
+      const fixed = ['.ob-head', '.ob-divider', '.ob-foot'].reduce((s, q) => s + ((ob.querySelector(q) as HTMLElement | null)?.offsetHeight ?? 30), 0);
+      const row = (ob.querySelector('.ob-row') as HTMLElement | null)?.offsetHeight || 21;
+      setLevels(Math.max(3, Math.min(20, Math.floor((body.clientHeight - fixed - 2) / row / 2))));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [fit, view, book == null]);
+
   const ladder = useMemo(() => {
     if (!book) return null;
-    const asks = book.asks.slice(0, LEVELS);
-    const bids = book.bids.slice(0, LEVELS);
+    const asks = book.asks.slice(0, levels);
+    const bids = book.bids.slice(0, levels);
     const maxCum = Math.max(asks.at(-1)?.cumulative ?? 0, bids.at(-1)?.cumulative ?? 0) || 1;
     const spread = (asks[0]?.price ?? 0) - (bids[0]?.price ?? 0);
     const mid = ((asks[0]?.price ?? 0) + (bids[0]?.price ?? 0)) / 2;
     return { asks, bids, maxCum, spread, spreadPct: mid ? (spread / mid) * 100 : 0, imb: imbalance(book) };
-  }, [book]);
+  }, [book, levels]);
 
   const dec = priceDecimals(last);
   const flash = useTickFlash(last);
@@ -90,7 +113,7 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
     >
       {view === 'depth' && book && <DepthChart book={book} order={depthMark} />}
       {view === 'heat' && <LiquidityHeatmap history={history} />}
-      <div className="ob no-select" hidden={view !== 'dom'}>
+      <div className="ob no-select" hidden={view !== 'dom'} ref={obRef}>
         <div className="ob-head label">
           <span>Price</span>
           <span>Size</span>

@@ -29,6 +29,9 @@ interface LayoutState {
   workspaces: Record<WorkspaceId, PanelId[]>;
   chartHeight: number;
   chartMaximized: boolean;
+  /** Fit-to-screen: share of the visible height given to the bottom row (positions, orders…). */
+  bottomFrac: number;
+  setBottomFrac: (f: number) => void;
   setWorkspace: (w: WorkspaceId) => void;
   movePanel: (id: PanelId, before: PanelId) => void;
   togglePanel: (id: PanelId) => void;
@@ -55,6 +58,8 @@ export const useLayoutStore = create<LayoutState>()(
       workspaces: DEFAULT_WORKSPACES,
       chartHeight: DEFAULT_CHART_HEIGHT,
       chartMaximized: false,
+      bottomFrac: 0.26,
+      setBottomFrac: (f) => set({ bottomFrac: Math.round(Math.min(0.6, Math.max(0.12, f)) * 1000) / 1000 }),
       setWorkspace: (workspace) => set({ workspace }),
       movePanel: (id, before) => set((s) => ({ workspaces: { ...s.workspaces, [s.workspace]: reorder(s.workspaces[s.workspace], id, before) } })),
       togglePanel: (id) =>
@@ -69,7 +74,7 @@ export const useLayoutStore = create<LayoutState>()(
           chartMaximized: !s.chartMaximized,
           chartHeight: !s.chartMaximized ? Math.max(s.chartHeight, MAXIMIZED_CHART_HEIGHT) : DEFAULT_CHART_HEIGHT,
         })),
-      resetLayout: () => set((s) => ({ workspaces: { ...s.workspaces, [s.workspace]: DEFAULT_WORKSPACES[s.workspace] }, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false })),
+      resetLayout: () => set((s) => ({ workspaces: { ...s.workspaces, [s.workspace]: DEFAULT_WORKSPACES[s.workspace] }, chartHeight: DEFAULT_CHART_HEIGHT, chartMaximized: false, bottomFrac: 0.26 })),
     }),
     {
       name: 'aztex.layout',

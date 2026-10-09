@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { RotateCcw, LayoutGrid, Check } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { RotateCcw, LayoutGrid, Check, Keyboard } from 'lucide-react';
 import { useLayoutStore, ALL_PANELS, WORKSPACES, type PanelId } from '@/stores/useLayoutStore';
 import type { PanelDragProps } from '@/components/ui/Panel';
 import { Watchlist } from './Watchlist';
@@ -12,6 +12,9 @@ import { TimeSales } from './TimeSales';
 import { OrderFlow } from './OrderFlow';
 import { News } from './News';
 import { Blotter } from './Blotter';
+import { useThemeStore } from '@/stores/useThemeStore';
+import { BOTTOM_TIER, FIT_FLEX, MIN_W, fitRows } from '@/lib/layout/fit';
+import { TerminalFitContext } from './fitContext';
 import './terminal.css';
 
 const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
@@ -70,69 +73,115 @@ export function TerminalPage() {
   const workspace = useLayoutStore((s) => s.workspace);
   const order = useLayoutStore((s) => s.workspaces[s.workspace]);
   const maximized = useLayoutStore((s) => s.chartMaximized);
+  const bottomFrac = useLayoutStore((s) => s.bottomFrac);
+  const platform = useThemeStore((s) => s.platform);
   const { movePanel, resetLayout, setWorkspace } = useLayoutStore.getState();
   const [dragging, setDragging] = useState<PanelId | null>(null);
   const [over, setOver] = useState<PanelId | null>(null);
 
-  return (
-    <div className="terminal">
-      <div className="ws-bar">
-        <div className="ws-tabs" role="tablist" aria-label="Workspaces">
-          {WORKSPACES.map((w) => (
-            <button key={w.id} role="tab" aria-selected={workspace === w.id} className={`ws-tab ${workspace === w.id ? 'active' : ''}`} onClick={() => setWorkspace(w.id)} title={w.hint} data-testid={`ws-${w.id}`}>
-              {w.label}
-            </button>
-          ))}
-        </div>
-        <span className="ws-hint">{WORKSPACES.find((w) => w.id === workspace)?.hint}</span>
-        <span className="spacer" />
-        <PanelPicker />
-        <button className="btn ghost sm" onClick={resetLayout} title="Restore this workspace's default panels">
-          <RotateCcw size={12} /> Reset
-        </button>
-      </div>
-      <div className="terminal-grid">
-        {order.map((id, idx) => (
-          <div
-            key={id}
-            className={`tile ${dragging === id ? 'dragging' : ''} ${over === id && dragging && dragging !== id ? 'drop-target' : ''}`}
-            style={{ ...panelStyle(id, maximized), order: idx, ['--i' as string]: idx }}
-            data-panel={id}
-            onDragOver={(e) => {
-              if (!dragging) return;
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'move';
-              if (over !== id) setOver(id);
-            }}
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver((o) => (o === id ? null : o));
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragging) movePanel(dragging, id);
-              setDragging(null);
-              setOver(null);
-            }}
-          >
-            {PANELS[id]({
-              draggable: true,
-              onDragStart: (e) => {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', id);
-                setDragging(id);
-              },
-              onDragEnd: () => {
-                setDragging(null);
-                setOver(null);
-              },
-            })}
-          </div>
-        ))}
-      </div>
-      <div className="terminal-foot">
-        <span className="label">Drag a panel's header to rearrange · F1–F8 switch modules · / focuses the command line</span>
-      </div>
+  // Measure the visible area below the workspace bar so panels can share it exactly.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0, gap: 8 });
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    const content = grid?.closest('.content') as HTMLElement | null;
+    if (!grid || !content) return;
+    const measure = () => {
+      const cs = getComputedStyle(content);
+      const top = grid.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - parseFloat(cs.paddingTop);
+      const inner = content.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const next = { w: Math.floor(grid.clientWidth), h: Math.floor(inner - top), gap: parseFloat(getComputedStyle(grid).rowGap) || 8 };
+      setBox((b) => (b.w === next.w && b.h === next.h && b.gap === next.gap ? b : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(content);
+    ro.observe(grid);
+    const bar = grid.previousElementSibling;
+    if (bar) ro.observe(bar);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  // Fit-to-screen on desktop widths; small screens and the Mobile preview keep a scrolling stack.
+  const fit = platform !== 'mobile' && box.w >= 960 && box.h >= 420;
+  const rows = fit ? fitRows({ order, width: box.w, height: box.h, gap: box.gap, maximized, bottomFrac }) : null;
+  const lastRow = rows?.[rows.length - 1];
+  const bottomH = rows && rows.length > 1 && lastRow!.ids.every((id) => BOTTOM_TIER.has(id)) ? lastRow!.h : 0;
+  const fitCtx = useMemo(() => (fit ? { height: box.h, bottomH } : null), [fit, box.h, bottomH]);
+
+  const tile = (id: PanelId, style: CSSProperties) => (
+    <div
+      key={id}
+      className={`tile ${dragging === id ? 'dragging' : ''} ${over === id && dragging && dragging !== id ? 'drop-target' : ''}`}
+      style={{ ...style, order: order.indexOf(id), ['--i' as string]: order.indexOf(id) }}
+      data-panel={id}
+      onDragOver={(e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (over !== id) setOver(id);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver((o) => (o === id ? null : o));
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (dragging) movePanel(dragging, id);
+        setDragging(null);
+        setOver(null);
+      }}
+    >
+      {PANELS[id]({
+        draggable: true,
+        onDragStart: (e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', id);
+          setDragging(id);
+        },
+        onDragEnd: () => {
+          setDragging(null);
+          setOver(null);
+        },
+      })}
     </div>
+  );
+
+  return (
+    <TerminalFitContext.Provider value={fitCtx}>
+      <div className={`terminal ${fit ? 'fit' : ''}`}>
+        <div className="ws-bar">
+          <div className="ws-tabs" role="tablist" aria-label="Workspaces">
+            {WORKSPACES.map((w) => (
+              <button key={w.id} role="tab" aria-selected={workspace === w.id} className={`ws-tab ${workspace === w.id ? 'active' : ''}`} onClick={() => setWorkspace(w.id)} title={w.hint} data-testid={`ws-${w.id}`}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+          <span className="ws-hint">{WORKSPACES.find((w) => w.id === workspace)?.hint}</span>
+          <span className="spacer" />
+          <span className="ws-keys faint" title="Drag a panel's header to rearrange · drag the chart's bottom edge to resize rows · F1–F8 switch modules · / focuses the command line">
+            <Keyboard size={13} />
+          </span>
+          <PanelPicker />
+          <button className="btn ghost sm" onClick={resetLayout} title="Restore this workspace's default panels and sizes">
+            <RotateCcw size={12} /> Reset
+          </button>
+        </div>
+        <div className="terminal-grid" ref={gridRef} data-fit={fit ? 'on' : 'off'}>
+          {rows
+            ? rows.map((r, i) => (
+                <div key={r.ids.join()} className="terminal-row" style={{ height: r.h }} data-testid={i === 0 ? 'terminal-row-main' : undefined}>
+                  {r.ids.map((id) => tile(id, { flex: FIT_FLEX[id], minWidth: MIN_W[id] }))}
+                </div>
+              ))
+            : order.map((id) => tile(id, panelStyle(id, maximized)))}
+        </div>
+      </div>
+    </TerminalFitContext.Provider>
   );
 }
 

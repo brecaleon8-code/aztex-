@@ -190,6 +190,32 @@
     display: none;
   }
 }
+/* Narrower desktops: tighten the top bar so its right-hand controls never fall off-screen. */
+@media (max-width: 1480px) {
+  .topbar {
+    gap: 12px;
+  }
+  .nav-tab {
+    padding: 0 9px;
+  }
+  .nav-tab.active::after {
+    left: 9px;
+    right: 9px;
+  }
+  .tb-status {
+    gap: 12px;
+  }
+  .tb-feed-label,
+  .tb-session {
+    display: none;
+  }
+}
+@media (max-width: 1280px) {
+  .tb-latency,
+  .tb-status .tb-cell:nth-child(2) {
+    display: none;
+  }
+}
 @media (max-width: 1100px) {
   .tb-status .tb-cell:nth-child(2) {
     display: none;

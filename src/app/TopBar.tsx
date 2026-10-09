@@ -75,11 +75,11 @@ export function TopBar() {
       <div className="tb-status">
         <span className="tb-cell" title={status.detail}>
           <span className={live ? 'live-dot' : 'live-dot off'} />
-          <span className="dim">{live ? (providerId === 'live' ? 'Binance live' : 'Simulated feed') : status.state === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}</span>
-          <span className="num faint">{status.latencyMs == null ? '' : `${status.latencyMs}ms`}</span>
+          <span className="dim tb-feed-label">{live ? (providerId === 'live' ? 'Binance live' : 'Simulated feed') : status.state === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}</span>
+          <span className="num faint tb-latency">{status.latencyMs == null ? '' : `${status.latencyMs}ms`}</span>
         </span>
         <span className="tb-cell">
-          <span className="dim">{sessionLabel(new Date(now).getUTCHours())}</span>
+          <span className="dim tb-session">{sessionLabel(new Date(now).getUTCHours())}</span>
           <span className="num">{fmtTime(now)} UTC</span>
         </span>
         <select className="tb-select" value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} aria-label="Platform">

@@ -577,3 +577,47 @@ test.describe('On-chain', () => {
     await page.getByRole('group', { name: 'Data source' }).getByRole('button', { name: 'Simulated' }).click();
   });
 });
+
+test.describe('Fit to screen', () => {
+  test('Terminal fits a laptop screen: no page scroll, whole chart and Buy button visible, maximize fills the screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 657 });
+    await freshTerminal(page);
+    await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'on');
+    const noScroll = () => page.evaluate(() => {
+      const c = document.querySelector('.content') as HTMLElement;
+      return c.scrollHeight <= c.clientHeight + 1;
+    });
+    await expect.poll(noScroll).toBe(true);
+    const vh = 657;
+    const bottomOf = async (testId: string) => (await page.getByTestId(testId).boundingBox())!.y + (await page.getByTestId(testId).boundingBox())!.height;
+    expect(await bottomOf('chart-panel')).toBeLessThanOrEqual(vh);
+    expect(await bottomOf('place-order')).toBeLessThanOrEqual(vh);
+    expect(await bottomOf('positions')).toBeLessThanOrEqual(vh);
+    // Indicator panes are inside the chart panel, on screen.
+    expect(await bottomOf('osc-volume')).toBeLessThanOrEqual(vh);
+
+    // Dragging the chart's bottom edge trades height between the chart row and the bottom row
+    // (on a taller window — on this one the chart row is already at its minimum).
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await expect.poll(noScroll).toBe(true);
+    const before = (await page.getByTestId('positions').boundingBox())!.height;
+    const h = (await page.getByTestId('row-split').boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2, h.y - 60, { steps: 4 });
+    await page.mouse.up();
+    expect((await page.getByTestId('positions').boundingBox())!.height).toBeGreaterThan(before + 30);
+    await expect.poll(noScroll).toBe(true);
+
+    // Maximize: the chart fills exactly one screen.
+    await page.setViewportSize({ width: 1366, height: 657 });
+    await page.getByRole('button', { name: 'Maximize chart' }).click();
+    expect(await bottomOf('chart-panel')).toBeLessThanOrEqual(vh);
+    expect((await page.getByTestId('chart-panel').boundingBox())!.height).toBeGreaterThan(400);
+    await page.getByRole('button', { name: 'Restore chart' }).click();
+
+    // The Mobile preview keeps a normal scrolling stack.
+    await page.getByLabel('Platform').selectOption('mobile');
+    await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'off');
+  });
+});

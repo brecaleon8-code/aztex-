@@ -984,3 +984,51 @@
   fill: var(--accent);
   font-weight: 600;
 }
+
+/* ── Fit-to-screen layout (desktop) ─────────────────────────────────────────
+   Rows share the visible height; each panel scrolls inside itself instead of
+   growing the page. */
+.terminal.fit .terminal-grid {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.terminal-row {
+  display: flex;
+  gap: var(--gap);
+  min-height: 0;
+}
+.terminal.fit .tile {
+  height: 100%;
+  min-height: 0;
+}
+.terminal.fit .tile > .panel {
+  height: 100%;
+  min-height: 0;
+}
+.terminal.fit .panel-body {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.ws-keys {
+  display: inline-flex;
+  cursor: help;
+}
+.terminal.fit .depth-view {
+  height: 100%;
+  min-height: 200px;
+}
+/* The place-order button stays in view while the ticket scrolls. */
+.terminal.fit .ticket .place-btn {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -10px 12px -2px var(--panel);
+}
+/* Inner lists use the panel's own scroll in fit mode (no nested fixed-height scrollers). */
+.terminal.fit .tape,
+.terminal.fit .news,
+.terminal.fit .positions,
+.terminal.fit .blotter {
+  max-height: none;
+  overflow: visible;
+}

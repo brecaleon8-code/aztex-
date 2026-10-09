@@ -193,7 +193,18 @@ export interface IndicatorInstance {
   formula?: string; // for kind === 'custom'
   script?: string; // for kind === 'script' — JavaScript run in the QuickJS/WASM sandbox
   inputs?: Record<string, number>; // script input overrides
+  /** Price input for SMA/EMA/Bollinger/RSI (default close). */
+  source?: PriceSource;
+  /** Line width override. */
+  width?: number;
+  /** RSI overbought / oversold guides (default 70 / 30). */
+  levels?: [number, number];
+  /** Hidden from the chart but kept in the legend. */
+  hidden?: boolean;
+  /** The Studio library item this was added from, for "save back". */
+  studioId?: string;
 }
+export type PriceSource = 'close' | 'open' | 'high' | 'low' | 'hl2' | 'hlc3' | 'ohlc4';
 
 export type ChartMode = 'candles' | 'heikin' | 'bars' | 'line' | 'area' | 'renko' | 'footprint';
 

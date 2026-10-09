@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
-import { Minus, Plus, ChevronsRight } from 'lucide-react';
+import { Minus, Plus, ChevronsRight, Settings2 } from 'lucide-react';
 import type { Candle, DataPoint, Drawing } from '@/types';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
@@ -43,7 +43,9 @@ export function PriceChart({ fill = false }: { fill?: boolean }) {
   const key = useMarketStore((s) => s.candlesKey);
   const error = useMarketStore((s) => s.candlesError);
   const tf = useMarketStore((s) => s.timeframe);
-  const { mode, tool, indicators, drawings, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = useChartStore();
+  const { mode, tool, indicators: allIndicators, drawings, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = useChartStore();
+  // Hidden indicators stay in the legend but aren't computed or drawn.
+  const indicators = useMemo(() => allIndicators.filter((i) => !i.hidden), [allIndicators]);
   const book = useMarketStore((s) => s.book);
   const colors = useThemeStore((s) => s.colors);
   const storeHeight = useLayoutStore((s) => s.chartHeight);
@@ -818,6 +820,9 @@ function OscillatorPane({ c, h: OSC_H, width, plotW, xs, start, end, hoverIdx }:
       <div className="osc-label">
         <span className="swatch" style={{ background: c.instance.color }} />
         <span>{indicatorLabel(c.instance)}</span>
+        <button className="osc-gear" data-qe-anchor aria-label={`Edit ${indicatorLabel(c.instance)}`} title="Edit settings" onClick={(e) => useChartStore.getState().openEditor(c.instance.id, e.currentTarget)} data-testid="osc-edit">
+          <Settings2 size={11} />
+        </button>
         {c.error ? <span className="error-text" data-testid="osc-error">{c.error}</span> : c.pending ? <span className="faint">running…</span> : <span className="mono" data-testid="osc-value">{val == null ? '—' : c.instance.kind === 'volume' ? fmtCompact(val) : val.toFixed(2)}</span>}
       </div>
     </div>

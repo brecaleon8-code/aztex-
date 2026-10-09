@@ -1,4 +1,5 @@
 import { reorder } from './useLayoutStore';
+import { useChartStore } from './useChartStore';
 import { matchAlerts } from './useDiscoveryStore';
 import { useOtcStore } from './useOtcStore';
 import { useMarketStore } from './useMarketStore';
@@ -195,5 +196,23 @@ describe('fee tiers via partner codes', () => {
     expect(useFeeStore.getState().redeem(issued.code)).toMatchObject({ ok: false, error: expect.stringMatching(/Already/) });
     useFeeStore.getState().revoke(issued.code);
     expect(useFeeStore.getState().tier).toBe('standard');
+  });
+});
+
+describe('chart indicator quick edit', () => {
+  it('updates live, duplicates next to the original, hides without removing', () => {
+    useChartStore.setState({ indicators: [{ id: 'a', kind: 'ema', type: 'overlay', color: '#fff', period: 21 }, { id: 'b', kind: 'vwap', type: 'overlay', color: '#fff' }], editing: null });
+    const st = useChartStore.getState;
+    st().updateIndicator('a', { period: 50, source: 'hl2' });
+    expect(st().indicators[0]).toMatchObject({ id: 'a', kind: 'ema', period: 50, source: 'hl2' });
+    const id = st().duplicateIndicator('a');
+    expect(st().indicators.map((i) => i.id)).toEqual(['a', id, 'b']);
+    expect(st().indicators[1]).toMatchObject({ period: 50, source: 'hl2' });
+    st().toggleIndicatorHidden('a');
+    expect(st().indicators[0].hidden).toBe(true);
+    expect(st().indicators).toHaveLength(3);
+    useChartStore.setState({ editing: { id: 'a', anchor: { x: 0, y: 0, w: 1, h: 1 } } });
+    st().removeIndicator('a');
+    expect(st().editing).toBeNull();
   });
 });

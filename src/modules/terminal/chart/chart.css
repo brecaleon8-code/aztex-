@@ -519,3 +519,222 @@
 .terminal.fit .chart-chips .chip {
   flex: none;
 }
+
+/* ── Indicator quick edit ───────────────────────────────────────────────────── */
+.ind-chip {
+  gap: 4px;
+  padding: 0 6px 0 0;
+}
+.ind-chip .ind-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 2px 0 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+}
+.ind-chip .ind-chip-main:hover {
+  color: var(--text);
+}
+.ind-chip.editing {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  color: var(--text);
+}
+.ind-chip.off .ind-chip-main {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.ind-chip .ind-chip-eye {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ind-chip:hover .ind-chip-eye,
+.ind-chip.off .ind-chip-eye,
+.ind-chip .ind-chip-eye:focus-visible {
+  opacity: 1;
+}
+.osc-gear {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.45;
+}
+.osc:hover .osc-gear,
+.osc-gear:focus-visible {
+  opacity: 1;
+}
+.osc-gear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.qe {
+  position: fixed;
+  z-index: 60;
+  width: 344px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.55);
+}
+.qe:has(.code-editor) {
+  width: 460px;
+}
+.qe-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px;
+}
+.qe-head .swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.qe-kind {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qe-name {
+  min-width: 0;
+  width: 130px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text);
+  font: 600 12.5px var(--font-ui);
+}
+.qe-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.qe-icon:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.qe-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.qe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+.qe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.qe-source .input {
+  height: 28px;
+  font-size: 12px;
+}
+.qe-stepper {
+  display: flex;
+  align-items: stretch;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  overflow: hidden;
+}
+.qe-stepper:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+.qe-stepper input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: center;
+}
+.qe-stepper button {
+  flex: none;
+  width: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.qe-stepper button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.qe-stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.qe-sep {
+  height: 1px;
+  margin: 2px -12px;
+  background: var(--border-soft);
+}
+.qe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qe-w {
+  display: inline-block;
+  width: 16px;
+  background: currentColor;
+  border-radius: 1px;
+  vertical-align: middle;
+}
+.qe-note {
+  font-size: 11.5px;
+}
+.qe-script {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qe-script .code-editor {
+  height: 220px;
+}
+.qe-code-toggle {
+  align-self: flex-start;
+}
+.qe-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 8px 10px;
+  border-top: 1px solid var(--border-soft);
+}

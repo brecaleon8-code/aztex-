@@ -220,6 +220,22 @@ src/
 
 Keyboard: **F1–F8** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
+## Indicator quick edit (on the chart)
+
+Edit any indicator on the chart without opening Studio:
+
+- **Open the editor** by clicking an indicator's chip in the chart toolbar, or the ⚙ on an indicator pane's label. A popover opens.
+- **Changes apply live:**
+  - length, std-dev, fast/slow/signal
+  - source (close, open, high, low, hl2, hlc3, ohlc4)
+  - RSI overbought/oversold levels
+  - colour and line width
+  - on-price vs own-pane for custom indicators
+- **Formulas** apply as soon as they parse. While you type, the chart keeps the last valid formula and shows the error inline.
+- **Scripts** show their `input()` settings as steppers that update the chart live. **Edit code** opens the code editor with Run and **Apply to chart**.
+- **Popover actions:** Hide/Show (also the 👁 on the chip), Duplicate, Reset to defaults, Remove. Custom and script indicators can also **Save / Update library**, which writes the chart's version back to Studio, or open the full Studio editor.
+- **Closing:** Esc or clicking outside.
+
 ## Renko, footprint & order-book profile
 
 Pick a style from the chart's mode menu (or the command palette):

@@ -1,4 +1,5 @@
 import { bollinger, ema, extent, macd, rsi, sma } from './series';
+import { computeIndicator, indicatorLabel, sourceSeries } from './compute';
 
 describe('sma', () => {
   it('averages a rolling window with null warm-up', () => {
@@ -60,5 +61,27 @@ describe('extent', () => {
   it('ignores nulls and respects the window', () => {
     expect(extent([[null, 5, 1, 9], [3, null, 0]], 1, 3)).toEqual([0, 5]);
     expect(extent([[null, null]], 0, 2)).toBeNull();
+  });
+});
+
+
+describe('indicator quick-edit settings', () => {
+  const candles = Array.from({ length: 40 }, (_, i) => ({ time: i, open: 10 + i, high: 12 + i, low: 8 + i, close: 11 + i, volume: 5 }));
+  const colors = { bull: '#0f0', bear: '#f00' };
+  it('reads the chosen price source', () => {
+    expect(sourceSeries(candles, 'hl2')[0]).toBe(10);
+    expect(sourceSeries(candles, 'hlc3')[0]).toBeCloseTo((12 + 8 + 11) / 3);
+    expect(sourceSeries(candles, 'ohlc4')[0]).toBeCloseTo((10 + 12 + 8 + 11) / 4);
+    expect(sourceSeries(candles)[3]).toBe(14);
+    const a = computeIndicator({ id: 'a', kind: 'sma', type: 'overlay', color: '#fff', period: 2 }, candles, colors);
+    const b = computeIndicator({ id: 'b', kind: 'sma', type: 'overlay', color: '#fff', period: 2, source: 'high' }, candles, colors);
+    expect(b.lines[0].values[5]! - a.lines[0].values[5]!).toBeCloseTo(1);
+  });
+  it('applies line width, RSI levels and labels the source', () => {
+    const r = computeIndicator({ id: 'r', kind: 'rsi', type: 'oscillator', color: '#fff', period: 14, levels: [80, 20], width: 3 }, candles, colors);
+    expect(r.guides).toEqual([20, 80]);
+    expect(r.lines[0].width).toBe(3);
+    expect(indicatorLabel({ id: 'e', kind: 'ema', type: 'overlay', color: '#fff', period: 9, source: 'hl2' })).toBe('EMA 9 · hl2');
+    expect(indicatorLabel({ id: 'e', kind: 'ema', type: 'overlay', color: '#fff', period: 9 })).toBe('EMA 9');
   });
 });

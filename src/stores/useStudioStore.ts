@@ -20,10 +20,10 @@ export interface UserIndicator {
 }
 
 /** The chart-store shape for a saved indicator (formula → 'custom', script → 'script'). */
-export function toChartIndicator(u: Omit<UserIndicator, 'id'>): Omit<IndicatorInstance, 'id'> {
+export function toChartIndicator(u: Omit<UserIndicator, 'id'> & { id?: string }): Omit<IndicatorInstance, 'id'> {
   return u.lang === 'script'
-    ? { kind: 'script', type: u.type, color: u.color, name: u.name, script: u.script ?? '', inputs: u.inputs ?? {} }
-    : { kind: 'custom', type: u.type, color: u.color, name: u.name, formula: u.formula };
+    ? { kind: 'script', type: u.type, color: u.color, name: u.name, script: u.script ?? '', inputs: u.inputs ?? {}, studioId: u.id }
+    : { kind: 'custom', type: u.type, color: u.color, name: u.name, formula: u.formula, studioId: u.id };
 }
 
 interface StudioState {

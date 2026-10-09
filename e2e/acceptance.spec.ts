@@ -621,3 +621,66 @@ test.describe('Fit to screen', () => {
     await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'off');
   });
 });
+
+test.describe('Indicator quick edit', () => {
+  test('edit built-ins, formulas and scripts from the chart without opening Studio', async ({ page }) => {
+    await freshTerminal(page);
+    const chip = (text: string | RegExp) => page.getByTestId('indicator-chip').filter({ hasText: text });
+
+    // Built-in: length + source apply live; hide/show; duplicate; reset.
+    await chip('EMA 21').getByTestId('indicator-edit').click();
+    await expect(page.getByTestId('quick-edit')).toContainText('Exponential moving average');
+    await page.getByRole('button', { name: 'Increase Length' }).click();
+    await expect(chip('EMA 22')).toBeVisible();
+    await page.getByTestId('qe-source').selectOption('hl2');
+    await expect(chip('EMA 22 · hl2')).toBeVisible();
+    await page.getByTestId('qe-hide').click();
+    await expect(chip('EMA 22')).toHaveClass(/off/);
+    await page.getByTestId('qe-hide').click();
+    await expect(chip('EMA 22')).not.toHaveClass(/off/);
+    await page.getByTestId('qe-duplicate').click();
+    await expect(chip('EMA 22 · hl2')).toHaveCount(2);
+    await page.getByTestId('qe-reset').click();
+    await expect(chip('EMA 21')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('quick-edit')).toHaveCount(0);
+
+    // Oscillator pane gear: RSI levels.
+    await page.getByTestId('add-indicator').click();
+    await page.getByRole('button', { name: 'RSI 14' }).click();
+    await page.getByTestId('osc-rsi').getByTestId('osc-edit').click();
+    await page.getByTestId('qe-ob').fill('80');
+    await expect(page.getByTestId('osc-rsi').locator('text', { hasText: /^80$/ })).toBeAttached();
+    await page.getByTestId('qe-period').fill('21');
+    await expect(chip('RSI 21')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // Formula: invalid edits don't break the chart; valid ones apply.
+    await page.getByTestId('add-indicator').click();
+    await page.getByTestId('custom-indicator').click();
+    await page.getByTestId('formula-add').click();
+    await chip('My indicator').getByTestId('indicator-edit').click();
+    await page.getByTestId('qe-formula').fill('ema(close, 9) -');
+    await expect(page.getByTestId('qe-formula-error')).toBeVisible();
+    await expect(page.getByTestId('osc-custom')).toBeVisible();
+    await page.getByTestId('qe-formula').fill('ema(close, 9) - ema(close, 30)');
+    await expect(page.getByTestId('qe-formula-error')).toHaveCount(0);
+    await page.getByRole('textbox', { name: 'Indicator name' }).fill('Trend gap');
+    await expect(chip('Trend gap')).toBeVisible();
+    await page.getByTestId('qe-save').click();
+    await expect(page.getByTestId('toast').filter({ hasText: 'Saved to library' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // Script from the library: tune its inputs on the chart, then push back to Studio.
+    await page.getByTestId('add-indicator').click();
+    await page.getByTestId('my-indicator').filter({ hasText: 'Keltner' }).click();
+    await chip('Keltner').getByTestId('indicator-edit').click();
+    await expect(page.getByTestId('qe-input-Length')).toHaveValue('20', { timeout: 10000 });
+    await page.getByRole('button', { name: 'Increase Length' }).click();
+    await expect(page.getByTestId('qe-input-Length')).toHaveValue('21');
+    await page.getByTestId('qe-code-toggle').click();
+    await expect(page.getByTestId('qe-code')).toBeVisible();
+    await page.getByTestId('qe-save').click();
+    await expect(page.getByTestId('toast').filter({ hasText: 'Library updated' })).toBeVisible();
+  });
+});

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { atrBox } from '@/lib/chart/renko';
-import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X } from 'lucide-react';
+import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X, Eye, EyeOff } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
@@ -13,6 +13,7 @@ import type { ChartMode, DrawingTool, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
 import { useTickFlash } from '@/app/useTickFlash';
 import { IndicatorMenu } from './IndicatorMenu';
+import { QuickEdit } from './QuickEdit';
 import { useTerminalFit } from '../fitContext';
 import './chart.css';
 
@@ -41,7 +42,8 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const asset = useMarketStore((s) => s.assets[s.selected]);
   const tf = useMarketStore((s) => s.timeframe);
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
-  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile, bookProfile, toggleBookProfile } = useChartStore();
+  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile, bookProfile, toggleBookProfile, openEditor, toggleIndicatorHidden } = useChartStore();
+  const editingId = useChartStore((s) => s.editing?.id);
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const fit = useTerminalFit();
   const flash = useTickFlash(asset.price);
@@ -145,9 +147,14 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
         )}
         <div className="row chart-chips" style={{ flexWrap: 'wrap', gap: 4 }}>
           {indicators.map((i) => (
-            <span key={i.id} className="chip" data-testid="indicator-chip">
-              <span className="swatch" style={{ background: i.color }} />
-              {indicatorLabel(i)}
+            <span key={i.id} className={`chip ind-chip ${i.hidden ? 'off' : ''} ${editingId === i.id ? 'editing' : ''}`} data-testid="indicator-chip" data-qe-anchor>
+              <button className="ind-chip-main" onClick={(e) => openEditor(i.id, e.currentTarget.parentElement!)} title="Edit settings" aria-label={`Edit ${indicatorLabel(i)}`} data-testid="indicator-edit">
+                <span className="swatch" style={{ background: i.color }} />
+                {indicatorLabel(i)}
+              </button>
+              <button aria-label={`${i.hidden ? 'Show' : 'Hide'} ${indicatorLabel(i)}`} title={i.hidden ? 'Show' : 'Hide'} onClick={() => toggleIndicatorHidden(i.id)} className="ind-chip-eye" data-testid="indicator-eye">
+                {i.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
+              </button>
               <button aria-label={`Remove ${indicatorLabel(i)}`} onClick={() => removeIndicator(i.id)}>
                 <X size={11} />
               </button>
@@ -156,6 +163,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
         </div>
       </div>
       <PriceChart fill={!!fit} />
+      <QuickEdit />
       {fit ? fit.bottomH > 0 && !chartMaximized && <RowSplitHandle height={fit.height} bottomH={fit.bottomH} /> : <ResizeHandle />}
     </Panel>
   );

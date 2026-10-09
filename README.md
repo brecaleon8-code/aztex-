@@ -204,9 +204,95 @@ src/
 - **Order book** de-emphasises leading digits so the moving ones stand out, and marks levels where you have a resting order.
 - **Positions** show P/L in R multiples (relative to the entry→stop distance) and time in trade.
 
-**Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
+**Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions, orders & fills), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
-Keyboard: **F1–F7** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+Keyboard: **F1–F8** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+
+## Renko, footprint & order-book profile
+
+Pick a style from the chart's mode menu (or the command palette):
+
+- **Renko.** Bricks are built from closes in the classic way:
+  - A brick prints when the close moves one full box beyond the last brick, so a reversal needs two boxes.
+  - Bricks sit on a fixed price grid.
+  - Wicks show how far price ran against a brick while it was forming.
+  - The box size is **automatic (ATR 14, rounded to 1/2/2.5/5 × 10ⁿ)** or a fixed value typed in the **Box** field.
+  - Dashed lines mark the price that prints the next brick up or down.
+  - Indicators, strategy signals and the volume profile all run on the brick series.
+- **Footprint.** Shows sell × buy (bid × ask aggressor) volume per price row inside each bar:
+  - Cells are shaded by delta, the most-traded row (POC) is outlined, and diagonal 3:1 imbalances are bolded.
+  - **Total vol** and **Delta vol** rows sit underneath.
+  - Bars are built from the live trade tape (`useFootprintStore`, ~1 bp ticks re-binned to readable rows as you zoom).
+  - Bars from before the session started have no tape, so they are **estimated from OHLCV and marked as such**. A “live tape →” marker shows where real data begins.
+  - Zoom in to 90 bars or fewer to see cells.
+- **OB profile** (toolbar **OB** button). Resting order-book size at each level is drawn against the price axis, and outsized levels (walls) are labelled.
+
+## Advanced order execution
+
+The ticket prices every order against the **visible order book** before you send it, using the same model the order router fills with (`lib/trading/execution.ts`):
+
+- **Pre-trade box:**
+  - estimated average price and worst price
+  - number of book levels swept, with mini depth bars showing what the order consumes
+  - slippage vs the touch and impact vs mid, in bp
+  - spread
+  - maker/taker fee for your tier (mixed when part rests)
+  - warnings and rejects, explained in plain language
+- **Time in force** on limits:
+  - **GTC** — the unfilled part rests on the book.
+  - **IOC** — fill what you can now and cancel the rest.
+  - **FOK** — fill completely now or not at all (otherwise rejected before sending).
+- **Post-only.** Maker-only: an order that would cross is rejected. It forces GTC, as on most venues.
+- **Market slippage limit** (bp from the touch). The part beyond it is cancelled.
+- **Reduce-only:**
+  - Closes opposite exposure oldest-first and never opens or flips a position.
+  - It is sized as **% of the open position** (25/50/75/100) and clamped to what's open.
+- **Bracket TP/SL.** Take-profit (limit, maker) and stop-loss (stop-market, taker) go out as live **one-cancels-other** exit orders. With the bracket off, TP/SL are alert levels only.
+- **Orders & fills blotter** (Trade workspace):
+  - **Open** — working limits and armed bracket legs, each cancellable.
+  - **Orders** — full lifecycle: working → partially filled → filled / cancelled / rejected, with reasons, TIF/PO/RO/OCO flags, average fill and slippage vs the mid at send time.
+  - **Fills** — price, qty, maker (M) or taker (T), fee; prices modelled beyond the visible book are marked ~.
+  - **Quality** — TCA: average slippage vs arrival, implementation shortfall (slippage + fees), net fees, maker share, fill rate.
+- **Book views.** The depth chart marks where the ticket's order would sweep to, and ladder levels it would take are highlighted.
+
+Large orders can exceed the visible book (14–20 levels). In that case the tail is priced by extending the book's average level size and spacing, and is clearly flagged as an estimate. Real venues match against far deeper books.
+
+## On-chain (F3)
+
+A multi-chain scanner, whale and exchange-flow monitor, and on-chain alerts (`src/lib/onchain`, `src/modules/onchain`).
+
+- **Networks:** Ethereum, Bitcoin, Solana, Arbitrum One, Base, Polygon PoS, BNB Smart Chain and Tron. Each declares what it supports; Bitcoin, for example, has no token contracts.
+- **Search** recognises what you paste:
+  - EVM / Bitcoin / Tron transaction hashes and Solana signatures
+  - EVM, Bitcoin (bech32 and legacy), Solana and Tron addresses
+  - block heights and Bitcoin block hashes
+  - token symbols and names
+- **Result views:**
+  - **Transactions** — status, block, confirmations, value, fee, gas, decoded method and ERC-20 / SPL transfers, plus Bitcoin inputs and outputs.
+  - **Wallets and contracts** — native and token balances, activity, contract standard and supported reads. EVM addresses also show **balances across every EVM chain**.
+  - **Blocks** — with prev/next stepping.
+  - **Tokens** — supply, holders, and **holder concentration**: top-10 share, HHI, holders needed for 50%, and share held on exchanges, shown *where the data source provides holder lists*.
+  - Every view links to the chain's block explorer.
+- **Whale & exchange flows.** Each large transfer is classified from labelled wallets as exchange inflow, exchange outflow, exchange-internal, mint, bridge, DeFi, or wallet → wallet.
+  - What the chain shows (**observed**) is kept visibly separate from what it is often taken to mean (**inferred**). For example: *“a deposit is not a sale”*, *“a withdrawal is not a purchase”*.
+  - The panel also shows last-hour inflow/outflow/net, stablecoin mints, an exchange-netflow chart, and network fees vs their rolling median.
+- **Alerts** fire on any page (toast, alert log, count on the nav tab). There are four rule types:
+  - **watched wallet moves funds** (direction, minimum size)
+  - **large transfer** (asset, network, minimum size, exchange flows only)
+  - **network fee spike** (an absolute level, or a % above the rolling median, with a cooldown)
+  - **unusual token activity** (transfers or volume per minute, *n*σ above an EWMA baseline after warm-up)
+
+  Bell icons on wallets, transfers, fees and tokens create rules in one click. You can label any address; your labels override the built-in ones.
+
+**Data sources — read this.** There are two modes:
+
+- **Simulated** (the default) is deterministic simulated chain data, and is labelled as such everywhere. Token metadata and contract addresses are real; balances, supplies, holder lists and flows are not.
+- **Live RPC · beta** sends *searches* to public endpoints with no API keys: EVM JSON-RPC (publicnode), mempool.space for Bitcoin, and Solana mainnet RPC. You get real transactions, balances, blocks, ERC-20 metadata and supply, balances of well-known tokens, decoded transfers, Solana token supply and largest holder accounts.
+  - Public RPC can't list a wallet's full history or EVM holder lists — the UI says so. Those need an indexer such as Etherscan, Covalent or a self-hosted one.
+  - Tron needs an API key and stays simulated.
+  - The whale/flow stream and alerts remain simulated in both modes. Production replaces `startOnchainFeed` with an indexer or mempool socket pushing the same `ChainTransfer` / `FeeSample` shapes.
+  - The live adapters are unit-tested against the documented response formats, but **could not be exercised against the real endpoints from the build sandbox** (outbound network blocked). Expect to verify them on first run.
+- The built-in label list is deliberately tiny: a few widely published exchange wallets. A maintained label provider is a production dependency.
 
 ## Charting decision
 

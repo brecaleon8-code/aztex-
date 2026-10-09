@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NAV } from './TopBar';
 
-/** F1–F5 jump between modules; "/" or Esc-then-typing focuses the command line. */
+/** F1–F8 jump between modules; "/" or Esc-then-typing focuses the command line. */
 export function useFunctionKeys() {
   const navigate = useNavigate();
   useEffect(() => {

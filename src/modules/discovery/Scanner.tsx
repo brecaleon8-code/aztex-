@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowDownToLine, ArrowUpFromLine, ArrowRightLeft, Fish, ExternalLink, Flag, BellPlus, X, Bell, Pin } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
 import { NumericField } from '@/components/ui/NumericField';
@@ -34,9 +35,14 @@ export function Scanner() {
         flush
         testId="scanner"
         actions={
-          <span className="row" style={{ gap: 6 }}>
-            <span className="live-dot" />
-            <span className="label">Live</span>
+          <span className="row" style={{ gap: 10 }}>
+            <span className="row" style={{ gap: 6 }}>
+              <span className="live-dot" />
+              <span className="label">Live</span>
+            </span>
+            <Link to="/onchain" className="btn sm" data-testid="open-onchain">
+              Full on-chain scanner →
+            </Link>
           </span>
         }
       >

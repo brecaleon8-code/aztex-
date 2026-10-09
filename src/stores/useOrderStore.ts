@@ -26,6 +26,9 @@ interface OrderState {
   bracket: boolean;
   /** Market-order protection from the touch, bps. */
   maxSlippageBps: number;
+  /** Reduce-only orders are sized as a share of the open opposite position. */
+  reducePct: number;
+  setReducePct: (p: number) => void;
   setTif: (t: TimeInForce) => void;
   setFlag: (k: 'postOnly' | 'reduceOnly' | 'bracket', v: boolean) => void;
   setMaxSlippage: (bps: number) => void;
@@ -62,6 +65,8 @@ export const useOrderStore = create<OrderState>()(
       reduceOnly: false,
       bracket: true,
       maxSlippageBps: 50,
+      reducePct: 100,
+      setReducePct: (reducePct) => set({ reducePct: Math.max(1, Math.min(100, reducePct)) }),
       // Post-only orders must be able to rest, so they're always GTC (as on most venues).
       setTif: (tif) => set(tif === 'GTC' ? { tif } : { tif, postOnly: false }),
       setFlag: (k, v) => set(k === 'postOnly' && v ? { postOnly: true, tif: 'GTC' } : ({ [k]: v } as Pick<OrderState, typeof k>)),

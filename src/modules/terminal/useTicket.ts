@@ -23,9 +23,14 @@ export function useTicket() {
   const tp = t.tp ?? suggested.tp;
   const sl = t.sl ?? suggested.sl;
   const sizingValue = t.sizingMode === 'pct' ? t.pctValue : t.usdtValue;
-  const { notional, size } = positionSize(t.sizingMode, sizingValue, equity, entry);
+  const sized = positionSize(t.sizingMode, sizingValue, equity, entry);
+  // Reduce-only: a share of the open opposite exposure, not of equity (equity drifts with P/L and fees).
+  const opposite = t.side === 'Long' ? 'Short' : 'Long';
+  const reducible = positions.filter((p) => p.symbol === symbol && p.side === opposite).reduce((s, p) => s + p.size, 0);
+  const size = t.reduceOnly ? (reducible * t.reducePct) / 100 : sized.size;
+  const notional = t.reduceOnly ? size * entry : sized.notional;
 
-  return { ...t, symbol, asset, entry, limitPx, tp, sl, suggested, sizingValue, notional, size, equity, balance };
+  return { ...t, symbol, asset, entry, limitPx, tp, sl, suggested, sizingValue, notional, size, equity, balance, reducible };
 }
 
 /** The ticket as an order request, priced against the live book (re-renders on every book update). */

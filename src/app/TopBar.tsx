@@ -11,6 +11,7 @@ import { useTickFlash } from './useTickFlash';
 import { NewsToggle } from './NewsDock';
 import { useThemeStore, type Platform } from '@/stores/useThemeStore';
 import { useMarketStore } from '@/stores/useMarketStore';
+import { useOnchainStore } from '@/stores/useOnchainStore';
 import { useWalletStore } from '@/stores/useWalletStore';
 import { usePositionStore, committedNotional, totalUnrealized } from '@/stores/usePositionStore';
 import { toast } from '@/stores/useToastStore';
@@ -20,11 +21,12 @@ import { fmtSigned, fmtTime, fmtUsd } from '@/lib/format';
 export const NAV = [
   { to: '/terminal', key: 'F1', label: 'Terminal' },
   { to: '/discovery', key: 'F2', label: 'Data & Discovery' },
-  { to: '/studio', key: 'F3', label: 'Studio' },
-  { to: '/community', key: 'F4', label: 'Community' },
-  { to: '/otc', key: 'F5', label: 'OTC Desk' },
-  { to: '/account', key: 'F6', label: 'Account' },
-  { to: '/appearance', key: 'F7', label: 'Appearance' },
+  { to: '/onchain', key: 'F3', label: 'On-chain' },
+  { to: '/studio', key: 'F4', label: 'Studio' },
+  { to: '/community', key: 'F5', label: 'Community' },
+  { to: '/otc', key: 'F6', label: 'OTC Desk' },
+  { to: '/account', key: 'F7', label: 'Account' },
+  { to: '/appearance', key: 'F8', label: 'Appearance' },
 ];
 
 function sessionLabel(h: number): string {
@@ -43,6 +45,7 @@ export function TopBar() {
     return () => clearInterval(t);
   }, []);
   const live = status.state === 'open';
+  const onchainUnseen = useOnchainStore((s) => s.unseen);
 
   return (
     <header className="topbar no-select">
@@ -53,6 +56,11 @@ export function TopBar() {
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} title={`${n.label} (${n.key})`} className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}`}>
             {n.label}
+            {n.to === '/onchain' && onchainUnseen > 0 && (
+              <span className="nav-count" title={`${onchainUnseen} new on-chain alert${onchainUnseen === 1 ? '' : 's'}`} data-testid="onchain-unseen">
+                {onchainUnseen > 99 ? '99+' : onchainUnseen}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

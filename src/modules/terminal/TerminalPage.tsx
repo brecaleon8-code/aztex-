@@ -130,7 +130,7 @@ export function TerminalPage() {
         ))}
       </div>
       <div className="terminal-foot">
-        <span className="label">Drag a panel's header to rearrange · F1–F7 switch modules · / focuses the command line</span>
+        <span className="label">Drag a panel's header to rearrange · F1–F8 switch modules · / focuses the command line</span>
       </div>
     </div>
   );

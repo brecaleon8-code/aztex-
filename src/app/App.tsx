@@ -10,6 +10,7 @@ import { ThemeSync } from './ThemeSync';
 import { startMarketFeed } from './marketFeed';
 import { startScannerFeed } from './scannerFeed';
 import { startNewsFeed } from './newsFeed';
+import { startOnchainFeed } from './onchainFeed';
 import { NewsDock } from './NewsDock';
 import { CliBar } from '@/modules/terminal/CliBar';
 import { Toasts } from '@/components/ui/Toasts';
@@ -21,6 +22,7 @@ import './app.css';
 const DiscoveryPage = lazy(() => import('@/modules/discovery/DiscoveryPage').then((m) => ({ default: m.DiscoveryPage })));
 const CommunityPage = lazy(() => import('@/modules/community/CommunityPage').then((m) => ({ default: m.CommunityPage })));
 const OtcPage = lazy(() => import('@/modules/otc/OtcPage').then((m) => ({ default: m.OtcPage })));
+const OnchainPage = lazy(() => import('@/modules/onchain/OnchainPage').then((m) => ({ default: m.OnchainPage })));
 const StudioPage = lazy(() => import('@/modules/studio/StudioPage').then((m) => ({ default: m.StudioPage })));
 const AccountPage = lazy(() => import('@/modules/account/AccountPage').then((m) => ({ default: m.AccountPage })));
 const AppearancePage = lazy(() => import('@/modules/appearance/AppearancePage').then((m) => ({ default: m.AppearancePage })));
@@ -31,6 +33,7 @@ export function App() {
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
   useEffect(() => startNewsFeed(), []);
+  useEffect(() => startOnchainFeed(), []);
   useFunctionKeys();
 
   return (
@@ -51,6 +54,7 @@ export function App() {
             <Route path="/" element={<Navigate to="/terminal" replace />} />
             <Route path="/terminal" element={<TerminalPage />} />
             <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="/onchain" element={<OnchainPage />} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/otc" element={<OtcPage />} />
             <Route path="/appearance" element={<AppearancePage />} />

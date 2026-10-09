@@ -171,6 +171,25 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
         )}
 
         <div className="col" style={{ gap: 6 }}>
+          {t.reduceOnly ? (
+            <div className="col" style={{ gap: 6 }} data-testid="reduce-sizing">
+              <div className="row">
+                <span className="label">Close % of {t.side === 'Long' ? 'short' : 'long'} position</span>
+                <span className="spacer" />
+                <span className="num faint">
+                  open {fmtQty(t.reducible)} {t.symbol}
+                </span>
+              </div>
+              <div className="row" style={{ gap: 4 }}>
+                {[25, 50, 75, 100].map((p) => (
+                  <button key={p} className={`btn sm grow ${t.reducePct === p ? 'active' : ''}`} onClick={() => t.setReducePct(p)}>
+                    {p}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="row">
             <span className="label">Risk sizing</span>
             <span className="spacer" />
@@ -199,6 +218,8 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
                 </button>
               ))}
             </div>
+          )}
+          </>
           )}
           <div className="row ticket-flags">
             <Toggle on={t.reduceOnly} onChange={(v) => t.setFlag('reduceOnly', v)} label="Reduce-only" title={`Only closes existing ${t.side === 'Long' ? 'short' : 'long'} ${t.symbol} exposure — never opens or flips a position`} testId="reduce-only" />

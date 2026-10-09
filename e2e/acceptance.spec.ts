@@ -477,6 +477,8 @@ test.describe('Charts & execution', () => {
     await page.getByRole('button', { name: 'Sell / Short' }).click();
     await page.getByTestId('reduce-only').click();
     await expect(page.getByTestId('reduce-note')).toBeVisible();
+    // Reduce-only sizes as a share of the open position (default 100%), not of equity.
+    await expect(page.getByTestId('reduce-sizing')).toContainText('Close % of long position');
     await expect(page.getByTestId('bracket')).toBeDisabled();
     await page.getByTestId('place-order').click();
     await expect(page.getByTestId('position-row')).toHaveCount(0, { timeout: 4000 });
@@ -496,5 +498,82 @@ test.describe('Charts & execution', () => {
     await page.getByTestId('reduce-only').click();
     await page.getByRole('group', { name: 'Book view' }).getByRole('button', { name: 'Depth' }).click();
     await expect(page.getByTestId('depth-order')).toBeAttached();
+  });
+});
+
+test.describe('On-chain', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/onchain');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/onchain');
+  });
+
+  test('multi-chain search: wallet, token concentration, block, transaction; labels and watch rules', async ({ page }) => {
+    await expect(page.getByTestId('oc-mode-badge')).toContainText('Simulated');
+    // Query-type detection as you type.
+    await page.getByTestId('oc-search-input').fill('bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq');
+    await expect(page.getByTestId('oc-query-hint')).toContainText('Bitcoin address');
+    await page.getByTestId('oc-search-go').click();
+    await expect(page.getByTestId('oc-address')).toContainText('Bitcoin');
+    await expect(page).toHaveURL(/q=bc1q/);
+
+    // EVM wallet: entity label, cross-chain balances, user label, watch rule.
+    await page.getByTestId('oc-search-input').fill('');
+    await page.getByTestId('oc-example').filter({ hasText: 'Exchange wallet' }).click();
+    await expect(page.getByTestId('oc-address')).toContainText('Binance');
+    await expect(page.getByTestId('oc-crosschain')).toContainText('Arbitrum One');
+    await page.getByTestId('oc-label-btn').click();
+    await page.getByTestId('oc-label-input').fill('Desk hot wallet');
+    await page.getByTestId('oc-label-input').press('Enter');
+    await expect(page.getByTestId('oc-address')).toContainText('Desk hot wallet');
+    await page.getByTestId('oc-watch-wallet').click();
+    await expect(page.getByTestId('oc-rule')).toHaveCount(1);
+    await expect(page.getByTestId('oc-rules')).toContainText('Desk hot wallet');
+
+    // Token: supply, holder concentration, unusual-activity alert.
+    await page.goto('/onchain?q=USDT&net=ethereum');
+    await expect(page.getByTestId('oc-token')).toContainText('Tether USD');
+    await expect(page.getByTestId('oc-concentration')).toContainText('Top 10 hold');
+    await page.getByTestId('oc-watch-token').click();
+    await expect(page.getByTestId('oc-rule')).toHaveCount(2);
+
+    // Block: step to the next height.
+    await page.goto('/onchain');
+    await page.getByTestId('oc-example').filter({ hasText: 'Bitcoin block' }).click();
+    const h = Number((await page.getByTestId('oc-block-height').innerText()).replace(/,/g, ''));
+    await page.getByRole('button', { name: 'Next block' }).click();
+    await expect(page.getByTestId('oc-block-height')).toHaveText((h + 1).toLocaleString('en-US'));
+
+    // Transaction (examples show while the search box is empty).
+    await page.goto('/onchain');
+    await page.getByTestId('oc-example').filter({ hasText: 'Ethereum transaction' }).click();
+    await expect(page.getByTestId('oc-tx')).toContainText(/Success|Failed|Pending/);
+    await expect(page.getByTestId('oc-tx')).toContainText('Etherscan');
+  });
+
+  test('whale & exchange flows separate observed from inferred; alerts fire app-wide', async ({ page }) => {
+    await expect(page.getByTestId('oc-flow-row').first()).toBeVisible();
+    await expect(page.getByTestId('oc-flow-summary')).toContainText('Net to exchanges');
+    await page.getByRole('group', { name: 'Flow type' }).getByRole('button', { name: 'Exchange in' }).click();
+    const kinds = await page.getByTestId('oc-flow-row').locator('.oc-kind-chip').allInnerTexts();
+    expect(kinds.length).toBeGreaterThan(0);
+    expect(new Set(kinds)).toEqual(new Set(['Exchange inflow']));
+    await expect(page.getByTestId('oc-flow-row').first().locator('.oc-inferred')).toContainText('not a sale');
+    await expect(page.getByTestId('oc-netflow')).toContainText('Inflow to exchanges');
+    await expect(page.getByTestId('oc-fee-row')).toHaveCount(8);
+
+    // A broad large-transfer rule triggers from the live stream.
+    await page.getByTestId('oc-rule-min').selectOption('100000');
+    await page.getByTestId('oc-add-rule').click();
+    await expect(page.getByTestId('oc-hit').first()).toBeVisible({ timeout: 15000 });
+    // …and keeps firing on other pages, counted on the nav tab.
+    await page.getByRole('link', { name: 'Terminal' }).click();
+    await expect(page.getByTestId('onchain-unseen')).toBeVisible({ timeout: 15000 });
+
+    // Live mode switches the search source and says what stays simulated.
+    await page.getByRole('link', { name: /On-chain/ }).click();
+    await page.getByRole('group', { name: 'Data source' }).getByRole('button', { name: /Live RPC/ }).click();
+    await expect(page.getByTestId('oc-mode-badge')).toContainText('live public RPC');
+    await page.getByRole('group', { name: 'Data source' }).getByRole('button', { name: 'Simulated' }).click();
   });
 });

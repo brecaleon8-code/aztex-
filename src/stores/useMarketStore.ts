@@ -43,6 +43,8 @@ interface MarketState {
   setProvider: (id: ProviderId) => void;
   select: (symbol: string) => void;
   setTimeframe: (tf: Timeframe) => void;
+  /** Symbol and timeframe in one step (switching chart tab / pane), so streams reconnect once. */
+  focusChart: (symbol: string, tf: Timeframe) => void;
   addWatch: (symbol: string) => void;
   removeWatch: (symbol: string) => void;
   toggleWatch: (symbol: string) => void;
@@ -76,6 +78,11 @@ export const useMarketStore = create<MarketState>()(
       setProvider: (providerId) => set({ providerId, candles: [], candlesKey: '', book: null, bookHistory: [], trades: [], deltaByTime: {} }),
       select: (selected) => set((s) => (s.selected === selected ? s : { selected, book: null, bookHistory: [], trades: [], deltaByTime: {} })),
       setTimeframe: (timeframe) => set({ timeframe, deltaByTime: {} }),
+      focusChart: (selected, timeframe) =>
+        set((s) => {
+          if (s.selected === selected && s.timeframe === timeframe) return s;
+          return s.selected === selected ? { timeframe, deltaByTime: {} } : { selected, timeframe, book: null, bookHistory: [], trades: [], deltaByTime: {} };
+        }),
       addWatch: (sym) => set((s) => (s.watchlist.includes(sym) ? s : { watchlist: [...s.watchlist, sym] })),
       removeWatch: (sym) => set((s) => ({ watchlist: s.watchlist.filter((w) => w !== sym) })),
       toggleWatch: (sym) => set((s) => ({ watchlist: s.watchlist.includes(sym) ? s.watchlist.filter((w) => w !== sym) : [...s.watchlist, sym] })),

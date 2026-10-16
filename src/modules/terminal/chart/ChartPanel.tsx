@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { atrBox } from '@/lib/chart/renko';
-import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X, Eye, EyeOff } from 'lucide-react';
+import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
@@ -15,6 +15,9 @@ import { useTickFlash } from '@/app/useTickFlash';
 import { IndicatorMenu } from './IndicatorMenu';
 import { QuickEdit } from './QuickEdit';
 import { useTerminalFit } from '../fitContext';
+import { ChartGrid, LayoutPicker } from './ChartGrid';
+import { activeTabOf, useChartTabsStore } from '@/stores/useChartTabsStore';
+import { useUiStore } from '@/stores/useUiStore';
 import './chart.css';
 
 const TOOLS: { tool: DrawingTool; icon: typeof Star; label: string }[] = [
@@ -49,11 +52,12 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const flash = useTickFlash(asset.price);
   const chartStrategy = useStudioStore((s) => s.strategies.find((x) => x.id === s.chartStrategyId) ?? null);
   const spark = useSpark(symbol);
+  const multi = useChartTabsStore((s) => (activeTabOf(s)?.layout ?? '1') !== '1');
 
-  // Drawings are anchored to this symbol/timeframe's candle indices — clear on switch.
+  // Drawings belong to a symbol/timeframe: switching (tab, pane, watchlist) parks them and restores the new chart's.
   useEffect(() => {
-    clearDrawings();
-  }, [symbol, tf, clearDrawings]);
+    useChartStore.getState().switchDrawings(`${symbol}:${tf}`);
+  }, [symbol, tf]);
 
   return (
     <Panel
@@ -108,6 +112,19 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
               </option>
             ))}
           </select>
+          <LayoutPicker />
+          <button
+            className="btn sm icon ghost"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              useUiStore.getState().openChartMenu({ x: r.right, y: r.bottom + 6 });
+            }}
+            aria-label="Chart settings"
+            title="Chart settings: colours, theme, data feed (F8 · or right-click the chart)"
+            data-testid="chart-settings"
+          >
+            <Settings2 size={14} />
+          </button>
           <button className="btn sm icon ghost" onClick={toggleChartMaximized} aria-label={chartMaximized ? 'Restore chart' : 'Maximize chart'}>
             {chartMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -162,7 +179,16 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
           ))}
         </div>
       </div>
-      <PriceChart fill={!!fit} />
+      <div
+        className="chart-stage"
+        onContextMenu={(e) => {
+          if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+          e.preventDefault();
+          useUiStore.getState().openChartMenu({ x: e.clientX, y: e.clientY });
+        }}
+      >
+        {multi ? <ChartGrid fill={!!fit} /> : <PriceChart fill={!!fit} />}
+      </div>
       <QuickEdit />
       {fit ? fit.bottomH > 0 && !chartMaximized && <RowSplitHandle height={fit.height} bottomH={fit.bottomH} /> : <ResizeHandle />}
     </Panel>

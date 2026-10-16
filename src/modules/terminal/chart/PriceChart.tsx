@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { Minus, Plus, ChevronsRight, Settings2 } from 'lucide-react';
-import type { Candle, DataPoint, Drawing } from '@/types';
+import type { Candle, DataPoint, Drawing, Timeframe } from '@/types';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useThemeStore } from '@/stores/useThemeStore';
@@ -37,20 +37,46 @@ const VISIBLE_BY_MODE: Partial<Record<string, number>> = { footprint: 12, renko:
 const FOOTPRINT_MAX_BARS = 90;
 const TAG_H = 18;
 
-/** `fill`: size to the parent's height (fit-to-screen Terminal) instead of the stored chart height. */
-export function PriceChart({ fill = false }: { fill?: boolean }) {
-  const candles = useMarketStore((s) => s.candles);
-  const key = useMarketStore((s) => s.candlesKey);
-  const error = useMarketStore((s) => s.candlesError);
-  const tf = useMarketStore((s) => s.timeframe);
-  const { mode, tool, indicators: allIndicators, drawings, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = useChartStore();
+/** A chart that isn't the focused one (multi-chart layouts): its own symbol, timeframe and candles. */
+export interface PaneSource {
+  symbol: string;
+  tf: Timeframe;
+  candles: Candle[];
+  candlesKey: string;
+  error: string | null;
+}
+const NO_DELTA: Record<number, number> = {};
+const NO_DRAWINGS: Drawing[] = [];
+
+/**
+ * `fill`: size to the parent's height (fit-to-screen Terminal, multi-chart panes) instead of the
+ * stored chart height. `pane`: draw that series instead of the selected one — candles, indicators,
+ * strategy marks and that symbol's position levels; drawing tools, the book and the live tape stay
+ * with the focused chart. `compact`: no OHLC readout row (the pane header shows the price).
+ */
+export function PriceChart({ fill = false, pane, compact = false }: { fill?: boolean; pane?: PaneSource; compact?: boolean }) {
+  const mCandles = useMarketStore((s) => s.candles);
+  const mKey = useMarketStore((s) => s.candlesKey);
+  const mError = useMarketStore((s) => s.candlesError);
+  const mTf = useMarketStore((s) => s.timeframe);
+  const candles = pane ? pane.candles : mCandles;
+  const key = pane ? pane.candlesKey : mKey;
+  const error = pane ? pane.error : mError;
+  const tf = pane ? pane.tf : mTf;
+  const store = useChartStore();
+  const { mode, indicators: allIndicators, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = store;
+  // Unfocused panes only pan and zoom; they show (read-only) the drawings parked for their symbol/timeframe.
+  const tool = pane ? 'cursor' : store.tool;
+  const storedDrawings = pane ? (store.drawingStash[`${pane.symbol}:${pane.tf}`] ?? NO_DRAWINGS) : store.drawings;
   // Hidden indicators stay in the legend but aren't computed or drawn.
   const indicators = useMemo(() => allIndicators.filter((i) => !i.hidden), [allIndicators]);
-  const book = useMarketStore((s) => s.book);
+  const mBook = useMarketStore((s) => s.book);
+  const book = pane ? null : mBook;
   const colors = useThemeStore((s) => s.colors);
   const storeHeight = useLayoutStore((s) => s.chartHeight);
-  const levels = useChartLevels();
-  const symbol = useMarketStore((s) => s.selected);
+  const selected = useMarketStore((s) => s.selected);
+  const symbol = pane ? pane.symbol : selected;
+  const levels = useChartLevels(symbol);
   // Select the stable array, filter in render (a filtering selector would return a new array each call).
   const allWorking = usePositionStore((s) => s.workingOrders);
   const working = allWorking.filter((o) => o.symbol === symbol);
@@ -113,12 +139,24 @@ export function PriceChart({ fill = false }: { fill?: boolean }) {
   }, [vkey, n, defaultVisible]);
 
   const display = useMemo(() => (mode === 'heikin' ? heikinAshi(series) : series), [series, mode]);
+  // Drawings are stored by time on time-based charts and placed by index here, so they stay on the
+  // same candles when history reloads or new bars arrive. (Renko bricks aren't evenly timed.)
+  const tfMsAll = TIMEFRAME_MS[tf];
+  const t0 = !renkoRes && series.length ? series[0].time : null;
+  const stamp = (p: DataPoint): DataPoint => (t0 == null ? p : { ...p, time: t0 + p.index * tfMsAll });
+  const drawings = useMemo(() => {
+    if (t0 == null) return storedDrawings;
+    const place = (p: DataPoint): DataPoint => (p.time == null ? p : { ...p, index: (p.time - t0) / tfMsAll });
+    return storedDrawings.map((d) => ({ ...d, p1: place(d.p1), p2: d.p2 && place(d.p2) }));
+  }, [storedDrawings, t0, tfMsAll]);
   // Indicators: computed once on full real-OHLC history, then windowed at render.
-  const deltaByTime = useMarketStore((s) => s.deltaByTime);
+  const mDelta = useMarketStore((s) => s.deltaByTime);
+  const deltaByTime = pane ? NO_DELTA : mDelta;
   const scriptRuns = useScriptRuns(indicators, series);
   const computed = useMemo(() => indicators.map((i) => computeIndicator(i, series, colors, deltaByTime, scriptRuns[i.id])), [indicators, series, colors, deltaByTime, scriptRuns]);
   const overlays = computed.filter((c) => c.instance.type === 'overlay');
-  const oscillators = computed.filter((c) => c.instance.type === 'oscillator');
+  // Small multi-chart panes keep the price plot readable: indicator panes only when there's room.
+  const oscillators = compact && fill && box.h > 0 && box.h < 230 ? [] : computed.filter((c) => c.instance.type === 'oscillator');
 
   // Fill mode: split the measured height between the price pane, indicator panes and the
   // footprint strip so the whole chart is always on screen. Indicator panes shrink on short screens.
@@ -126,7 +164,7 @@ export function PriceChart({ fill = false }: { fill?: boolean }) {
   let oscH = OSC_H;
   let height = storeHeight;
   if (fill && box.h > 0) {
-    const avail = box.h - READOUT_H - (fpWanted ? FP_STATS_H : 0);
+    const avail = box.h - (compact ? 0 : READOUT_H) - (fpWanted ? FP_STATS_H : 0);
     if (oscillators.length) oscH = Math.max(52, Math.min(OSC_H, Math.floor((avail * 0.24) / Math.max(1, oscillators.length * 0.75))));
     height = Math.max(150, avail - oscillators.length * oscH);
   }
@@ -246,7 +284,7 @@ export function PriceChart({ fill = false }: { fill?: boolean }) {
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
-    const p = toData(x, y);
+    const p = stamp(toData(x, y));
     if (tool === 'ray') addDrawing({ tool: 'ray', p1: p });
     else if (tool === 'text') setTextDraft({ p, value: '' });
     else if (!pending) setPending(p);
@@ -320,7 +358,7 @@ export function PriceChart({ fill = false }: { fill?: boolean }) {
 
   return (
     <div className={`chart no-select ${fill ? 'fill' : ''}`} ref={wrapRef}>
-      <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />
+      {!compact && <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />}
       <div className="chart-main" style={{ height }}>
         {overlays.some((o) => o.error) && (
           <div className="chart-ind-errors" data-testid="overlay-error">

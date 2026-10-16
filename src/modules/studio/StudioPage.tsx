@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Plus, Trash2, LineChart, Play, Save, Eye, EyeOff, Copy, FileCode2 } from 'lucide-react';
 import { Panel } from '@/components/ui/Panel';
@@ -20,23 +19,17 @@ import type { Side, Timeframe } from '@/types';
 import { FormulaHelp, FormulaInput } from './FormulaInput';
 import { CodeEditor, ScriptConsole, ScriptHelp, ScriptInputs, ScriptPreview, ScriptStatus, useScriptPreview } from './ScriptEditor';
 import { BLANK_SCRIPT, SCRIPT_TEMPLATES } from '@/lib/script/templates';
+import { focusTerminal } from '@/app/studioLauncher';
 import './studio.css';
 
 const TIMEFRAMES: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d'];
 
-export function StudioPage() {
+/** The Studio workspace: indicator library + strategy lab. Hosted by the standalone Studio app. */
+export function StudioWorkspace() {
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1>Studio</h1>
-          <p>Build your own indicators and rule-based strategies, backtest them on live history, and plot them on the chart.</p>
-        </div>
-      </div>
-      <div className="studio-grid">
-        <IndicatorLibrary />
-        <StrategyLab />
-      </div>
+    <div className="studio-grid">
+      <IndicatorLibrary />
+      <StrategyLab />
     </div>
   );
 }
@@ -229,7 +222,6 @@ function StrategyLab() {
   const symbol = useMarketStore((s) => s.selected);
   const tf = useMarketStore((s) => s.timeframe);
   const tier = useFeeStore((s) => s.tier);
-  const navigate = useNavigate();
   const [result, setResult] = useState<ReturnType<typeof backtest> | null>(null);
 
   // Re-run automatically as rules change or new candles arrive (cheap: a few hundred bars).
@@ -327,7 +319,7 @@ function StrategyLab() {
                 const saved = draft.id ? draft : saveStrategy(draft);
                 if (!draft.id) setDraft(saved);
                 setChartStrategy(onChart ? null : saved.id!);
-                if (!onChart) navigate('/terminal');
+                if (!onChart) focusTerminal();
               }}
             >
               {onChart ? <EyeOff size={12} /> : <Eye size={12} />} {onChart ? 'Hide from chart' : 'Show on chart'}

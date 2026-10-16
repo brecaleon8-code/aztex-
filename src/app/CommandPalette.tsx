@@ -14,7 +14,9 @@ import { useNewsStore } from '@/stores/useNewsStore';
 import { useUiStore } from '@/stores/useUiStore';
 import { PANEL_LABELS } from '@/modules/terminal/TerminalPage';
 import type { ChartMode, Timeframe } from '@/types';
-import { NAV } from './TopBar';
+import { ACCOUNT_NAV, NAV } from './TopBar';
+import { openStudio } from './studioLauncher';
+import { CHART_LAYOUTS, useChartTabsStore } from '@/stores/useChartTabsStore';
 import './palette.css';
 
 type Group = 'Symbols' | 'Go to' | 'Workspaces' | 'Panels' | 'Chart' | 'Actions';
@@ -107,8 +109,19 @@ export function CommandPalette() {
           toTerminal();
         },
       });
+      cmds.push({
+        id: `tab-${a.symbol}`,
+        group: 'Symbols',
+        label: `${a.symbol} in a new tab`,
+        keywords: `${a.symbol} ${a.name} open tab`,
+        run: () => {
+          useChartTabsStore.getState().openTab(a.symbol, useMarketStore.getState().timeframe);
+          toTerminal();
+        },
+      });
     }
-    for (const n of NAV) cmds.push({ id: `nav-${n.to}`, group: 'Go to', label: n.label, hint: <kbd>{n.key}</kbd>, run: () => navigate(n.to) });
+    for (const n of [...NAV, ACCOUNT_NAV]) cmds.push({ id: `nav-${n.to}`, group: 'Go to', label: n.label, hint: <kbd>{n.key}</kbd>, run: () => navigate(n.to) });
+    cmds.push({ id: 'studio', group: 'Go to', label: 'Aztex Studio (opens its own window)', keywords: 'studio editor metaeditor indicator strategy backtest', hint: <kbd>F4</kbd>, run: () => void openStudio() });
     for (const w of WORKSPACES)
       cmds.push({
         id: `ws-${w.id}`,
@@ -136,6 +149,28 @@ export function CommandPalette() {
     }
     for (const tf of TIMEFRAMES) cmds.push({ id: `tf-${tf}`, group: 'Chart', label: `Timeframe ${tf}`, keywords: `interval ${tf}`, run: () => useMarketStore.getState().setTimeframe(tf) });
     for (const [m, label] of MODES) cmds.push({ id: `mode-${m}`, group: 'Chart', label: `Chart style: ${label}`, run: () => useChartStore.getState().setMode(m) });
+    for (const l of CHART_LAYOUTS)
+      cmds.push({
+        id: `layout-${l.id}`,
+        group: 'Chart',
+        label: `Layout: ${l.label}`,
+        keywords: 'multi chart grid split layout',
+        run: () => {
+          useChartTabsStore.getState().setLayout(l.id);
+          toTerminal();
+        },
+      });
+    cmds.push({
+      id: 'chart-settings',
+      group: 'Chart',
+      label: 'Chart settings: colours, theme, data feed',
+      keywords: 'appearance candle colour color properties bull bear palette',
+      hint: <kbd>F8</kbd>,
+      run: () => {
+        toTerminal();
+        requestAnimationFrame(() => useUiStore.getState().openChartMenu());
+      },
+    });
     cmds.push({ id: 'vp', group: 'Chart', label: `${profile ? 'Hide' : 'Show'} volume profile`, keywords: 'vp poc value area', run: () => useChartStore.getState().toggleProfile() });
     cmds.push({ id: 'theme', group: 'Actions', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`, hint: <Palette size={12} />, run: () => useThemeStore.getState().toggleTheme() });
     cmds.push({ id: 'reset', group: 'Actions', label: 'Reset workspace layout', run: () => useLayoutStore.getState().resetLayout() });
@@ -147,7 +182,8 @@ export function CommandPalette() {
     cmds.push({ id: 'news-cal', group: 'Actions', label: 'Open economic calendar', keywords: 'events cpi nfp fomc ecb unlocks', run: () => useNewsStore.setState({ pinned: true, collapsed: false, tab: 'calendar' }) });
     cmds.push({ id: 'deposit', group: 'Actions', label: 'Add crypto (deposit)', keywords: 'deposit fund wallet address receive', run: () => useUiStore.getState().openDeposit() });
     cmds.push({ id: 'redeem', group: 'Actions', label: 'Redeem partner / LP code', keywords: 'referral fee tier discount', run: () => navigate('/account') });
-    cmds.push({ id: 'new-strategy', group: 'Actions', label: 'Build a strategy / indicator', keywords: 'studio backtest custom', run: () => navigate('/studio') });
+    cmds.push({ id: 'get-studio', group: 'Actions', label: 'Install Aztex Studio (desktop app)', keywords: 'download studio editor install app', run: () => navigate('/get-studio') });
+    cmds.push({ id: 'new-strategy', group: 'Actions', label: 'Build a strategy / indicator in Studio', keywords: 'studio backtest custom', run: () => void openStudio() });
     if (hasPositions) cmds.push({ id: 'flatten', group: 'Actions', label: 'Flatten all positions', keywords: 'close all', run: () => void flattenAll() });
     return cmds;
   }, [assets, navigate, workspace, panels, theme, profile, hasPositions]);

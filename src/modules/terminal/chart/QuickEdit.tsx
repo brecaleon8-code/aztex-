@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { X, Eye, EyeOff, Copy, RotateCcw, Trash2, Minus, Plus, Code2, Save, ExternalLink, Play } from 'lucide-react';
 import { useChartStore } from '@/stores/useChartStore';
 import { useMarketStore } from '@/stores/useMarketStore';
@@ -14,6 +13,7 @@ import type { IndicatorInstance, PriceSource } from '@/types';
 import { FormulaInput } from '@/modules/studio/FormulaInput';
 import { CodeEditor, ScriptStatus, useScriptPreview } from '@/modules/studio/ScriptEditor';
 import '@/modules/studio/studio.css';
+import { openStudio } from '@/app/studioLauncher';
 
 const SOURCES: PriceSource[] = ['close', 'open', 'high', 'low', 'hl2', 'hlc3', 'ohlc4'];
 const WIDTHS = [1, 1.5, 2, 3];
@@ -145,7 +145,6 @@ export function QuickEdit() {
 
 function Editor({ ind }: { ind: IndicatorInstance }) {
   const { updateIndicator, removeIndicator, duplicateIndicator, toggleIndicatorHidden, closeEditor } = useChartStore.getState();
-  const navigate = useNavigate();
   const set = (patch: Partial<IndicatorInstance>) => updateIndicator(ind.id, patch);
   const defaults = INDICATOR_DEFAULTS[ind.kind];
   const hasSource = ind.kind === 'sma' || ind.kind === 'ema' || ind.kind === 'bollinger' || ind.kind === 'rsi' || ind.kind === 'macd';
@@ -276,10 +275,10 @@ function Editor({ ind }: { ind: IndicatorInstance }) {
             <SaveToLibrary ind={ind} />
             <button
               className="btn sm ghost"
-              title="Open the full editor in Studio"
+              title="Open the full editor in Aztex Studio (F4)"
               onClick={() => {
                 closeEditor();
-                navigate('/studio');
+                openStudio();
               }}
             >
               <ExternalLink size={12} /> Studio

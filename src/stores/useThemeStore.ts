@@ -24,6 +24,7 @@ interface ThemeState {
   toggleTheme: () => void;
   setPlatform: (p: Platform) => void;
   setColor: (k: keyof AppearanceColors, hex: string) => void;
+  setColors: (c: AppearanceColors) => void;
   resetColors: () => void;
 }
 
@@ -37,6 +38,7 @@ export const useThemeStore = create<ThemeState>()(
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setPlatform: (platform) => set({ platform }),
       setColor: (k, hex) => set((s) => ({ colors: { ...s.colors, [k]: hex } })),
+      setColors: (colors) => set({ colors: { ...colors } }),
       resetColors: () => set({ colors: DEFAULT_COLORS }),
     }),
     { name: 'aztex.theme', version: 4, migrate: (s) => ({ ...(s as ThemeState), colors: DEFAULT_COLORS }) },

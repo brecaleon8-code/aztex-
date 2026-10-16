@@ -124,6 +124,30 @@
 .tb-select:focus-visible {
   box-shadow: var(--focus-ring);
 }
+.tb-account {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-alt);
+  color: var(--text-dim);
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+.tb-account:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.tb-account.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .live-dot.off {
   background: var(--text-faint);
   box-shadow: none;

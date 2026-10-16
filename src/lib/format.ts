@@ -41,6 +41,11 @@ export function fmtQty(v: number): string {
   return v.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: Math.min(d, 2) });
 }
 
+/** Book sizes: low-priced coins rest millions of units per level — abbreviate so columns never collide. */
+export function fmtBookQty(v: number): string {
+  return Math.abs(v) >= 100_000 ? fmtCompact(v) : fmtQty(v);
+}
+
 const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 export function fmtCompact(v: number): string {
   return Number.isFinite(v) ? COMPACT.format(v) : '—';

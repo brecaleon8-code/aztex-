@@ -7,7 +7,13 @@ interface ChartState {
   mode: ChartMode;
   tool: DrawingTool;
   indicators: IndicatorInstance[];
+  /** Drawings on the focused chart (its symbol:timeframe is `drawingsKey`). */
   drawings: Drawing[];
+  drawingsKey: string;
+  /** Drawings of the other symbol/timeframe charts this session, so switching focus never loses them. */
+  drawingStash: Record<string, Drawing[]>;
+  /** The focused chart changed: park its drawings and bring back the new one's. */
+  switchDrawings: (key: string) => void;
   /** Volume-profile (VPVR) overlay on the price pane. */
   profile: boolean;
   toggleProfile: () => void;
@@ -45,6 +51,17 @@ export const useChartStore = create<ChartState>()(
         { id: 'vol', kind: 'volume', type: 'oscillator', color: '#7FA7CF' },
       ],
       drawings: [],
+      drawingsKey: '',
+      drawingStash: {},
+      switchDrawings: (key) =>
+        set((s) => {
+          if (s.drawingsKey === key) return s;
+          const drawingStash = { ...s.drawingStash };
+          if (s.drawingsKey) drawingStash[s.drawingsKey] = s.drawings;
+          const drawings = drawingStash[key] ?? [];
+          delete drawingStash[key];
+          return { drawings, drawingStash, drawingsKey: key };
+        }),
       profile: true,
       toggleProfile: () => set((s) => ({ profile: !s.profile })),
       bookProfile: true,

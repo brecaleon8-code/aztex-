@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  // Skip the once-per-session brand intro in tests.
-  await page.addInitScript(() => sessionStorage.setItem('aztex.intro', '1'));
+  // Skip the once-per-session brand intro in tests (in every window, incl. Studio / pop-ups).
+  await page.context().addInitScript(() => sessionStorage.setItem('aztex.intro', '1'));
 });
 
 async function freshTerminal(page: Page) {
@@ -211,11 +211,35 @@ test.describe('Phase 4 — OTC + appearance', () => {
     await expect(page.getByTestId('blotter-row').first()).toBeVisible();
   });
 
-  test('changing the bullish color updates the live chart without reload', async ({ page }) => {
-    await page.goto('/appearance');
+  test('chart colours live on the chart: right-click, gear or F8; presets; live without reload', async ({ page }) => {
+    await page.goto('/terminal');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/terminal');
+    const chart = page.getByTestId('price-chart');
+    await expect(chart).toBeVisible();
+    // Right-click the chart → chart settings at the cursor.
+    await chart.click({ button: 'right', position: { x: 200, y: 150 } });
+    const menu = page.getByTestId('chart-context-menu');
+    await expect(menu).toBeVisible();
     await page.getByTestId('color-bull').fill('#1144ff');
-    await page.getByRole('link', { name: 'Terminal' }).click();
-    await expect(page.getByTestId('price-chart').locator('rect[fill="#1144ff"]').first()).toBeAttached();
+    await expect(chart.locator('rect[fill="#1144ff"]').first()).toBeAttached();
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    // F8 (MT5's chart properties key) and the gear open the same menu; presets apply in one click.
+    await page.keyboard.press('F8');
+    await expect(menu).toBeVisible();
+    await page.getByTestId('preset-cb').click();
+    await expect(page.getByTestId('preset-cb')).toHaveAttribute('aria-pressed', 'true');
+    await expect(chart.locator('rect[fill="#3B82F6"]').first()).toBeAttached();
+    await page.getByTestId('reset-colors').click();
+    await expect(chart.locator('rect[fill="#3DDC97"]').first()).toBeAttached();
+    await page.keyboard.press('Escape');
+    await page.getByTestId('chart-settings').click();
+    await expect(menu).toContainText('Data feed');
+    // The old Appearance page is gone: its URL lands on the terminal.
+    await page.goto('/appearance');
+    await expect(page).toHaveURL(/\/terminal$/);
+    await expect(page.getByRole('link', { name: 'Appearance' })).toHaveCount(0);
   });
 });
 
@@ -333,7 +357,7 @@ test.describe('Account features', () => {
   });
 
   test('Studio: save a custom indicator, add it to the chart, backtest a strategy and plot its signals', async ({ page }) => {
-    await page.goto('/studio');
+    await page.goto('/studio.html');
     await page.getByTestId('new-indicator').click();
     await page.getByTestId('ind-name').fill('Range %');
     await page.getByTestId('ind-formula').fill('(high - low) / close * 100 >');
@@ -346,14 +370,15 @@ test.describe('Account features', () => {
 
     await page.getByTestId('strategy-template').selectOption({ label: 'Donchian breakout' });
     await expect(page.getByTestId('backtest-results')).toContainText('Net return');
-    await page.getByTestId('strat-chart').click();
-    await expect(page).toHaveURL(/\/terminal/);
-    await expect(page.getByTestId('chart-strategy-chip')).toContainText('Donchian breakout');
-    await expect(page.getByTestId('indicator-chip').filter({ hasText: 'Range %' })).toBeVisible();
-    await expect(page.getByTestId('strategy-marker').first()).toBeAttached({ timeout: 8000 });
+    // Studio is its own app: "Show on chart" brings the terminal forward (a new window here).
+    const [terminal] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('strat-chart').click()]);
+    await expect(terminal).toHaveURL(/\/terminal/);
+    await expect(terminal.getByTestId('chart-strategy-chip')).toContainText('Donchian breakout');
+    await expect(terminal.getByTestId('indicator-chip').filter({ hasText: 'Range %' })).toBeVisible();
+    await expect(terminal.getByTestId('strategy-marker').first()).toBeAttached({ timeout: 8000 });
   });
   test('Studio scripts: sandboxed JavaScript indicator — preview, limits, errors, and on the chart', async ({ page }) => {
-    await page.goto('/studio');
+    await page.goto('/studio.html');
     await page.getByTestId('new-indicator').click();
     await page.getByTestId('ind-name').fill('Z test');
     await page.getByRole('group', { name: 'Indicator language' }).getByRole('button', { name: 'Script' }).click();
@@ -406,7 +431,7 @@ test.describe('Account features', () => {
     // Swap sides; it stays pinned across pages and reloads.
     await page.getByTestId('news-swap').click();
     await expect(dock).toHaveClass(/left/);
-    await page.goto('/studio');
+    await page.goto('/get-studio');
     await expect(page.getByTestId('news-dock')).toHaveClass(/left/);
     await page.reload();
     await expect(page.getByTestId('news-dock')).toHaveClass(/left/);
@@ -682,5 +707,104 @@ test.describe('Indicator quick edit', () => {
     await expect(page.getByTestId('qe-code')).toBeVisible();
     await page.getByTestId('qe-save').click();
     await expect(page.getByTestId('toast').filter({ hasText: 'Library updated' })).toBeVisible();
+  });
+});
+
+test.describe('Chart tabs, layouts & apps', () => {
+  test('tabs per crypto drive the ticket; up to 4 charts per tab; focus a pane; everything persists', async ({ page }) => {
+    await freshTerminal(page);
+    const tabs = page.getByTestId('chart-tab');
+    await expect(tabs).toHaveCount(3);
+    await expect(tabs.first()).toHaveAttribute('data-symbol', 'BTC');
+    await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+
+    // Open DOGE in a new tab: it becomes active and the book / ticket follow it.
+    await page.getByTestId('new-tab').click();
+    await page.getByTestId('new-tab-DOGE').click();
+    await expect(tabs).toHaveCount(4);
+    await expect(tabs.last()).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('orderbook')).toContainText('DOGE/USDT');
+
+    // Switch tab → symbol switches; picking from the watchlist retargets the active tab.
+    await tabs.nth(1).click();
+    await expect(page.getByTestId('orderbook')).toContainText('ETH/USDT');
+    await page.getByTestId('watch-XRP').click();
+    await expect(tabs.nth(1)).toHaveAttribute('data-symbol', 'XRP');
+    // Close a tab with its ×.
+    await tabs.last().getByTestId('chart-tab-close').click();
+    await expect(tabs).toHaveCount(3);
+
+    // 4 charts on one page for this tab, each with its own symbol and timeframe.
+    await page.getByTestId('chart-layout').click();
+    await page.getByTestId('layout-4').click();
+    const panes = page.getByTestId('chart-pane');
+    await expect(panes).toHaveCount(4);
+    await expect(page.getByTestId('price-chart')).toHaveCount(4);
+    await expect(panes.first()).toHaveAttribute('data-focused', 'true');
+    // Draw on the focused chart: the drawing stays with that chart when focus moves on.
+    await page.getByTestId('tool-ray').click();
+    const c0 = (await panes.first().getByTestId('price-chart').boundingBox())!;
+    await page.mouse.click(c0.x + 80, c0.y + 60);
+    await page.getByTestId('tool-cursor').click();
+    await expect(panes.first().locator('.drawing')).toHaveCount(1);
+    await panes.nth(3).getByTestId('pane-symbol').selectOption('LINK');
+    await panes.nth(3).getByTestId('pane-tf').selectOption('5m');
+    await expect(panes.nth(3).locator('.watermark')).toHaveText('LINK/USDT · 5m');
+
+    // Click a pane to focus it: the ticket and book now trade LINK, and the tab follows.
+    await panes.nth(3).getByTestId('price-chart').click({ position: { x: 60, y: 60 } });
+    await expect(panes.nth(3)).toHaveAttribute('data-focused', 'true');
+    await expect(page.getByTestId('orderbook')).toContainText('LINK/USDT');
+    await expect(tabs.nth(1)).toHaveAttribute('data-symbol', 'LINK');
+    await expect(panes.first().locator('.drawing')).toHaveCount(1);
+
+    // Layout, panes and focus survive a reload; other tabs keep their own single chart.
+    await page.reload();
+    await expect(page.getByTestId('chart-pane')).toHaveCount(4);
+    await expect(page.getByTestId('chart-pane').nth(3)).toHaveAttribute('data-symbol', 'LINK');
+    await expect(page.getByTestId('orderbook')).toContainText('LINK/USDT');
+    await tabs.first().click();
+    await expect(page.getByTestId('chart-pane')).toHaveCount(0);
+    await expect(page.getByTestId('orderbook')).toContainText('BTC/USDT');
+  });
+
+  test('Studio is a separate installable app (F4) that shares its library with the terminal live', async ({ page }) => {
+    await freshTerminal(page);
+    // Compact top bar: no Studio / Appearance / Account words — Account is an icon.
+    await expect(page.locator('.tb-nav').getByRole('link', { name: 'Studio' })).toHaveCount(0);
+    await expect(page.locator('.tb-nav').getByRole('link', { name: 'Account' })).toHaveCount(0);
+    await expect(page.getByTestId('account-link')).toHaveText('');
+
+    // F4 opens Studio in its own window, like MetaEditor next to MT5.
+    const [studio] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('F4')]);
+    await expect(studio).toHaveURL(/\/studio\.html$/);
+    await expect(studio).toHaveTitle('Aztex Studio');
+    await expect(studio.locator('link[rel="manifest"]')).toHaveAttribute('href', '/studio.webmanifest');
+    await expect(studio.getByTestId('studio-install')).toBeVisible();
+
+    // Save an indicator in Studio → it's in the terminal's Indicator menu without reloading.
+    await studio.getByTestId('new-indicator').click();
+    await studio.getByTestId('ind-name').fill('Cross-window');
+    await studio.getByTestId('ind-formula').fill('close - open');
+    await studio.getByTestId('ind-save').click();
+    await page.bringToFront();
+    await page.getByTestId('add-indicator').click();
+    await expect(page.getByTestId('my-indicator').filter({ hasText: 'Cross-window' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // The install manifest is a real app manifest.
+    const manifest = await (await page.request.get('/studio.webmanifest')).json();
+    expect(manifest.name).toBe('Aztex Studio');
+    expect(manifest.display).toBe('standalone');
+    expect(manifest.icons.map((i: { sizes: string }) => i.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']));
+
+    // Download page from the top bar's Studio menu; Account through its icon.
+    await page.getByTestId('studio-menu').click();
+    await page.getByTestId('get-studio').click();
+    await expect(page).toHaveURL(/\/get-studio$/);
+    await expect(page.getByTestId('studio-download')).toContainText('Install Studio');
+    await page.getByTestId('account-link').click();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByTestId('account-link')).toHaveClass(/active/);
   });
 });

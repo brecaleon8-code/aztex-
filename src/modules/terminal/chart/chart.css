@@ -738,3 +738,302 @@
   padding: 8px 8px 10px;
   border-top: 1px solid var(--border-soft);
 }
+
+/* ── Chart stage + multi-chart layouts ────────────────────────────────────────── */
+.chart-stage {
+  position: relative;
+}
+.chart-body > .chart-stage {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chart-grid {
+  display: grid;
+  gap: 1px;
+  min-height: 0;
+  background: var(--line);
+  border-top: 1px solid var(--line-soft);
+}
+.chart-body > .chart-stage > .chart-grid {
+  flex: 1 1 0;
+}
+.chart-grid.l-2v {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+.chart-grid.l-2h {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.chart-grid.l-3 {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.chart-grid.l-3 > .cg-pane:first-child {
+  grid-row: span 2;
+}
+.chart-grid.l-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.cg-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+}
+/* The focused chart (the one the ticket trades) gets a soft green outline. */
+.cg-pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow var(--t-med) var(--ease);
+}
+.cg-pane.focused::after {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.cg-pane > .chart.fill {
+  flex: 1 1 0;
+}
+.cg-pane .watermark {
+  font-size: 26px;
+}
+.cg-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px 0 4px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cg-sym,
+.cg-tf {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 22px;
+  padding: 0 18px 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-faint) 50%),
+    linear-gradient(135deg, var(--text-faint) 50%, transparent 50%);
+  background-position:
+    calc(100% - 10px) 52%,
+    calc(100% - 6px) 52%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.cg-sym:hover,
+.cg-tf:hover {
+  background-color: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.cg-sym {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cg-tf {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.cg-price {
+  color: var(--text);
+  font-weight: 500;
+}
+.cg-chg {
+  font-size: 11px;
+}
+.cg-focus {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.layout-glyph {
+  flex: none;
+}
+.layout-menu .menu-item {
+  gap: 10px;
+}
+
+/* ── Chart settings menu (right-click a chart · gear · F8) ────────────────────── */
+.chart-menu {
+  position: fixed;
+  z-index: 70;
+  width: 304px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--pop-shadow);
+  font-size: 12.5px;
+  animation: pop-in var(--t-med) var(--ease);
+}
+.cm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 6px 8px;
+}
+.cm-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.cm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 2px;
+  border-top: 1px solid var(--line-soft);
+}
+.cm-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.cm-link:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.cm-link:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 6px;
+}
+.cm-label {
+  color: var(--text-dim);
+}
+.cm-select {
+  width: 150px;
+  height: 28px;
+  font-size: 12px;
+}
+.cm-color,
+.cm-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.cm-color:hover,
+.cm-check:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.cm-swatch {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.cm-swatch input[type='color'] {
+  position: absolute;
+  inset: -6px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.cm-hex {
+  font-size: 11px;
+}
+.cm-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 6px 2px;
+}
+.cm-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+.cm-preset:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.cm-preset.on {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: var(--accent-soft);
+}
+.cm-pair {
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.cm-pair i {
+  display: block;
+  width: 6px;
+  height: 12px;
+}
+.cm-actions {
+  gap: 0;
+}
+.cm-actions .menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

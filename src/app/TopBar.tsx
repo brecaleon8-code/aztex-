@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Sun, Moon, Search, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Sun, Moon, Search, Plus, CircleUserRound, SquareCode, AppWindow, Download } from 'lucide-react';
+import { openStudio } from './studioLauncher';
 import { useHoldingsValue } from '@/stores/useHoldingsValue';
 import { useFeeStore } from '@/stores/useFeeStore';
 import { useUiStore } from '@/stores/useUiStore';
@@ -17,17 +18,19 @@ import { usePositionStore, committedNotional, totalUnrealized } from '@/stores/u
 import { toast } from '@/stores/useToastStore';
 import { fmtSigned, fmtTime, fmtUsd } from '@/lib/format';
 
-/** Function-key navigation — each module has a mnemonic like a terminal function. */
+/**
+ * Function-key navigation — each module has a mnemonic like a terminal function. As in MT5, F4
+ * opens the separate editor (Aztex Studio) and F8 the chart's properties (colours, theme, feed).
+ */
 export const NAV = [
   { to: '/terminal', key: 'F1', label: 'Terminal' },
   { to: '/discovery', key: 'F2', label: 'Data & Discovery' },
   { to: '/onchain', key: 'F3', label: 'On-chain' },
-  { to: '/studio', key: 'F4', label: 'Studio' },
   { to: '/community', key: 'F5', label: 'Community' },
   { to: '/otc', key: 'F6', label: 'OTC Desk' },
-  { to: '/account', key: 'F7', label: 'Account' },
-  { to: '/appearance', key: 'F8', label: 'Appearance' },
 ];
+/** Account lives behind the icon at the right of the top bar. */
+export const ACCOUNT_NAV = { to: '/account', key: 'F7', label: 'Account' };
 
 function sessionLabel(h: number): string {
   if (h >= 13 && h < 21) return h < 16 ? 'London / NY' : 'New York';
@@ -87,11 +90,61 @@ export function TopBar() {
           <option value="mobile">Mobile</option>
           <option value="terminal">Desktop</option>
         </select>
-        <button className="btn sm ghost" onClick={toggleTheme} data-testid="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title="Toggle light / dark">
+        <StudioButton />
+        <button className="btn sm ghost icon" onClick={toggleTheme} data-testid="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title="Toggle light / dark">
           {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
         </button>
+        <NavLink to={ACCOUNT_NAV.to} className={({ isActive }) => `tb-account ${isActive ? 'active' : ''}`} aria-label="Account" title="Account — balances, deposits, fee tier, partner codes (F7)" data-testid="account-link">
+          <CircleUserRound size={17} strokeWidth={1.6} />
+        </NavLink>
       </div>
     </header>
+  );
+}
+
+/** Aztex Studio lives outside the terminal: open its window (F4) or install it as a desktop app. */
+function StudioButton() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className={`btn sm ghost icon ${open ? 'active' : ''}`} onClick={() => setOpen((o) => !o)} aria-expanded={open} data-testid="studio-menu" aria-label="Aztex Studio" title="Aztex Studio — the indicator & strategy editor app (F4)">
+        <SquareCode size={14} />
+      </button>
+      {open && (
+        <div className="menu" style={{ right: 0, top: 32, width: 250 }}>
+          <div className="menu-group">Aztex Studio · separate app</div>
+          <button
+            className="menu-item"
+            onClick={() => {
+              setOpen(false);
+              openStudio();
+            }}
+            data-testid="open-studio"
+          >
+            <AppWindow size={14} /> <span className="grow">Open Studio</span>
+            <kbd className="cm-kbd">F4</kbd>
+          </button>
+          <button
+            className="menu-item"
+            onClick={() => {
+              setOpen(false);
+              navigate('/get-studio');
+            }}
+            data-testid="get-studio"
+          >
+            <Download size={14} /> <span className="grow">Install as desktop app…</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

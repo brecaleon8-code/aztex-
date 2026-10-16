@@ -1,0 +1,80 @@
+.sd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--gap);
+  max-width: 1180px;
+}
+.sd-features {
+  grid-column: 1 / -1;
+}
+@media (max-width: 1000px) {
+  .sd-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.sd-hero {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 6px 2px;
+}
+.sd-icon {
+  flex: none;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.sd-name {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+}
+.sd-note {
+  margin: 12px 0 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.sd-note kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: 500 11px var(--font-mono);
+}
+.sd-stats {
+  display: flex;
+  gap: 32px;
+}
+.sd-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sd-big {
+  font-size: 26px;
+  font-weight: 600;
+}
+.sd-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px 24px;
+}
+.sd-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.sd-list li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.sd-list b {
+  color: var(--text);
+  font-weight: 600;
+}

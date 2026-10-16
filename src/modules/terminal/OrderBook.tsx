@@ -6,7 +6,7 @@ import { useMarketStore } from '@/stores/useMarketStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { imbalance, tickSize } from '@/lib/mock/orderbook';
 import { usePositionStore } from '@/stores/usePositionStore';
-import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice } from '@/lib/format';
+import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice, fmtBookQty } from '@/lib/format';
 import type { OrderBookLevel } from '@/types';
 import { useTickFlash } from '@/app/useTickFlash';
 import { useTicketPreview } from './useTicket';
@@ -85,8 +85,8 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
     >
       <span className="ob-depth" style={{ width: `${(l.cumulative / (ladder?.maxCum ?? 1)) * 100}%` }} />
       <PriceCell key={version} text={fmtPrice(l.price, dec)} mine={mineAt(l.price)} />
-      <span className="ob-size num">{fmtQty(l.size)}</span>
-      <span className="ob-cum num faint">{fmtQty(l.cumulative)}</span>
+      <span className="ob-size num">{fmtBookQty(l.size)}</span>
+      <span className="ob-cum num faint">{fmtBookQty(l.cumulative)}</span>
     </button>
   );
 

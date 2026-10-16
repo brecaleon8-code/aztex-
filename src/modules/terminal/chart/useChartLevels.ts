@@ -14,11 +14,13 @@ export interface ChartLevel {
 }
 
 /**
- * Entry/TP/SL shown on the chart. A live position on the selected symbol wins (its real levels);
- * only when none exists do we fall back to the order ticket's draft levels.
+ * Entry/TP/SL shown on the chart. A live position on the symbol wins (its real levels); only when
+ * none exists do we fall back to the order ticket's draft levels — and only on the selected
+ * symbol's chart, since the ticket trades that one.
  */
-export function useChartLevels(): ChartLevel[] {
-  const symbol = useMarketStore((s) => s.selected);
+export function useChartLevels(forSymbol?: string): ChartLevel[] {
+  const selected = useMarketStore((s) => s.selected);
+  const symbol = forSymbol ?? selected;
   const position = usePositionStore((s) => s.positions.find((p) => p.symbol === symbol));
   const colors = useThemeStore((s) => s.colors);
   const t = useTicket();
@@ -33,6 +35,7 @@ export function useChartLevels(): ChartLevel[] {
       { key: 'sl', label: 'SL', price: position.sl, ...sl, draft: false },
     ];
   }
+  if (symbol !== selected) return [];
   return [
     { key: 'entry', label: t.orderType === 'limit' ? 'Limit' : 'Entry', price: t.entry, ...entry, draft: true },
     { key: 'tp', label: 'TP', price: t.tp, ...tp, draft: true },

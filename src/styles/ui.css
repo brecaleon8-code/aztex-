@@ -496,6 +496,15 @@ button.chip:focus-visible {
   margin: 4px 0;
 }
 
+/* Key hint chip (F4, F8 …) used in menus. */
+.cm-kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text-faint);
+  font: 500 10px/1.4 var(--font-mono);
+}
+
 /* ── Menus ──────────────────────────────────────────────────────────────────────────────── */
 .menu {
   position: absolute;

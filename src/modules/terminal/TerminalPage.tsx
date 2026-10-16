@@ -15,6 +15,7 @@ import { Blotter } from './Blotter';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { BOTTOM_TIER, FIT_FLEX, MIN_W, fitRows } from '@/lib/layout/fit';
 import { TerminalFitContext } from './fitContext';
+import { ChartTabs } from './ChartTabs';
 import './terminal.css';
 
 const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
@@ -161,7 +162,7 @@ export function TerminalPage() {
               </button>
             ))}
           </div>
-          <span className="ws-hint">{WORKSPACES.find((w) => w.id === workspace)?.hint}</span>
+          <ChartTabs />
           <span className="spacer" />
           <span className="ws-keys faint" title="Drag a panel's header to rearrange · drag the chart's bottom edge to resize rows · F1–F8 switch modules · / focuses the command line">
             <Keyboard size={13} />

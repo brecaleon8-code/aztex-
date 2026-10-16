@@ -9,7 +9,16 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   // Terminal (incl. recharts for the P/L chart) is the landing route, so it ships in the main chunk.
-  build: { chunkSizeWarningLimit: 700 },
+  // Aztex Studio is a separate app (its own page, bundle and install manifest), like MetaEditor.
+  build: {
+    chunkSizeWarningLimit: 700,
+    rolldownOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        studio: fileURLToPath(new URL('./studio.html', import.meta.url)),
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -1,6 +1,6 @@
 # Aztex
 
-A professional, multi-module crypto trading terminal: **Terminal**, **Data & Discovery**, **Community**, **OTC Desk** and **Appearance**. It is built from the *Aztex — Build Spec for Claude Code* as a production-structured React + TypeScript app. All market data is mocked by default, and a `MarketDataProvider` seam lets you swap in live data without touching UI code.
+A professional, multi-module crypto trading terminal: **Terminal**, **Data & Discovery**, **On-chain**, **Community** and **OTC Desk**, plus **Aztex Studio**, a separate indicator & strategy editor app. It is built from the *Aztex — Build Spec for Claude Code* as a production-structured React + TypeScript app. All market data is mocked by default, and a `MarketDataProvider` seam lets you swap in live data without touching UI code.
 
 ```bash
 npm install
@@ -10,7 +10,7 @@ npm run test:e2e     # Playwright acceptance tests (builds + previews the app)
 npm run build        # typecheck + production build
 ```
 
-Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public market data. You can also switch at runtime under **Appearance → Market data source**. Live mode needs no API keys. If your Chromium is preinstalled somewhere else, point Playwright at it with `PW_CHROMIUM_PATH=/path/to/chrome`.
+Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public market data. You can also switch at runtime from the chart's settings menu (right-click the chart, or press **F8**) → **Data feed**. Live mode needs no API keys. If your Chromium is preinstalled somewhere else, point Playwright at it with `PW_CHROMIUM_PATH=/path/to/chrome`.
 
 ## Stack
 
@@ -50,13 +50,57 @@ Market and marketable orders, closes, flattens and TWAP slices pay taker; restin
 - **Crediting:** arrived USDT goes to the trading balance; other coins go to holdings, valued live and convertible to USDT on the Account page.
 - **⚠ Addresses are simulated** (derived, not keys) and labelled as such in the UI. Production replaces `depositAddress()` with the custody provider's per-account address API.
 
-**Studio** (`modules/studio`).
+**Studio** (`modules/studio`, shipped as its own app — see *Aztex Studio* below).
 - **Indicator library:** save named formulas with a live preview, then add them to the chart (they also appear under "My indicators" in the chart's indicator menu).
 - **Strategy builder:** entry and exit rules, direction, TP/SL %, and starter templates.
 - **Backtests:** run instantly on the selected symbol and timeframe and report net return vs buy & hold, win rate, profit factor, max drawdown, exposure, an equity curve and a trade list.
 - **Show on chart:** plots entry and exit markers on the Terminal chart.
 - **Execution model (no look-ahead):** signals fill at the next bar's open; the stop is checked before the target within a bar; fees are charged on both sides.
 - **Formula language** additions: comparisons, `and`/`or`/`not`, and `rsi`, `highest`, `lowest`, `prev`, `cross_over`, `cross_under`, `abs`, `min`, `max`.
+
+## Chart tabs & multi-chart layouts
+
+The Terminal works like TradingView:
+
+- **Tabs per crypto.** A tab strip sits next to the workspace switcher. Each tab is a chart page for one crypto. **+** opens another crypto in a new tab (or switches to it if it's already open), **×** or a middle-click closes a tab. Each tab shows its 24h change.
+- **Up to 4 charts per tab.** The layout button on the chart offers **1**, **2 side by side**, **2 stacked**, **1 large + 2** and **4 (2 × 2)**. Each chart has its own symbol and timeframe, picked from its header.
+- **One chart trades.** Click a chart to focus it. It gets a green outline and a **Trading** tag, and the ticket, order book, tape and levels follow it. Picking a symbol anywhere else (watchlist, command line, palette) changes the focused chart.
+- **Persistence.** Tabs, layouts and each chart's symbol/timeframe survive reloads (`aztex.chartTabs`).
+- **Data.** Unfocused charts get candle-only streams from the same `MarketDataProvider` (`useSeriesStore`, wired in `app/marketFeed.ts`). The outgoing series is cached, so switching focus never flashes empty.
+- **Fit to screen.** Maximize turns any layout into a full-screen multi-chart view. Small panes drop their indicator panes to keep the price plot readable.
+
+Code: `stores/useChartTabsStore.ts` (pure, unit-tested), `app/chartTabsSync.ts` (tabs ↔ selected symbol), `modules/terminal/ChartTabs.tsx`, `modules/terminal/chart/ChartGrid.tsx`.
+
+## Chart settings (right-click)
+
+Chart appearance no longer has its own page. Right-click any chart, use the chart's ⚙ button, or press **F8** (MT5's chart-properties key). The menu has:
+
+- chart type
+- bull/bear candle and TP/profit · SL/loss colours, plus one-click palettes: Aztex, Classic, Colour-blind and Mono
+- volume and order-book profiles
+- theme
+- the market-data feed
+- clear drawings
+- a shortcut to Studio
+
+Changes apply live. `/appearance` redirects to the Terminal.
+
+## Aztex Studio (separate app)
+
+Studio is its own app, like MetaEditor next to MT5:
+
+- **Separate app.** It has its own HTML entry (`studio.html`, built as a second Vite input), its own bundle and window, and a web-app manifest (`public/studio.webmanifest`, icons in `public/brand/studio-*.png`).
+- **Install.** Chrome and Edge can install it as a desktop app with its own icon and taskbar entry. The **Install app** button in Studio's title bar uses the browser's install prompt.
+- **Open from the terminal.** Press **F4**, use the code icon (`</>`) in the top bar (**Open Studio** / **Install as desktop app…**), use **Open Studio** in the Indicator menu, or use the chart's settings menu.
+- **Download page.** `/get-studio` is the download page. Servers answer `/studio` with the app itself.
+- **Live sync.** Terminal and Studio share one library through storage (`lib/sync/crossWindow.ts`). An indicator saved in Studio appears in the terminal's Indicator menu immediately, and **Show on chart** brings the terminal window forward.
+- **Own backtest symbol.** Studio keeps its own backtest symbol and timeframe (`aztex.studio.market`), so it never moves your chart.
+
+## Top bar
+
+- Modules: Terminal (F1), Data & Discovery (F2), On-chain (F3), Community (F5), OTC Desk (F6).
+- **Account** is the round icon at the far right (F7).
+- Studio is the code icon (F4). The theme toggle sits between them.
 
 ## News & calendar dock
 
@@ -133,7 +177,8 @@ src/
     discovery/    currency search, market share, comparison chart, blockchain scanner + alerts
     community/    identity (X handle, friend code), contacts, chat with trade chips, forum
     otc/          RFQ with countdown, desks, blotter
-    appearance/   candle/P&L palette, theme, data-source switch
+    studio/       Studio workspace (indicator library, strategy lab) + the /get-studio download page
+  studio/         Aztex Studio app shell (separate entry: studio.html), install prompt
   components/ui/  Panel, Segmented, NumericField, Toasts
   lib/
     indicators/   sma, ema, bollinger, rsi (Wilder), macd, formula tokenizer/parser/evaluator, compute
@@ -174,7 +219,7 @@ src/
   - You can link and unlink an X handle (with a verified badge). Each user gets a friend code with copy-to-clipboard, and contacts can only be added by code.
   - The chat can carry trade-chip messages, and the mock counterparties reply with their own setups.
   - The forum supports posts with live P/L trade chips, likes, comment counts and sharing.
-- **OTC & Appearance (§8).** Quotes count down for 15 s, and Accept is disabled once a quote expires. Accepted quotes land in a blotter. The Appearance page has four color pickers, a live preview and a reset button.
+- **OTC & Appearance (§8).** Quotes count down for 15 s, and Accept is disabled once a quote expires. Accepted quotes land in a blotter. Colours are set from the chart's right-click settings menu (four pickers, palettes and reset); the chart itself is the live preview.
 - **Data seam (§9).** UI code depends only on `MarketDataProvider`. `MockProvider` drives the simulated market. `LiveProvider` implements the same interface against Binance's public market-data endpoints:
   - REST klines for history
   - combined WebSocket streams for `@ticker`, `@kline_<tf>` and `@depth20@100ms`
@@ -218,7 +263,7 @@ src/
 
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions, orders & fills), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
-Keyboard: **F1–F8** switch modules; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+Keyboard: **F1–F3, F5–F7** switch modules; **F4** opens Aztex Studio; **F8** opens chart settings; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
 ## Indicator quick edit (on the chart)
 
@@ -338,7 +383,7 @@ The renderer is split so a swap stays contained. The pure math lives in `lib/cha
 | 1. Core Terminal (mock) | Done. Acceptance is covered by `e2e/acceptance.spec.ts`. |
 | 2. Data & Discovery | Done. Alert rules persist to `localStorage`. |
 | 3. Community | Done, client-side mock (no backend). |
-| 4. OTC + Appearance | Done. Expiry is tested with Playwright's clock. |
+| 4. OTC + Appearance | Done. Expiry is tested with Playwright's clock. Appearance now lives in the chart's right-click menu. |
 | 5. Real data | `LiveProvider` (Binance) is implemented and unit-tested against a fake WebSocket and fetch. It has **not** been run against the live venue from the build environment, whose network policy blocks Binance. Verify it locally with `VITE_MARKET_DATA=live npm run dev`. |
 
 ### Known limitations / next steps

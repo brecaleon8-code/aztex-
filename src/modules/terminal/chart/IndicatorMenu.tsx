@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FunctionSquare, Plus } from 'lucide-react';
+import { FunctionSquare, Plus, SquareCode } from 'lucide-react';
+import { openStudio } from '@/app/studioLauncher';
 import { useChartStore } from '@/stores/useChartStore';
 import { toChartIndicator, useStudioStore } from '@/stores/useStudioStore';
 import { CATEGORICAL } from '@/stores/useThemeStore';
@@ -78,6 +79,18 @@ export function IndicatorMenu() {
               <div className="divider" />
               <button className="menu-item" onClick={() => setCustom(true)} data-testid="custom-indicator">
                 <FunctionSquare size={14} /> <span className="grow">Custom formula…</span>
+              </button>
+              <button
+                className="menu-item"
+                onClick={() => {
+                  setOpen(false);
+                  openStudio();
+                }}
+                title="Build scripts and strategies in Aztex Studio, the separate editor app"
+                data-testid="indicator-open-studio"
+              >
+                <SquareCode size={14} /> <span className="grow">Open Studio</span>
+                <span className="label mono">F4</span>
               </button>
             </>
           ) : (

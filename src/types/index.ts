@@ -169,6 +169,8 @@ export type DrawingTool = 'cursor' | 'trend' | 'ray' | 'rect' | 'fib' | 'text';
 export interface DataPoint {
   index: number;
   price: number;
+  /** Time the point sits at (time-based charts), so drawings stay put when history reloads. */
+  time?: number;
 }
 export interface Drawing {
   id: string;

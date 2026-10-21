@@ -23,6 +23,10 @@ import { volumeProfile, type VolumeProfile } from '@/lib/orderflow/orderflow';
 import { atrBox, renko } from '@/lib/chart/renko';
 import { rowSizeFor } from '@/lib/orderflow/footprint';
 import { useFootprintStore } from '@/stores/useFootprintStore';
+import { usePriceAlertStore } from '@/stores/usePriceAlertStore';
+import { hitDrawing, measure, shiftDrawing, snapToOhlc } from '@/lib/chart/drawings';
+import { chartCursor, CHART_RESET_EVENT } from './chartCursor';
+import { useUiStore } from '@/stores/useUiStore';
 import { barFootprint, BookProfileLayer, FootprintLayer, FootprintStats, type BarFootprint } from './FootprintLayer';
 
 const AXIS_W = 78;
@@ -47,6 +51,10 @@ export interface PaneSource {
 }
 const NO_DELTA: Record<number, number> = {};
 const NO_DRAWINGS: Drawing[] = [];
+const typingIn = (el: EventTarget | null) => {
+  const t = el as HTMLElement | null;
+  return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+};
 
 /**
  * `fill`: size to the parent's height (fit-to-screen Terminal, multi-chart panes) instead of the
@@ -147,7 +155,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const drawings = useMemo(() => {
     if (t0 == null) return storedDrawings;
     const place = (p: DataPoint): DataPoint => (p.time == null ? p : { ...p, index: (p.time - t0) / tfMsAll });
-    return storedDrawings.map((d) => ({ ...d, p1: place(d.p1), p2: d.p2 && place(d.p2) }));
+    return storedDrawings.map((d) => ({ ...d, p1: place(d.p1), p2: d.p2 && place(d.p2), points: d.points?.map(place) }));
   }, [storedDrawings, t0, tfMsAll]);
   // Indicators: computed once on full real-OHLC history, then windowed at render.
   const mDelta = useMarketStore((s) => s.deltaByTime);
@@ -237,22 +245,64 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const [textDraft, setTextDraft] = useState<{ p: DataPoint; value: string } | null>(null);
   const [panning, setPanning] = useState(false);
   const drag = useRef<{ lastX: number; acc: number } | null>(null);
+  /** Brush stroke in progress, ruler, zoom-box selection, and a drawing being dragged. */
+  const [brush, setBrush] = useState<DataPoint[] | null>(null);
+  /** `clicks`: started with a plain click, so the next click ends it (drag also works). */
+  const [ruler, setRuler] = useState<{ a: DataPoint; b: DataPoint; done: boolean; clicks?: boolean } | null>(null);
+  const [zoomBox, setZoomBox] = useState<{ x0: number; x1: number } | null>(null);
+  const moving = useRef<{ id: string; start: DataPoint; orig: Drawing; moved: boolean } | null>(null);
+  const [hoverDrawing, setHoverDrawing] = useState<string | null>(null);
+  const { magnet, drawingsLocked, drawingsHidden, selectedDrawing } = store;
+  const alerts = usePriceAlertStore((s) => s.alerts);
+  const symAlerts = alerts.filter((a) => a.symbol === symbol);
+  const allStops = usePositionStore((s) => s.stopOrders);
+  const stops = allStops.filter((o) => o.symbol === symbol);
 
   useEffect(() => {
     setPending(null);
     setTextDraft(null);
+    setBrush(null);
+    setZoomBox(null);
   }, [tool, key]);
 
+  // Focused chart only: Esc cancels, Delete removes the selected drawing, Ctrl+Z undoes, Alt+R resets the view.
+  const focused = !pane;
+  const resetRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setPending(null);
         setTextDraft(null);
+        setBrush(null);
+        setRuler(null);
+        setZoomBox(null);
+        if (!focused) return;
+        const cs = useChartStore.getState();
+        if (cs.selectedDrawing) cs.selectDrawing(null);
+        else if (cs.tool !== 'cursor') cs.setTool('cursor');
+        return;
+      }
+      if (!focused || typingIn(e.target)) return;
+      const cs = useChartStore.getState();
+      if ((e.key === 'Delete' || e.key === 'Backspace') && cs.selectedDrawing && !cs.drawingsLocked) {
+        e.preventDefault();
+        cs.removeDrawing(cs.selectedDrawing);
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === 'KeyZ') {
+        if (cs.undoDrawings()) e.preventDefault();
       }
     };
+    const onReset = () => resetRef.current();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    if (focused) window.addEventListener(CHART_RESET_EVENT, onReset);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener(CHART_RESET_EVENT, onReset);
+    };
+  }, [focused]);
+  resetRef.current = () => {
+    setRuler(null);
+    setVp(clampViewport({ visibleCount: defaultVisible, viewEnd: nRef.current }, nRef.current));
+  };
 
   const ready = n > 0 && !error;
   // Wheel zoom needs a non-passive listener to preventDefault page scroll.
@@ -273,19 +323,42 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   const toData = (x: number, y: number): DataPoint => ({ index: x / xs.candleWidth - 0.5 + start, price: ys.toPrice(y) });
+  /** A drawing point under the pointer: magnet-snapped to OHLC when on, and time-stamped. */
+  const pointAt = (x: number, y: number): DataPoint => stamp(magnet ? snapToOhlc(toData(x, y), y, display, ys) : toData(x, y));
+  const canEdit = focused && !drawingsLocked && !drawingsHidden;
 
   const onPointerDown = (e: RPointerEvent<SVGSVGElement>) => {
     if (e.button !== 0 || n === 0) return;
     const { x, y } = local(e);
     if (x > plotW || y > plotH) return;
+    if (ruler?.done) setRuler(null);
+    if (ruler && !ruler.done && ruler.clicks) {
+      setRuler({ ...ruler, b: pointAt(x, y), done: true });
+      store.setTool('cursor');
+      return;
+    }
     if (tool === 'cursor') {
+      // Grab a drawing to select / move it; otherwise pan.
+      const hit = canEdit ? hitDrawing(drawings, x, y, xs, ys, plotW) : null;
+      if (hit) {
+        store.selectDrawing(hit.id);
+        const orig = store.drawings.find((d) => d.id === hit.id);
+        if (orig) moving.current = { id: hit.id, start: toData(x, y), orig, moved: false };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (focused && selectedDrawing) store.selectDrawing(null);
       drag.current = { lastX: e.clientX, acc: 0 };
       setPanning(true);
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
-    const p = stamp(toData(x, y));
-    if (tool === 'ray') addDrawing({ tool: 'ray', p1: p });
+    const p = pointAt(x, y);
+    if (tool === 'measure' || tool === 'zoom' || tool === 'brush') e.currentTarget.setPointerCapture(e.pointerId);
+    if (tool === 'measure') setRuler({ a: p, b: p, done: false });
+    else if (tool === 'zoom') setZoomBox({ x0: x, x1: x });
+    else if (tool === 'brush') setBrush([p]);
+    else if (tool === 'ray') addDrawing({ tool: 'ray', p1: p });
     else if (tool === 'text') setTextDraft({ p, value: '' });
     else if (!pending) setPending(p);
     else {
@@ -297,6 +370,27 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const onPointerMove = (e: RPointerEvent<SVGSVGElement>) => {
     const pt = local(e);
     setHover(pt);
+    const inPlot = pt.x >= 0 && pt.x <= plotW && pt.y >= 0 && pt.y <= plotH;
+    chartCursor.symbol = inPlot ? symbol : null;
+    chartCursor.price = inPlot ? ys.toPrice(pt.y) : null;
+    const m = moving.current;
+    if (m) {
+      const cur = toData(pt.x, pt.y);
+      const dI = Math.round(cur.index - m.start.index);
+      const dP = cur.price - m.start.price;
+      if (!m.moved && (dI !== 0 || Math.abs(ys.toY(cur.price) - ys.toY(m.start.price)) > 2)) {
+        m.moved = true;
+        store.snapshotDrawings();
+      }
+      if (m.moved) store.updateDrawing(m.id, shiftDrawing(m.orig, dI, dP, t0 == null ? null : tfMsAll));
+      return;
+    }
+    if (ruler && !ruler.done) setRuler({ ...ruler, b: pointAt(pt.x, pt.y) });
+    if (zoomBox) setZoomBox({ ...zoomBox, x1: Math.max(0, Math.min(plotW, pt.x)) });
+    if (brush) {
+      const last = brush[brush.length - 1];
+      if (Math.hypot(xs.toX(last.index) - pt.x, ys.toY(last.price) - pt.y) > 3) setBrush([...brush, stamp(toData(pt.x, pt.y))]);
+    }
     if (drag.current) {
       const dx = e.clientX - drag.current.lastX;
       drag.current.lastX = e.clientX;
@@ -306,10 +400,36 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
         vpRef.current = r.vp;
         setVp(r.vp);
       }
+    } else if (tool === 'cursor' && canEdit) {
+      const h = hitDrawing(drawings, pt.x, pt.y, xs, ys, plotW)?.id ?? null;
+      if (h !== hoverDrawing) setHoverDrawing(h);
     }
   };
 
   const endPan = () => {
+    moving.current = null;
+    if (ruler && !ruler.done && !ruler.clicks) {
+      const dragged = Math.hypot(xs.toX(ruler.b.index) - xs.toX(ruler.a.index), ys.toY(ruler.b.price) - ys.toY(ruler.a.price)) > 4;
+      if (dragged) {
+        setRuler({ ...ruler, done: true });
+        store.setTool('cursor');
+      } else setRuler({ ...ruler, clicks: true });
+    }
+    if (zoomBox) {
+      const lo = Math.min(zoomBox.x0, zoomBox.x1);
+      const hi = Math.max(zoomBox.x0, zoomBox.x1);
+      if (hi - lo >= 6) {
+        const i0 = Math.max(0, xs.toIndex(lo));
+        const i1 = Math.min(n - 1, xs.toIndex(hi));
+        setVp(clampViewport({ visibleCount: Math.max(5, i1 - i0 + 1), viewEnd: i1 + 1 }, n));
+      } else setVp((v) => zoom(v, ZOOM_IN, n));
+      setZoomBox(null);
+      store.setTool('cursor');
+    }
+    if (brush) {
+      if (brush.length >= 2) addDrawing({ tool: 'brush', p1: brush[0], points: brush });
+      setBrush(null);
+    }
     drag.current = null;
     setPanning(false);
   };
@@ -375,12 +495,27 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
           ref={mainRef}
           width={width}
           height={height}
-          className={`chart-svg tool-${tool} ${panning ? 'panning' : ''}`}
+          className={`chart-svg tool-${tool} ${panning ? 'panning' : ''} ${hoverDrawing ? 'over-drawing' : ''} ${moving.current ? 'moving' : ''}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endPan}
           onPointerCancel={endPan}
-          onPointerLeave={() => !drag.current && setHover(null)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const pt = local(e as unknown as RPointerEvent);
+            const inPlot = pt.x >= 0 && pt.x <= plotW && pt.y >= 0 && pt.y <= plotH;
+            // Right-click on a drawing selects it (Del removes it), as on TradingView.
+            const hit = inPlot && canEdit ? hitDrawing(drawings, pt.x, pt.y, xs, ys, plotW) : null;
+            if (hit) store.selectDrawing(hit.id);
+            useUiStore.getState().openChartContext({ x: e.clientX, y: e.clientY, symbol, price: inPlot ? ys.toPrice(pt.y) : null });
+          }}
+          onPointerLeave={() => {
+            chartCursor.symbol = null;
+            chartCursor.price = null;
+            if (!drag.current) setHover(null);
+            if (hoverDrawing) setHoverDrawing(null);
+          }}
           data-testid="price-chart"
         >
           <defs>
@@ -475,10 +610,27 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
                 </text>
               </g>
             ))}
-            {drawings.map((d) => (
-              <DrawingShape key={d.id} d={d} xs={xs} ys={ys} plotW={plotW} dec={dec} />
+            {stops.map((o) => (
+              <g key={o.id} className="working-line stop" data-testid="chart-stop-order">
+                <line x1={0} x2={plotW} y1={ys.toY(o.triggerPrice)} y2={ys.toY(o.triggerPrice)} />
+                <rect x={6} y={ys.toY(o.triggerPrice) - 9} width={118} height={18} rx={3} />
+                <text x={12} y={ys.toY(o.triggerPrice) + 3.5} className="tag-text">
+                  {o.side === 'Long' ? 'Buy' : 'Sell'} stop {o.size < 1 ? o.size.toFixed(4) : o.size.toFixed(2)}
+                </text>
+              </g>
             ))}
-            {pending && hover && <DrawingShape d={{ id: 'preview', tool: tool as Drawing['tool'], p1: pending, p2: toData(hover.x, hover.y) }} xs={xs} ys={ys} plotW={plotW} dec={dec} preview />}
+            {symAlerts.map((a) => (
+              <g key={a.id} className="alert-line" data-testid="chart-alert">
+                <line x1={0} x2={plotW} y1={ys.toY(a.price)} y2={ys.toY(a.price)} />
+                <path d={bellPath(plotW - 20, ys.toY(a.price) - 13)} className="alert-bell" />
+              </g>
+            ))}
+            {!drawingsHidden &&
+              drawings.map((d) => <DrawingShape key={d.id} d={d} xs={xs} ys={ys} plotW={plotW} dec={dec} selected={focused && d.id === selectedDrawing} hovered={d.id === hoverDrawing} />)}
+            {pending && hover && <DrawingShape d={{ id: 'preview', tool: tool as Drawing['tool'], p1: pending, p2: pointAt(hover.x, hover.y) }} xs={xs} ys={ys} plotW={plotW} dec={dec} preview />}
+            {brush && brush.length > 1 && <DrawingShape d={{ id: 'brush-preview', tool: 'brush', p1: brush[0], points: brush }} xs={xs} ys={ys} plotW={plotW} dec={dec} preview />}
+            {ruler && <Ruler a={ruler.a} b={ruler.b} xs={xs} ys={ys} tfMs={t0 == null ? null : tfMsAll} dec={dec} up={colors.profit} down={colors.loss} />}
+            {zoomBox && <rect className="zoom-box" x={Math.min(zoomBox.x0, zoomBox.x1)} y={0} width={Math.abs(zoomBox.x1 - zoomBox.x0)} height={plotH} />}
             {hover && hover.x <= plotW && hover.y <= plotH && (
               <g className="crosshair">
                 <line x1={hoverIdx != null ? xs.toX(hoverIdx) : hover.x} x2={hoverIdx != null ? xs.toX(hoverIdx) : hover.x} y1={0} y2={plotH} />
@@ -490,6 +642,9 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
           {/* Entry / TP / SL flags pinned to the right axis */}
           {levels.map((l) => (
             <PriceTag key={l.key} x={plotW} y={ys.toY(l.price)} text={fmtPrice(l.price, dec)} label={l.label} fill={l.fill} color={l.text} plotH={plotH} />
+          ))}
+          {symAlerts.map((a) => (
+            <PriceTag key={a.id} x={plotW} y={ys.toY(a.price)} text={fmtPrice(a.price, dec)} fill="var(--warn)" color="#16130f" plotH={plotH} />
           ))}
           {/* Last price tag — drawn above the level flags */}
           <PriceTag x={plotW} y={ys.toY(realLast.close)} text={fmtPrice(realLast.close, dec)} fill={liveCol} color={textOn(liveCol)} plotH={plotH} />
@@ -540,6 +695,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
           </button>
         )}
         {pending && <div className="chart-hint">Click to place second point · Esc to cancel</div>}
+        {!pending && focused && TOOL_HINT[tool] && !ruler && !zoomBox && !brush && <div className="chart-hint">{TOOL_HINT[tool]}</div>}
         {mode === 'footprint' && (
           <div className="fp-legend" data-testid="footprint-legend">
             {fpOn ? (
@@ -758,13 +914,63 @@ function PriceTag({ x, y, text, label, fill, color, plotH }: { x: number; y: num
   );
 }
 
-function DrawingShape({ d, xs, ys, plotW, dec, preview }: { d: Drawing; xs: XScale; ys: YScale; plotW: number; dec: number; preview?: boolean }) {
+const TOOL_HINT: Partial<Record<string, string>> = {
+  measure: 'Drag to measure price, % and time · Esc to cancel',
+  zoom: 'Drag across the bars to zoom into them',
+  brush: 'Hold the mouse button and draw',
+};
+
+/** Small bell glyph for price-alert lines. */
+function bellPath(x: number, y: number) {
+  return `M${x + 5},${y + 1}c-2.2,0-3.6,1.7-3.6,3.9v2.6l-1.2,1.6h9.6l-1.2-1.6v-2.6c0-2.2-1.4-3.9-3.6-3.9zM${x + 3.8},${y + 10.2}a1.3,1.3 0 0 0 2.4,0z`;
+}
+
+/** Ruler: shaded box from A to B with Δprice, Δ%, bars and duration. */
+function Ruler({ a, b, xs, ys, tfMs, dec, up, down }: { a: DataPoint; b: DataPoint; xs: XScale; ys: YScale; tfMs: number | null; dec: number; up: string; down: string }) {
+  const m = measure(a, b, tfMs);
+  const col = m.dPrice >= 0 ? up : down;
+  const x1 = xs.toX(a.index);
+  const x2 = xs.toX(b.index);
+  const y1 = ys.toY(a.price);
+  const y2 = ys.toY(b.price);
+  const label = `${m.dPrice >= 0 ? '+' : '−'}${fmtPrice(Math.abs(m.dPrice), dec)} (${m.pct >= 0 ? '+' : '−'}${Math.abs(m.pct).toFixed(2)}%) · ${Math.abs(m.bars)} bars${m.span ? `, ${m.span}` : ''}`;
+  const w = label.length * 6.4 + 16;
+  const lx = (x1 + x2) / 2 - w / 2;
+  const ly = m.dPrice >= 0 ? Math.min(y1, y2) - 26 : Math.max(y1, y2) + 6;
+  return (
+    <g className="ruler" data-testid="ruler">
+      <rect x={Math.min(x1, x2)} y={Math.min(y1, y2)} width={Math.abs(x2 - x1)} height={Math.abs(y2 - y1)} fill={col} opacity={0.12} />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeDasharray="4 3" />
+      <rect x={lx} y={ly} width={w} height={20} rx={4} fill={col} />
+      <text x={lx + w / 2} y={ly + 13.5} textAnchor="middle" className="tag-text" fill={textOn(col)} data-testid="ruler-label">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function DrawingShape({ d, xs, ys, plotW, dec, preview, selected, hovered }: { d: Drawing; xs: XScale; ys: YScale; plotW: number; dec: number; preview?: boolean; selected?: boolean; hovered?: boolean }) {
+  const shape = <DrawingBody d={d} xs={xs} ys={ys} plotW={plotW} dec={dec} cls={`drawing ${preview ? 'preview' : ''} ${selected ? 'selected' : ''} ${hovered ? 'hovered' : ''}`} />;
+  if (!selected) return shape;
+  const pts = d.tool === 'brush' && d.points?.length ? [d.points[0], d.points[d.points.length - 1]] : [d.p1, ...(d.p2 ? [d.p2] : [])];
+  return (
+    <g data-testid="drawing-selected">
+      {shape}
+      {pts.map((p, i) => (
+        <circle key={i} cx={xs.toX(p.index)} cy={ys.toY(p.price)} r={4.5} className="drawing-handle" />
+      ))}
+    </g>
+  );
+}
+
+function DrawingBody({ d, xs, ys, plotW, dec, cls }: { d: Drawing; xs: XScale; ys: YScale; plotW: number; dec: number; cls: string }) {
   const x1 = xs.toX(d.p1.index);
   const y1 = ys.toY(d.p1.price);
   const x2 = d.p2 ? xs.toX(d.p2.index) : x1;
   const y2 = d.p2 ? ys.toY(d.p2.price) : y1;
-  const cls = `drawing ${preview ? 'preview' : ''}`;
   switch (d.tool) {
+    case 'brush':
+      return <path className={`${cls} drawing-brush`} d={(d.points ?? []).map((p, i) => `${i ? 'L' : 'M'}${xs.toX(p.index)},${ys.toY(p.price)}`).join('')} />;
     case 'trend':
       return (
         <g className={cls}>
@@ -808,7 +1014,7 @@ function DrawingShape({ d, xs, ys, plotW, dec, preview }: { d: Drawing; xs: XSca
     }
     case 'text':
       return (
-        <text x={x1} y={y1} className="drawing-text">
+        <text x={x1} y={y1} className={`drawing-text ${cls}`}>
           {d.text}
         </text>
       );

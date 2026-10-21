@@ -169,3 +169,30 @@ describe('drawings follow their chart', () => {
     expect(useChartStore.getState().drawingStash['ETH:5m']).toEqual([]);
   });
 });
+
+describe('drawing edits', () => {
+  it('select, move with one undo step, delete, undo, clear', async () => {
+    const { useChartStore } = await import('./useChartStore');
+    useChartStore.setState({ drawings: [], drawingUndo: [], selectedDrawing: null, drawingsKey: 'X:1m', drawingStash: {} });
+    const s = useChartStore.getState();
+    s.addDrawing({ tool: 'ray', p1: { index: 1, price: 10 } });
+    const d = useChartStore.getState().drawings[0];
+    s.selectDrawing(d.id);
+    s.snapshotDrawings();
+    s.updateDrawing(d.id, { ...d, p1: { index: 1, price: 11 } });
+    s.updateDrawing(d.id, { ...d, p1: { index: 1, price: 12 } });
+    expect(useChartStore.getState().drawings[0].p1.price).toBe(12);
+    expect(s.undoDrawings()).toBe(true); // back to before the drag in one step
+    expect(useChartStore.getState().drawings[0].p1.price).toBe(10);
+    s.removeDrawing(d.id);
+    expect(useChartStore.getState().drawings).toHaveLength(0);
+    s.undoDrawings();
+    expect(useChartStore.getState().drawings).toHaveLength(1);
+    s.clearDrawings();
+    s.undoDrawings();
+    expect(useChartStore.getState().drawings).toHaveLength(1);
+    s.undoDrawings(); // before the add
+    expect(useChartStore.getState().drawings).toHaveLength(0);
+    expect(s.undoDrawings()).toBe(false);
+  });
+});

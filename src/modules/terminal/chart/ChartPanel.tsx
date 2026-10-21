@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { atrBox } from '@/lib/chart/renko';
-import { Star, Maximize2, Minimize2, MousePointer2, TrendingUp, MoveRight, Square, Type, AlignJustify, Trash2, X, Eye, EyeOff, Settings2 } from 'lucide-react';
+import { Star, Maximize2, Minimize2, X, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { Panel, type PanelDragProps } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
@@ -9,25 +9,18 @@ import { indicatorLabel } from '@/lib/indicators/compute';
 import { fmtCompact, fmtPct, fmtPrice, fmtStep } from '@/lib/format';
 import { useSpark } from '../useSpark';
 import { useStudioStore } from '@/stores/useStudioStore';
-import type { ChartMode, DrawingTool, Timeframe } from '@/types';
+import type { ChartMode, Timeframe } from '@/types';
 import { PriceChart } from './PriceChart';
 import { useTickFlash } from '@/app/useTickFlash';
 import { IndicatorMenu } from './IndicatorMenu';
 import { QuickEdit } from './QuickEdit';
 import { useTerminalFit } from '../fitContext';
 import { ChartGrid, LayoutPicker } from './ChartGrid';
+import { DrawingToolbar } from './DrawingToolbar';
 import { activeTabOf, useChartTabsStore } from '@/stores/useChartTabsStore';
 import { useUiStore } from '@/stores/useUiStore';
 import './chart.css';
 
-const TOOLS: { tool: DrawingTool; icon: typeof Star; label: string }[] = [
-  { tool: 'cursor', icon: MousePointer2, label: 'Cursor (pan)' },
-  { tool: 'trend', icon: TrendingUp, label: 'Trendline' },
-  { tool: 'ray', icon: MoveRight, label: 'Horizontal ray' },
-  { tool: 'rect', icon: Square, label: 'Rectangle' },
-  { tool: 'text', icon: Type, label: 'Text' },
-  { tool: 'fib', icon: AlignJustify, label: 'Fib retracement' },
-];
 
 const TIMEFRAMES: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d'];
 const CHART_MODES: { value: ChartMode; label: string }[] = [
@@ -45,7 +38,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
   const asset = useMarketStore((s) => s.assets[s.selected]);
   const tf = useMarketStore((s) => s.timeframe);
   const inWatch = useMarketStore((s) => s.watchlist.includes(s.selected));
-  const { mode, setMode, tool, setTool, indicators, removeIndicator, drawings, clearDrawings, profile, toggleProfile, bookProfile, toggleBookProfile, openEditor, toggleIndicatorHidden } = useChartStore();
+  const { mode, setMode, indicators, removeIndicator, profile, toggleProfile, bookProfile, toggleBookProfile, openEditor, toggleIndicatorHidden } = useChartStore();
   const editingId = useChartStore((s) => s.editing?.id);
   const { chartMaximized, toggleChartMaximized } = useLayoutStore();
   const fit = useTerminalFit();
@@ -63,6 +56,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
     <Panel
       code="GP"
       testId="chart-panel"
+      className="chart-panel"
       drag={drag}
       flush
       bodyClassName={fit ? 'chart-body' : ''}
@@ -105,7 +99,7 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
               <option key={t}>{t}</option>
             ))}
           </select>
-          <select className="input tf-select" value={mode} onChange={(e) => setMode(e.target.value as ChartMode)} aria-label="Chart mode" data-testid="chart-mode">
+          <select className="input tf-select chart-mode-select" value={mode} onChange={(e) => setMode(e.target.value as ChartMode)} aria-label="Chart mode" data-testid="chart-mode">
             {CHART_MODES.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
@@ -132,19 +126,6 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
       }
     >
       <div className="chart-toolbar">
-        <div className="tool-group" role="toolbar" aria-label="Drawing tools">
-          {TOOLS.map(({ tool: t, icon: Icon, label }) => (
-            <button key={t} className={`btn sm icon ghost ${tool === t ? 'active' : ''}`} title={label} aria-label={label} aria-pressed={tool === t} onClick={() => setTool(t)} data-testid={`tool-${t}`}>
-              <Icon size={14} />
-            </button>
-          ))}
-          {drawings.length > 0 && (
-            <button className="btn sm ghost" onClick={clearDrawings} title="Clear drawings">
-              <Trash2 size={13} /> {drawings.length}
-            </button>
-          )}
-        </div>
-        <span className="tb-sep" />
         <button className={`btn sm ${profile ? 'active' : ''}`} onClick={toggleProfile} aria-pressed={profile} title="Volume profile (POC / value area)" data-testid="toggle-vp">
           VP
         </button>
@@ -184,10 +165,11 @@ export function ChartPanel({ drag }: { drag?: PanelDragProps }) {
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest('input, textarea, select')) return;
           e.preventDefault();
-          useUiStore.getState().openChartMenu({ x: e.clientX, y: e.clientY });
+          useUiStore.getState().openChartContext({ x: e.clientX, y: e.clientY, symbol, price: null });
         }}
       >
-        {multi ? <ChartGrid fill={!!fit} /> : <PriceChart fill={!!fit} />}
+        <DrawingToolbar />
+        <div className="chart-canvas">{multi ? <ChartGrid fill={!!fit} /> : <PriceChart fill={!!fit} />}</div>
       </div>
       <QuickEdit />
       {fit ? fit.bottomH > 0 && !chartMaximized && <RowSplitHandle height={fit.height} bottomH={fit.bottomH} /> : <ResizeHandle />}

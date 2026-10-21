@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AlgoOrder, Position, WorkingOrder } from '@/types';
+import type { AlgoOrder, Position, StopOrder, WorkingOrder } from '@/types';
 import { levelHit, unrealizedPnl } from '@/lib/trading/pnl';
 
 export interface PnlSample {
@@ -12,6 +12,8 @@ export const PNL_HISTORY_MAX = 240;
 interface PositionState {
   positions: Position[];
   workingOrders: WorkingOrder[];
+  /** Stop entries waiting for their trigger. */
+  stopOrders: StopOrder[];
   algos: AlgoOrder[];
   /** ids currently animating out (fade/shrink before removal). */
   closing: Record<string, true>;
@@ -26,6 +28,8 @@ interface PositionState {
   markClosing: (id: string) => void;
   addWorking: (o: WorkingOrder) => void;
   removeWorking: (id: string) => WorkingOrder | undefined;
+  addStop: (o: StopOrder) => void;
+  removeStop: (id: string) => StopOrder | undefined;
   addRealized: (v: number) => void;
   pulse: (id: string) => void;
   /** Mark positions to the latest prices; returns ids whose TP/SL was newly hit. */
@@ -37,6 +41,7 @@ export const usePositionStore = create<PositionState>()(
     (set, get) => ({
       positions: [],
       workingOrders: [],
+      stopOrders: [],
       algos: [],
       closing: {},
       highlight: {},
@@ -56,6 +61,12 @@ export const usePositionStore = create<PositionState>()(
       },
       markClosing: (id) => set((s) => ({ closing: { ...s.closing, [id]: true } })),
       addWorking: (o) => set((s) => ({ workingOrders: [o, ...s.workingOrders] })),
+      addStop: (o) => set((s) => ({ stopOrders: [o, ...s.stopOrders] })),
+      removeStop: (id) => {
+        const o = get().stopOrders.find((x) => x.id === id);
+        set((s) => ({ stopOrders: s.stopOrders.filter((x) => x.id !== id) }));
+        return o;
+      },
       removeWorking: (id) => {
         const o = get().workingOrders.find((x) => x.id === id);
         set((s) => ({ workingOrders: s.workingOrders.filter((x) => x.id !== id) }));
@@ -91,7 +102,7 @@ export const usePositionStore = create<PositionState>()(
     }),
     {
       name: 'aztex.positions',
-      partialize: (s) => ({ positions: s.positions, workingOrders: s.workingOrders, realized: s.realized }),
+      partialize: (s) => ({ positions: s.positions, workingOrders: s.workingOrders, stopOrders: s.stopOrders, realized: s.realized }),
     },
   ),
 );

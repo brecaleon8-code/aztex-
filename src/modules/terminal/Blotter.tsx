@@ -5,14 +5,14 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useExecutionStore, isLive } from '@/stores/useExecutionStore';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { useMarketStore } from '@/stores/useMarketStore';
-import { cancelBracketLeg, cancelWorkingOrder } from '@/stores/trading';
+import { cancelBracketLeg, cancelStopOrder, cancelWorkingOrder } from '@/stores/trading';
 import { executionQuality, orderSlippage } from '@/lib/trading/quality';
 import { fmtPrice, fmtQty, fmtTime, fmtUsd } from '@/lib/format';
 import type { OrderRecord } from '@/types';
 
 type Tab = 'open' | 'orders' | 'fills' | 'tca';
 
-const KIND: Record<OrderRecord['kind'], string> = { market: 'MKT', limit: 'LMT', take_profit: 'TP', stop_loss: 'STOP', twap: 'TWAP', close: 'CLOSE' };
+const KIND: Record<OrderRecord['kind'], string> = { market: 'MKT', limit: 'LMT', stop: 'STP', take_profit: 'TP', stop_loss: 'STOP', twap: 'TWAP', close: 'CLOSE' };
 const STATUS: Record<OrderRecord['status'], string> = { new: 'Working', partially_filled: 'Partial', filled: 'Filled', cancelled: 'Cancelled', rejected: 'Rejected' };
 
 function statusLabel(o: OrderRecord) {
@@ -125,7 +125,7 @@ export function Blotter({ drag }: { drag?: PanelDragProps }) {
                       <button
                         className="btn sm ghost icon"
                         aria-label={`Cancel ${KIND[o.kind]} ${o.symbol}`}
-                        onClick={() => (o.source === 'bracket' ? cancelBracketLeg(o.id) : w ? cancelWorkingOrder(o.id) : null)}
+                        onClick={() => (o.source === 'bracket' ? cancelBracketLeg(o.id) : o.kind === 'stop' ? cancelStopOrder(o.id) : w ? cancelWorkingOrder(o.id) : null)}
                         data-testid="blotter-cancel"
                       >
                         <X size={12} />

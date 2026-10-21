@@ -18,6 +18,11 @@ export const CATEGORICAL = ['#CFD3D8', '#7FA7CF', '#B39CDB', '#D2AE72', '#DDA1BC
 
 interface ThemeState {
   theme: Theme;
+  /** Follow the operating system's light/dark setting ("System" in the account menu). */
+  followSystem: boolean;
+  followSystemTheme: () => void;
+  /** ThemeSync applies the OS preference while following it. */
+  applySystemTheme: (dark: boolean) => void;
   platform: Platform;
   colors: AppearanceColors;
   setTheme: (t: Theme) => void;
@@ -32,10 +37,14 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      followSystem: false,
+      followSystemTheme: () =>
+        set({ followSystem: true, theme: typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark' }),
+      applySystemTheme: (dark) => set((s) => (s.followSystem ? { theme: dark ? 'dark' : 'light' } : s)),
       platform: 'website',
       colors: DEFAULT_COLORS,
-      setTheme: (theme) => set({ theme }),
-      toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      setTheme: (theme) => set({ theme, followSystem: false }),
+      toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark', followSystem: false })),
       setPlatform: (platform) => set({ platform }),
       setColor: (k, hex) => set((s) => ({ colors: { ...s.colors, [k]: hex } })),
       setColors: (colors) => set({ colors: { ...colors } }),

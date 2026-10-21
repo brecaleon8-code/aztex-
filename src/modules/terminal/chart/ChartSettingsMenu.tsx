@@ -87,7 +87,7 @@ export function ChartSettingsMenu() {
       aria-label="Chart settings"
       style={pos ? { left: pos.left, top: pos.top } : { left: at.x, top: at.y, visibility: 'hidden' }}
       onContextMenu={(e) => e.preventDefault()}
-      data-testid="chart-context-menu"
+      data-testid="chart-settings-menu"
     >
       <div className="cm-head">
         <span className="cm-title">Chart settings</span>

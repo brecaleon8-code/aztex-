@@ -98,8 +98,11 @@ test.describe('Phase 1 — core terminal', () => {
     await freshTerminal(page);
     const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const dark = await bg();
-    await page.getByTestId('theme-toggle').click();
+    // Theme lives in the account menu (System / Dark / Light), as on TradingView.
+    await page.getByTestId('account-menu').click();
+    await page.getByTestId('theme-light').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.getByTestId('theme-light')).toHaveAttribute('aria-checked', 'true');
     await expect.poll(bg).not.toBe(dark);
     // CLI bar stays a literal dark terminal in light mode.
   });
@@ -211,15 +214,16 @@ test.describe('Phase 4 — OTC + appearance', () => {
     await expect(page.getByTestId('blotter-row').first()).toBeVisible();
   });
 
-  test('chart colours live on the chart: right-click, gear or F8; presets; live without reload', async ({ page }) => {
+  test('chart colours live on the chart: right-click › Settings, gear, F8 or Ctrl+,; presets; live without reload', async ({ page }) => {
     await page.goto('/terminal');
     await page.evaluate(() => localStorage.clear());
     await page.goto('/terminal');
     const chart = page.getByTestId('price-chart');
     await expect(chart).toBeVisible();
-    // Right-click the chart → chart settings at the cursor.
+    // Right-click the chart → quick actions → Settings… opens the chart settings at the cursor.
     await chart.click({ button: 'right', position: { x: 200, y: 150 } });
-    const menu = page.getByTestId('chart-context-menu');
+    await page.getByTestId('ctx-settings').click();
+    const menu = page.getByTestId('chart-settings-menu');
     await expect(menu).toBeVisible();
     await page.getByTestId('color-bull').fill('#1144ff');
     await expect(chart.locator('rect[fill="#1144ff"]').first()).toBeAttached();
@@ -236,6 +240,9 @@ test.describe('Phase 4 — OTC + appearance', () => {
     await page.keyboard.press('Escape');
     await page.getByTestId('chart-settings').click();
     await expect(menu).toContainText('Data feed');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+Comma');
+    await expect(menu).toBeVisible();
     // The old Appearance page is gone: its URL lands on the terminal.
     await page.goto('/appearance');
     await expect(page).toHaveURL(/\/terminal$/);
@@ -323,7 +330,8 @@ test.describe('Account features', () => {
     await page.getByTestId('dep-simulate').click();
     await expect(page.getByTestId('dep-history-row').first()).toContainText('Credited', { timeout: 6000 });
     await page.keyboard.press('Escape');
-    await page.getByRole('link', { name: 'Account' }).click();
+    await page.getByTestId('account-menu').click();
+    await page.getByTestId('menu-account').click();
     await expect(page.getByTestId('holding-XRP')).toBeVisible();
   });
 
@@ -351,7 +359,8 @@ test.describe('Account features', () => {
     await expect(page.locator('.ticket-summary')).toContainText('Liquidity Provider taker');
 
     // Revoking the applied code drops the account back to Standard.
-    await page.getByRole('link', { name: 'Account' }).click();
+    await page.getByTestId('account-menu').click();
+    await page.getByTestId('menu-account').click();
     await page.getByTestId('registry-row').filter({ hasText: code }).getByRole('button', { name: 'Revoke' }).click();
     await expect(page.getByTestId('current-tier')).toHaveText('Standard');
   });
@@ -642,7 +651,8 @@ test.describe('Fit to screen', () => {
     await page.getByRole('button', { name: 'Restore chart' }).click();
 
     // The Mobile preview keeps a normal scrolling stack.
-    await page.getByLabel('Platform').selectOption('mobile');
+    await page.getByTestId('account-menu').click();
+    await page.getByRole('group', { name: 'Layout density' }).getByRole('button', { name: 'Mobile' }).click();
     await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'off');
   });
 });
@@ -771,9 +781,9 @@ test.describe('Chart tabs, layouts & apps', () => {
   test('Studio is a separate installable app (F4) that shares its library with the terminal live', async ({ page }) => {
     await freshTerminal(page);
     // Compact top bar: no Studio / Appearance / Account words — Account is an icon.
-    await expect(page.locator('.tb-nav').getByRole('link', { name: 'Studio' })).toHaveCount(0);
-    await expect(page.locator('.tb-nav').getByRole('link', { name: 'Account' })).toHaveCount(0);
-    await expect(page.getByTestId('account-link')).toHaveText('');
+    // Page tabs live in the bottom bar; no Studio / Appearance / Account words there — Account is the menu icon.
+    await expect(page.locator('.bb-nav').getByRole('link')).toHaveText(['Terminal', 'Data & Discovery', 'On-chain', 'Community', 'OTC Desk']);
+    await expect(page.getByTestId('account-menu')).toHaveText('');
 
     // F4 opens Studio in its own window, like MetaEditor next to MT5.
     const [studio] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('F4')]);
@@ -803,8 +813,150 @@ test.describe('Chart tabs, layouts & apps', () => {
     await page.getByTestId('get-studio').click();
     await expect(page).toHaveURL(/\/get-studio$/);
     await expect(page.getByTestId('studio-download')).toContainText('Install Studio');
-    await page.getByTestId('account-link').click();
+    await page.getByTestId('account-menu').click();
+    await expect(page.getByTestId('account-menu-panel')).toContainText('Demo trader');
+    await page.getByTestId('menu-account').click();
     await expect(page).toHaveURL(/\/account$/);
-    await expect(page.getByTestId('account-link')).toHaveClass(/active/);
+  });
+});
+
+test.describe('TradingView-style chart tools', () => {
+  const plot = async (page: Page) => {
+    const chart = page.getByTestId('price-chart');
+    const box = (await chart.boundingBox())!;
+    return { chart, box, w: box.width - 78, h: box.height - 22 };
+  };
+
+  test('drawing toolbar: select, move, delete, undo, lock, hide, brush, measure, remove all', async ({ page }) => {
+    await freshTerminal(page);
+    const { chart, box, w, h } = await plot(page);
+    await expect(page.getByTestId('drawing-toolbar')).toBeVisible();
+
+    // Horizontal line, then select it with the cross: handles show, Del removes, Ctrl+Z brings it back.
+    await page.getByTestId('tool-ray').click();
+    const y = box.y + h * 0.5;
+    await page.mouse.click(box.x + w * 0.3, y);
+    await expect(chart.locator('.drawing')).toHaveCount(1);
+    await page.getByTestId('tool-cursor').click();
+    await page.mouse.click(box.x + w * 0.6, y);
+    await expect(chart.getByTestId('drawing-selected')).toHaveCount(1);
+    await page.keyboard.press('Delete');
+    await expect(chart.locator('.drawing')).toHaveCount(0);
+    await page.keyboard.press('Control+z');
+    await expect(chart.locator('.drawing')).toHaveCount(1);
+
+    // Drag it to a new price.
+    const before = (await chart.locator('.drawing-label').textContent())!;
+    await page.mouse.move(box.x + w * 0.6, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + w * 0.6, y + 40, { steps: 5 });
+    await page.mouse.up();
+    await expect(chart.locator('.drawing-label')).not.toHaveText(before);
+
+    // Locked drawings can't be selected or deleted.
+    await page.getByTestId('toggle-lock').click();
+    await page.mouse.click(box.x + w * 0.6, y + 40);
+    await expect(chart.getByTestId('drawing-selected')).toHaveCount(0);
+    await page.keyboard.press('Delete');
+    await expect(chart.locator('.drawing')).toHaveCount(1);
+    await page.getByTestId('toggle-lock').click();
+
+    // Hide / show all.
+    await page.getByTestId('toggle-hide').click();
+    await expect(chart.locator('.drawing')).toHaveCount(0);
+    await page.getByTestId('toggle-hide').click();
+    await expect(chart.locator('.drawing')).toHaveCount(1);
+
+    // Brush stroke.
+    await page.getByTestId('tool-brush').click();
+    await page.mouse.move(box.x + w * 0.2, box.y + h * 0.3);
+    await page.mouse.down();
+    await page.mouse.move(box.x + w * 0.3, box.y + h * 0.22, { steps: 6 });
+    await page.mouse.move(box.x + w * 0.4, box.y + h * 0.34, { steps: 6 });
+    await page.mouse.up();
+    await expect(chart.locator('.drawing-brush')).toHaveCount(1);
+
+    // Measure: drag → price / % / bars readout; the tool returns to the cross.
+    await page.getByTestId('tool-measure').click();
+    await page.mouse.move(box.x + w * 0.5, box.y + h * 0.7);
+    await page.mouse.down();
+    await page.mouse.move(box.x + w * 0.7, box.y + h * 0.4, { steps: 6 });
+    await page.mouse.up();
+    await expect(chart.getByTestId('ruler-label')).toContainText(/%\) · \d+ bars, /);
+    await expect(page.getByTestId('tool-cursor')).toHaveAttribute('aria-pressed', 'true');
+
+    // Trash › remove all drawings.
+    await page.getByTestId('remove-drawings').click();
+    await page.getByTestId('remove-all-drawings').click();
+    await expect(chart.locator('.drawing')).toHaveCount(0);
+  });
+
+  test('right-click quick actions, object tree, trade-at-the-mouse keys and the shortcuts sheet', async ({ page }) => {
+    await freshTerminal(page);
+    const { chart, box, w, h } = await plot(page);
+    const at = { x: Math.round(w * 0.5), y: Math.round(h * 0.9) };
+    await chart.click({ button: 'right', position: at });
+    const ctx = page.getByTestId('chart-context-menu');
+    await expect(ctx).toContainText('Copy price');
+    await expect(ctx).toContainText('Add alert on BTC at');
+    await expect(page.getByTestId('ctx-buy')).toHaveText(/Buy [\d.]+ BTC @ [\d,.]+ (limit|stop)/);
+    await expect(page.getByTestId('ctx-sell')).toHaveText(/Sell [\d.]+ BTC @ [\d,.]+ (limit|stop)/);
+
+    // Alert at that price: a line + tag on the chart.
+    await page.getByTestId('ctx-alert').click();
+    await expect(page.getByTestId('toast').filter({ hasText: 'Alert set' })).toBeVisible();
+    await expect(chart.getByTestId('chart-alert')).toHaveCount(1);
+
+    // One click buys at that price — a limit below the market or a stop above it — and it's working.
+    await chart.click({ button: 'right', position: at });
+    await page.getByTestId('ctx-buy').click();
+    await expect(page.getByTestId('blotter-open-row')).toHaveCount(1);
+
+    // Add order… loads the ticket with a limit there.
+    await chart.click({ button: 'right', position: at });
+    await page.getByTestId('ctx-ticket').click();
+    await expect(page.getByRole('button', { name: 'Limit', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+    // Object tree: everything on the chart, with remove buttons.
+    await chart.click({ button: 'right', position: at });
+    await page.getByTestId('ctx-objects').click();
+    const tree = page.getByTestId('object-tree');
+    await expect(tree).toContainText('Alerts 1');
+    await expect(tree.getByTestId('ot-indicator')).toHaveCount(3);
+    await tree.getByRole('button', { name: /Remove alert/ }).click();
+    await expect(chart.getByTestId('chart-alert')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(tree).toHaveCount(0);
+
+    // Alt+A: alert at the price under the mouse.
+    await page.mouse.move(box.x + at.x, box.y + h * 0.2);
+    await page.keyboard.press('Alt+KeyA');
+    await expect(chart.getByTestId('chart-alert')).toHaveCount(1);
+
+    // ? opens the shortcuts sheet.
+    await page.keyboard.press('Shift+Slash');
+    await expect(page.getByTestId('shortcuts')).toContainText('Trade at the mouse');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('shortcuts')).toHaveCount(0);
+  });
+
+  test('pages in the bottom bar; account menu with density, System/Dark/Light and new tab', async ({ page }) => {
+    await freshTerminal(page);
+    const nav = page.locator('.bb-nav');
+    await nav.getByRole('link', { name: 'On-chain' }).click();
+    await expect(page).toHaveURL(/\/onchain$/);
+    await expect(nav.getByRole('link', { name: 'On-chain' })).toHaveClass(/active/);
+    await nav.getByRole('link', { name: 'Terminal' }).click();
+
+    await page.getByTestId('account-menu').click();
+    const panel = page.getByTestId('account-menu-panel');
+    await expect(panel).toContainText('25,000.00 USDT');
+    await panel.getByRole('group', { name: 'Layout density' }).getByRole('button', { name: 'Desktop' }).click();
+    await expect(page.locator('.app')).toHaveAttribute('data-platform', 'terminal');
+    await page.getByTestId('theme-system').click();
+    await expect(page.getByTestId('theme-system')).toHaveAttribute('aria-checked', 'true');
+    await page.getByTestId('menu-new-tab').click();
+    await page.getByTestId('new-tab-ADA').click();
+    await expect(page.getByTestId('chart-tab').last()).toHaveAttribute('data-symbol', 'ADA');
   });
 });

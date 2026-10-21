@@ -118,6 +118,57 @@
 .drawing.preview {
   opacity: 0.6;
 }
+.drawing-brush {
+  fill: none;
+  stroke: var(--draw);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Hover / selected drawings read a touch stronger; selected ones show handles. */
+.drawing.hovered line,
+.drawing.hovered rect,
+.drawing-brush.hovered,
+.drawing.selected line,
+.drawing.selected rect,
+.drawing-brush.selected {
+  stroke: var(--text);
+  stroke-width: 1.6;
+}
+.drawing-text.hovered,
+.drawing-text.selected {
+  fill: var(--accent);
+}
+.drawing-handle {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+.chart-svg.tool-cursor.over-drawing {
+  cursor: move;
+}
+.chart-svg.tool-zoom {
+  cursor: zoom-in;
+}
+.zoom-box {
+  fill: color-mix(in srgb, var(--accent) 10%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke-dasharray: 3 3;
+}
+.alert-line line {
+  stroke: var(--warn);
+  stroke-dasharray: 2 4;
+  opacity: 0.85;
+}
+.alert-bell {
+  fill: var(--warn);
+}
+.working-line.stop line {
+  stroke-dasharray: 2 3;
+}
+.working-line.stop rect {
+  stroke: color-mix(in srgb, var(--warn) 60%, var(--border));
+}
 .drawing-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -742,12 +793,88 @@
 /* ── Chart stage + multi-chart layouts ────────────────────────────────────────── */
 .chart-stage {
   position: relative;
+  display: flex;
+  align-items: stretch;
 }
 .chart-body > .chart-stage {
   flex: 1 1 0;
   min-height: 0;
+}
+.chart-canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+}
+.chart-canvas > .chart-grid {
+  flex: 1 1 0;
+}
+/* ── Drawing toolbar (left edge, TradingView style) ── */
+.draw-toolbar {
+  flex: none;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 0;
+  border-right: 1px solid var(--line-soft);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Short charts: the rest of the tools scroll (thin bar so it's discoverable). */
+  scrollbar-width: thin;
+}
+.draw-toolbar::-webkit-scrollbar {
+  width: 4px;
+}
+.draw-toolbar::-webkit-scrollbar-thumb {
+  border: 0;
+}
+.dt-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+.dt-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text);
+}
+.dt-btn.on {
+  background: color-mix(in srgb, var(--text) 11%, transparent);
+  color: var(--text);
+}
+.dt-btn[data-testid^='toggle-'].on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.dt-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.dt-btn:focus-visible {
+  outline-offset: -1px;
+}
+.dt-sep {
+  flex: none;
+  width: 22px;
+  height: 1px;
+  margin: 5px 0;
+  background: var(--line);
+}
+.dt-flyout {
+  width: 230px;
+  z-index: 80;
 }
 .chart-grid {
   display: grid;
@@ -755,9 +882,6 @@
   min-height: 0;
   background: var(--line);
   border-top: 1px solid var(--line-soft);
-}
-.chart-body > .chart-stage > .chart-grid {
-  flex: 1 1 0;
 }
 .chart-grid.l-2v {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1036,4 +1160,144 @@
 .cm-actions .menu-item:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* ── Right-click quick actions (TradingView style) ────────────────────────────── */
+.chart-ctx {
+  z-index: 75;
+  min-width: 300px;
+  max-width: 380px;
+  padding: 5px;
+}
+.ctx-item {
+  gap: 10px;
+  padding: 7px 10px 7px 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ctx-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ctx-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  color: var(--text-dim);
+  flex: none;
+}
+.ctx-kbd {
+  margin-left: 18px;
+  color: var(--text-faint);
+  font: 500 11px var(--font-mono);
+}
+.chart-ctx .divider {
+  margin: 4px 6px;
+}
+
+/* ── Object tree ───────────────────────────────────────────────────────────────── */
+.object-tree {
+  position: fixed;
+  z-index: 72;
+  width: 300px;
+  max-height: min(560px, calc(100vh - 16px));
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--pop-shadow);
+  font-size: 12.5px;
+  animation: pop-in var(--t-med) var(--ease);
+}
+.ot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 6px 8px;
+}
+.ot-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ot-section {
+  padding: 4px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.ot-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 4px 0 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ot-empty {
+  padding: 2px 8px 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.ot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--t-fast) var(--ease);
+}
+.ot-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.ot-row.active {
+  background: var(--accent-soft);
+}
+.ot-row.dim .ot-label {
+  color: var(--text-faint);
+}
+.ot-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  color: var(--text-dim);
+  flex: none;
+}
+.ot-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ot-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12.5px;
+}
+button.ot-label {
+  cursor: pointer;
+}
+
+/* Narrow chart panel (laptops, 3-up layouts): keep the header on one line. Chart type is also in
+   right-click › Settings and the 24h stats in the watchlist. */
+.chart-panel {
+  container: chartpanel / inline-size;
+}
+@container chartpanel (max-width: 620px) {
+  .chart-mode-select,
+  .stats24 {
+    display: none;
+  }
+  .chart-hero .chart-chg {
+    display: none;
+  }
 }

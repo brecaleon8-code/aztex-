@@ -16,6 +16,7 @@ import { useThemeStore } from '@/stores/useThemeStore';
 import { BOTTOM_TIER, FIT_FLEX, MIN_W, fitRows } from '@/lib/layout/fit';
 import { TerminalFitContext } from './fitContext';
 import { ChartTabs } from './ChartTabs';
+import { useUiStore } from '@/stores/useUiStore';
 import './terminal.css';
 
 const PANELS: Record<PanelId, (drag: PanelDragProps) => ReactNode> = {
@@ -164,9 +165,9 @@ export function TerminalPage() {
           </div>
           <ChartTabs />
           <span className="spacer" />
-          <span className="ws-keys faint" title="Drag a panel's header to rearrange · drag the chart's bottom edge to resize rows · F1–F8 switch modules · / focuses the command line">
-            <Keyboard size={13} />
-          </span>
+          <button className="btn sm ghost icon ws-keys" onClick={() => useUiStore.getState().setShortcuts(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" data-testid="open-shortcuts">
+            <Keyboard size={14} />
+          </button>
           <PanelPicker />
           <button className="btn ghost sm" onClick={resetLayout} title="Restore this workspace's default panels and sizes">
             <RotateCcw size={12} /> Reset

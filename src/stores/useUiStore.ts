@@ -5,10 +5,21 @@ interface UiState {
   deposit: { open: boolean; asset?: string };
   openDeposit: (asset?: string) => void;
   closeDeposit: () => void;
-  /** Chart settings menu (right-click on a chart, the chart's gear, or F8): where it opens. */
+  /** Chart settings menu (the chart's gear, F8 / Ctrl+, or right-click › Settings…): where it opens. */
   chartMenu: { x: number; y: number } | null;
   openChartMenu: (at?: { x: number; y: number }) => void;
   closeChartMenu: () => void;
+  /** Right-click quick actions on a chart, at the price under the pointer (null outside the plot). */
+  chartContext: { x: number; y: number; symbol: string; price: number | null } | null;
+  openChartContext: (c: { x: number; y: number; symbol: string; price: number | null }) => void;
+  closeChartContext: () => void;
+  /** Object tree: everything on the focused chart (indicators, drawings, alerts, orders). */
+  objectTree: { x: number; y: number } | null;
+  openObjectTree: (at?: { x: number; y: number }) => void;
+  closeObjectTree: () => void;
+  /** Keyboard shortcuts sheet (?). */
+  shortcuts: boolean;
+  setShortcuts: (open: boolean) => void;
 }
 
 /** Without a click position, open by the chart's top-right corner (or under the top bar). */
@@ -28,4 +39,12 @@ export const useUiStore = create<UiState>((set) => ({
   chartMenu: null,
   openChartMenu: (at) => set({ chartMenu: at ?? defaultMenuSpot() }),
   closeChartMenu: () => set({ chartMenu: null }),
+  chartContext: null,
+  openChartContext: (chartContext) => set({ chartContext, chartMenu: null, objectTree: null }),
+  closeChartContext: () => set({ chartContext: null }),
+  objectTree: null,
+  openObjectTree: (at) => set({ objectTree: at ?? defaultMenuSpot(), chartContext: null }),
+  closeObjectTree: () => set({ objectTree: null }),
+  shortcuts: false,
+  setShortcuts: (shortcuts) => set({ shortcuts }),
 }));

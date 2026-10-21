@@ -1010,8 +1010,7 @@
   overscroll-behavior: contain;
 }
 .ws-keys {
-  display: inline-flex;
-  cursor: help;
+  color: var(--text-faint);
 }
 .terminal.fit .depth-view {
   height: 100%;

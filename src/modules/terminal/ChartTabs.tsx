@@ -5,6 +5,7 @@ import { focusedPane, MAX_TABS, paneCount, useChartTabsStore } from '@/stores/us
 import { ASSET_UNIVERSE } from '@/lib/mock/assets';
 import { fmtPct, fmtPrice } from '@/lib/format';
 import { LayoutGlyph } from './chart/ChartGrid';
+import { NEW_TAB_EVENT } from '@/app/useChartShortcuts';
 
 /**
  * Browser-style tabs, one per crypto. Each tab keeps its own chart layout; the active tab's
@@ -77,6 +78,13 @@ function NewTab({ disabled }: { disabled: boolean }) {
     return ASSET_UNIVERSE.filter((a) => !s || a.symbol.toLowerCase().includes(s) || a.name.toLowerCase().includes(s));
   }, [q]);
 
+  // Alt+Shift+T opens the picker from anywhere on the terminal.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(NEW_TAB_EVENT, onOpen);
+    return () => window.removeEventListener(NEW_TAB_EVENT, onOpen);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
@@ -93,7 +101,7 @@ function NewTab({ disabled }: { disabled: boolean }) {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button className="ctab-new" onClick={() => setOpen((o) => !o)} disabled={disabled} aria-label="Open a chart tab" title={disabled ? `Up to ${MAX_TABS} tabs` : 'Open another crypto in a new tab'} data-testid="new-tab">
+      <button className="ctab-new" onClick={() => setOpen((o) => !o)} disabled={disabled} aria-label="Open a chart tab" title={disabled ? `Up to ${MAX_TABS} tabs` : 'Open another crypto in a new tab (Alt+Shift+T)'} data-testid="new-tab">
         <Plus size={13} />
       </button>
       {open && (

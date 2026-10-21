@@ -4,7 +4,7 @@
  * the blotter. The mock venue is this module; a real build routes through a venue order API and
  * reflects acknowledgements and fills from its stream into the same records.
  */
-import type { AlgoOrder, FillRecord, OrderRecord, Position, Side, TimeInForce, WorkingOrder } from '@/types';
+import type { AlgoOrder, FillRecord, OrderRecord, Position, Side, StopOrder, TimeInForce, WorkingOrder } from '@/types';
 import { fmtPrice, fmtQty, fmtSigned, fmtUsd, uid } from '@/lib/format';
 import { FEE_TIERS, feeFor, type Liquidity } from '@/lib/account/fees';
 import { previewOrder, slippageVs, type ExecPreview, type Leg } from '@/lib/trading/execution';
@@ -291,6 +291,70 @@ export function placeOrder(req: OrderRequest): OrderResult {
   return { ok: true, id: positionId ?? rec.id, fee };
 }
 
+/* ── Stop entries ────────────────────────────────────────────────────────────────────────── */
+
+export interface StopRequest {
+  symbol: string;
+  side: Side;
+  size: number;
+  triggerPrice: number;
+  tp: number;
+  sl: number;
+  bracket?: boolean;
+  source?: OrderRecord['source'];
+}
+
+/**
+ * Stop entry (buy stop above the market, sell stop below it). It rests off the book and goes in as
+ * a market order — taker, with the ticket's slippage model — once the price trades through it.
+ */
+export function placeStopOrder(req: StopRequest): OrderResult {
+  if (!(req.size > 0)) return { ok: false, error: 'Size must be greater than zero' };
+  if (!(req.triggerPrice > 0)) return { ok: false, error: 'Enter a stop price' };
+  const a = useMarketStore.getState().assets[req.symbol];
+  if (!a) return { ok: false, error: `Unknown symbol ${req.symbol}` };
+  const long = req.side === 'Long';
+  if (long ? a.ask >= req.triggerPrice : a.bid <= req.triggerPrice) return { ok: false, error: long ? 'A buy stop must be above the market' : 'A sell stop must be below the market' };
+  const rec = newRecord({
+    symbol: req.symbol,
+    side: req.side,
+    kind: 'stop',
+    qty: req.size,
+    triggerPrice: req.triggerPrice,
+    tif: 'GTC',
+    postOnly: false,
+    reduceOnly: false,
+    bracket: !!req.bracket,
+    arrivalMid: (a.bid + a.ask) / 2,
+    source: req.source ?? 'ticket',
+  });
+  ex().upsert(rec);
+  const o: StopOrder = { id: rec.id, symbol: req.symbol, side: req.side, size: req.size, triggerPrice: req.triggerPrice, tp: req.tp, sl: req.sl, createdAt: rec.createdAt, bracket: !!req.bracket };
+  usePositionStore.getState().addStop(o);
+  toast({ kind: 'success', title: `${sideWord(req.side)} stop placed`, detail: `${fmtQty(req.size)} ${req.symbol} · triggers at ${fmtPrice(req.triggerPrice)}` });
+  return { ok: true, id: rec.id };
+}
+
+export function cancelStopOrder(id: string) {
+  const o = usePositionStore.getState().removeStop(id);
+  if (!o) return;
+  ex().patch(id, { status: 'cancelled', reason: 'Cancelled by user' });
+  toast({ kind: 'info', title: 'Stop cancelled', detail: `${sideWord(o.side)} ${fmtQty(o.size)} ${o.symbol} @ ${fmtPrice(o.triggerPrice)}` });
+}
+
+/** Stops whose trigger traded: send each as a market order. */
+function triggerStops() {
+  const assets = useMarketStore.getState().assets;
+  for (const s of usePositionStore.getState().stopOrders) {
+    const a = assets[s.symbol];
+    if (!a) continue;
+    if (!(s.side === 'Long' ? a.ask >= s.triggerPrice : a.bid <= s.triggerPrice)) continue;
+    usePositionStore.getState().removeStop(s.id);
+    const r = placeOrder({ symbol: s.symbol, side: s.side, orderType: 'market', size: s.size, tp: s.tp, sl: s.sl, bracket: s.bracket, source: 'chart' });
+    ex().patch(s.id, r.ok ? { status: 'filled', filledQty: s.size, avgPx: s.side === 'Long' ? a.ask : a.bid, reason: `Triggered at ${fmtPrice(s.triggerPrice)} → market order` } : { status: 'rejected', reason: `Triggered, but ${r.error.toLowerCase()}` });
+  }
+}
+
 export function cancelWorkingOrder(id: string) {
   const o = usePositionStore.getState().removeWorking(id);
   if (!o) return;
@@ -366,6 +430,7 @@ export function flattenAll(): Promise<number> {
 export function onPrices() {
   const assets = useMarketStore.getState().assets;
   const prices = Object.fromEntries(Object.values(assets).map((a) => [a.symbol, a.price]));
+  triggerStops();
   const ps = usePositionStore.getState();
 
   for (const o of ps.workingOrders) {

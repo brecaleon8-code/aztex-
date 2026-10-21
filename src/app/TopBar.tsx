@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Sun, Moon, Search, Plus, CircleUserRound, SquareCode, AppWindow, Download } from 'lucide-react';
+import { Search, Plus, CircleUserRound, SquareCode, AppWindow, Download, Settings, Keyboard } from 'lucide-react';
 import { openStudio } from './studioLauncher';
 import { useHoldingsValue } from '@/stores/useHoldingsValue';
 import { useFeeStore } from '@/stores/useFeeStore';
@@ -10,7 +10,12 @@ import { Wordmark } from './Logo';
 import { MOD_KEY } from './CommandPalette';
 import { useTickFlash } from './useTickFlash';
 import { NewsToggle } from './NewsDock';
-import { useThemeStore, type Platform } from '@/stores/useThemeStore';
+import { useThemeStore, type Platform, type Theme } from '@/stores/useThemeStore';
+import { useCommunityStore } from '@/stores/useCommunityStore';
+import { Segmented } from '@/components/ui/Segmented';
+import { CliBar } from '@/modules/terminal/CliBar';
+import { GasTicker } from './GasTicker';
+import { NEW_TAB_EVENT } from './useChartShortcuts';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useOnchainStore } from '@/stores/useOnchainStore';
 import { useWalletStore } from '@/stores/useWalletStore';
@@ -29,7 +34,7 @@ export const NAV = [
   { to: '/community', key: 'F5', label: 'Community' },
   { to: '/otc', key: 'F6', label: 'OTC Desk' },
 ];
-/** Account lives behind the icon at the right of the top bar. */
+/** Account lives in the account menu at the right of the top bar. */
 export const ACCOUNT_NAV = { to: '/account', key: 'F7', label: 'Account' };
 
 function sessionLabel(h: number): string {
@@ -38,26 +43,49 @@ function sessionLabel(h: number): string {
   return 'Asia';
 }
 
+/**
+ * One slim row up top — brand, command line, account, then search / news / Studio / account menu.
+ * Page tabs and status live in the bottom bar so the top stays uncluttered.
+ */
 export function TopBar() {
-  const { theme, toggleTheme, platform, setPlatform } = useThemeStore();
+  return (
+    <header className="topbar no-select">
+      <div className="tb-brand">
+        <Wordmark height={16} />
+      </div>
+      <CliBar />
+      <AccountStrip />
+      <div className="spacer" />
+      <NewsToggle />
+      <button className="palette-trigger" onClick={() => window.dispatchEvent(new Event('aztex:palette'))} data-testid="palette-trigger" aria-label="Open command palette" title={`Search symbols, pages and actions (${MOD_KEY})`}>
+        <Search size={13} />
+        <span>Search or jump to…</span>
+        <span className="spacer" />
+        <kbd>{MOD_KEY}</kbd>
+      </button>
+      <StudioButton />
+      <AccountMenu />
+    </header>
+  );
+}
+
+/** Page tabs (TradingView keeps its panels along the bottom), fee tier, network fees, feed and clock. */
+export function BottomBar() {
   const status = useMarketStore((s) => s.status);
   const providerId = useMarketStore((s) => s.providerId);
+  const tier = useFeeStore((s) => s.tier);
+  const onchainUnseen = useOnchainStore((s) => s.unseen);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
   const live = status.state === 'open';
-  const onchainUnseen = useOnchainStore((s) => s.unseen);
-
   return (
-    <header className="topbar no-select">
-      <div className="tb-brand">
-        <Wordmark height={16} />
-      </div>
-      <nav className="tb-nav">
+    <footer className="bottombar no-select">
+      <nav className="bb-nav" aria-label="Pages">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} title={`${n.label} (${n.key})`} className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}`}>
+          <NavLink key={n.to} to={n.to} title={`${n.label} (${n.key})`} className={({ isActive }) => `bb-tab ${isActive ? 'active' : ''}`}>
             {n.label}
             {n.to === '/onchain' && onchainUnseen > 0 && (
               <span className="nav-count" title={`${onchainUnseen} new on-chain alert${onchainUnseen === 1 ? '' : 's'}`} data-testid="onchain-unseen">
@@ -67,38 +95,150 @@ export function TopBar() {
           </NavLink>
         ))}
       </nav>
-      <div className="spacer" />
-      <NewsToggle />
-      <button className="palette-trigger" onClick={() => window.dispatchEvent(new Event('aztex:palette'))} data-testid="palette-trigger" aria-label="Open command palette">
-        <Search size={13} />
-        <span>Search or jump to…</span>
-        <span className="spacer" />
-        <kbd>{MOD_KEY}</kbd>
+      <span className="spacer" />
+      <NavLink to="/account" className={`tier-chip ${tier}`} title="Fee tier — redeem a partner code on the Account page" data-testid="tier-chip">
+        {FEE_TIERS[tier].label} · {fmtRate(FEE_TIERS[tier].taker)}
+      </NavLink>
+      <GasTicker />
+      <span className="bb-cell" title={status.detail}>
+        <span className={live ? 'live-dot' : 'live-dot off'} />
+        <span className="dim tb-feed-label">{live ? (providerId === 'live' ? 'Binance live' : 'Simulated feed') : status.state === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}</span>
+        <span className="num faint tb-latency">{status.latencyMs == null ? '' : `${status.latencyMs}ms`}</span>
+      </span>
+      <span className="bb-cell">
+        <span className="dim tb-session">{sessionLabel(new Date(now).getUTCHours())}</span>
+        <span className="num">{fmtTime(now)} UTC</span>
+      </span>
+    </footer>
+  );
+}
+
+/**
+ * Account menu, TradingView style: who you are and your equity, the account page, quick actions,
+ * layout density and System / Dark / Light theme.
+ */
+function AccountMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { theme, followSystem, setTheme, followSystemTheme, platform, setPlatform } = useThemeStore();
+  const tier = useFeeStore((s) => s.tier);
+  const handle = useCommunityStore((s) => s.handle);
+  const balance = useWalletStore((s) => s.balance);
+  const positions = usePositionStore((s) => s.positions);
+  const holdingsValue = useHoldingsValue();
+  const equity = balance + committedNotional(positions) + totalUnrealized(positions) + holdingsValue;
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const act = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+  const themeSel: 'system' | Theme = followSystem ? 'system' : theme;
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className={`tb-account ${open ? 'open' : ''}`} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" aria-label="Account menu" title="Account, settings and theme" data-testid="account-menu">
+        <CircleUserRound size={17} strokeWidth={1.6} />
       </button>
-      <div className="tb-status">
-        <span className="tb-cell" title={status.detail}>
-          <span className={live ? 'live-dot' : 'live-dot off'} />
-          <span className="dim tb-feed-label">{live ? (providerId === 'live' ? 'Binance live' : 'Simulated feed') : status.state === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}</span>
-          <span className="num faint tb-latency">{status.latencyMs == null ? '' : `${status.latencyMs}ms`}</span>
-        </span>
-        <span className="tb-cell">
-          <span className="dim tb-session">{sessionLabel(new Date(now).getUTCHours())}</span>
-          <span className="num">{fmtTime(now)} UTC</span>
-        </span>
-        <select className="tb-select" value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} aria-label="Platform">
-          <option value="website">Web</option>
-          <option value="mobile">Mobile</option>
-          <option value="terminal">Desktop</option>
-        </select>
-        <StudioButton />
-        <button className="btn sm ghost icon" onClick={toggleTheme} data-testid="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title="Toggle light / dark">
-          {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
-        </button>
-        <NavLink to={ACCOUNT_NAV.to} className={({ isActive }) => `tb-account ${isActive ? 'active' : ''}`} aria-label="Account" title="Account — balances, deposits, fee tier, partner codes (F7)" data-testid="account-link">
-          <CircleUserRound size={17} strokeWidth={1.6} />
-        </NavLink>
-      </div>
-    </header>
+      {open && (
+        <div className="menu acct-menu" role="menu" style={{ right: 0, top: 38 }} data-testid="account-menu-panel">
+          <div className="am-head">
+            <span className="am-avatar">
+              <CircleUserRound size={26} strokeWidth={1.4} />
+            </span>
+            <div className="am-who">
+              <div className="am-name">{handle ? `@${handle}` : 'Demo trader'}</div>
+              <div className="label mono">
+                {fmtUsd(equity)} USDT · {FEE_TIERS[tier].label}
+              </div>
+            </div>
+          </div>
+          <div className="divider" />
+          <button className="menu-item" onClick={act(() => navigate(ACCOUNT_NAV.to))} data-testid="menu-account">
+            <CircleUserRound size={15} /> <span className="grow">Account &amp; balances</span>
+            <kbd className="cm-kbd">F7</kbd>
+          </button>
+          <button className="menu-item" onClick={act(() => useUiStore.getState().openDeposit())}>
+            <Plus size={15} /> <span className="grow">Add crypto</span>
+          </button>
+          <button
+            className="menu-item"
+            onClick={act(() => {
+              if (!location.pathname.startsWith('/terminal')) navigate('/terminal');
+              requestAnimationFrame(() => useUiStore.getState().openChartMenu());
+            })}
+          >
+            <Settings size={15} /> <span className="grow">Chart settings</span>
+            <kbd className="cm-kbd">Ctrl+,</kbd>
+          </button>
+          <div className="divider" />
+          <button
+            className="menu-item"
+            onClick={act(() => {
+              if (!location.pathname.startsWith('/terminal')) navigate('/terminal');
+              requestAnimationFrame(() => window.dispatchEvent(new Event(NEW_TAB_EVENT)));
+            })}
+            data-testid="menu-new-tab"
+          >
+            <Plus size={15} /> <span className="grow">New chart tab</span>
+            <kbd className="cm-kbd">Alt+Shift+T</kbd>
+          </button>
+          <button className="menu-item" onClick={act(() => window.open('/terminal', '_blank', 'popup=yes,width=1440,height=900'))} data-testid="menu-new-window">
+            <AppWindow size={15} /> <span className="grow">New window</span>
+          </button>
+          <button className="menu-item" onClick={act(() => openStudio())}>
+            <SquareCode size={15} /> <span className="grow">Aztex Studio</span>
+            <kbd className="cm-kbd">F4</kbd>
+          </button>
+          <button className="menu-item" onClick={act(() => useUiStore.getState().setShortcuts(true))} data-testid="menu-shortcuts">
+            <Keyboard size={15} /> <span className="grow">Keyboard shortcuts</span>
+            <kbd className="cm-kbd">?</kbd>
+          </button>
+          <div className="divider" />
+          <div className="am-row">
+            <span className="label">Layout</span>
+            <Segmented<Platform>
+              value={platform}
+              onChange={setPlatform}
+              ariaLabel="Layout density"
+              options={[
+                { value: 'website', label: 'Web' },
+                { value: 'mobile', label: 'Mobile' },
+                { value: 'terminal', label: 'Desktop' },
+              ]}
+            />
+          </div>
+          <div className="am-themes" role="radiogroup" aria-label="Theme">
+            {(['system', 'dark', 'light'] as const).map((t) => (
+              <button
+                key={t}
+                role="radio"
+                aria-checked={themeSel === t}
+                className={`am-theme ${themeSel === t ? 'on' : ''}`}
+                onClick={() => (t === 'system' ? followSystemTheme() : setTheme(t))}
+                data-testid={`theme-${t}`}
+              >
+                <span className={`am-thumb ${t}`}>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                {t === 'system' ? 'System' : t === 'dark' ? 'Dark' : 'Light'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -156,7 +296,6 @@ export function AccountStrip() {
   const [mode, setMode] = useState<null | 'withdraw'>(null);
   const [amount, setAmount] = useState('');
   const holdingsValue = useHoldingsValue();
-  const tier = useFeeStore((s) => s.tier);
   const upnl = totalUnrealized(positions);
   const committed = committedNotional(positions);
   const equity = balance + committed + upnl + holdingsValue;
@@ -211,9 +350,6 @@ export function AccountStrip() {
             <Plus size={12} /> Add crypto
           </button>
           <button className="btn sm ghost" onClick={() => setMode('withdraw')}>Withdraw</button>
-          <NavLink to="/account" className={`tier-chip ${tier}`} title="Fee tier — redeem a partner code on the Account page" data-testid="tier-chip">
-            {FEE_TIERS[tier].label} · {fmtRate(FEE_TIERS[tier].taker)}
-          </NavLink>
         </span>
       )}
     </div>

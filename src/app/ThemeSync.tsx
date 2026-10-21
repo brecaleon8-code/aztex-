@@ -5,6 +5,15 @@ import { useThemeStore } from '@/stores/useThemeStore';
 export function ThemeSync() {
   const theme = useThemeStore((s) => s.theme);
   const colors = useThemeStore((s) => s.colors);
+  const followSystem = useThemeStore((s) => s.followSystem);
+  useEffect(() => {
+    if (!followSystem || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => useThemeStore.getState().applySystemTheme(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [followSystem]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);

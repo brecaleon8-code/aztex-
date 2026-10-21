@@ -66,7 +66,7 @@ export type OrderType = 'market' | 'limit';
 
 export type TimeInForce = 'GTC' | 'IOC' | 'FOK';
 export type OrderStatus = 'new' | 'partially_filled' | 'filled' | 'cancelled' | 'rejected';
-export type OrderKind = 'market' | 'limit' | 'take_profit' | 'stop_loss' | 'twap' | 'close';
+export type OrderKind = 'market' | 'limit' | 'stop' | 'take_profit' | 'stop_loss' | 'twap' | 'close';
 
 /** Every order the account sends, with its lifecycle and execution quality (the blotter). */
 export interface OrderRecord {
@@ -92,7 +92,7 @@ export interface OrderRecord {
   fees: number;
   createdAt: number;
   updatedAt: number;
-  source: 'ticket' | 'cli' | 'book' | 'algo' | 'bracket' | 'close';
+  source: 'ticket' | 'cli' | 'book' | 'algo' | 'bracket' | 'close' | 'chart';
 }
 
 export interface FillRecord {
@@ -127,6 +127,29 @@ export interface Position {
   bracket?: boolean;
   /** Entry order that opened it. */
   orderId?: string;
+}
+
+/** A stop entry: rests off-book and sends a market order once the price trades through the trigger. */
+export interface StopOrder {
+  id: string;
+  symbol: string;
+  side: Side;
+  size: number;
+  triggerPrice: number;
+  tp: number;
+  sl: number;
+  createdAt: number;
+  bracket?: boolean;
+}
+
+/** Notify when the price trades through a level (set from the chart). */
+export interface PriceAlert {
+  id: string;
+  symbol: string;
+  price: number;
+  /** 'above': fires when the price rises to the level; 'below': when it falls to it. */
+  direction: 'above' | 'below';
+  createdAt: number;
 }
 
 export interface WorkingOrder {
@@ -165,7 +188,7 @@ export interface AlgoOrder {
   startedAt: number;
 }
 
-export type DrawingTool = 'cursor' | 'trend' | 'ray' | 'rect' | 'fib' | 'text';
+export type DrawingTool = 'cursor' | 'trend' | 'ray' | 'rect' | 'fib' | 'brush' | 'text' | 'measure' | 'zoom';
 export interface DataPoint {
   index: number;
   price: number;
@@ -174,10 +197,13 @@ export interface DataPoint {
 }
 export interface Drawing {
   id: string;
-  tool: Exclude<DrawingTool, 'cursor'>;
+  /** Measure and zoom are gestures, not stored drawings. */
+  tool: Exclude<DrawingTool, 'cursor' | 'measure' | 'zoom'>;
   p1: DataPoint;
   p2?: DataPoint;
   text?: string;
+  /** Freehand brush stroke. */
+  points?: DataPoint[];
 }
 
 export type IndicatorKind = 'sma' | 'ema' | 'bollinger' | 'rsi' | 'macd' | 'volume' | 'vwap' | 'cvd' | 'custom' | 'script';

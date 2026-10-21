@@ -71,9 +71,9 @@ The Terminal works like TradingView:
 
 Code: `stores/useChartTabsStore.ts` (pure, unit-tested), `app/chartTabsSync.ts` (tabs ↔ selected symbol), `modules/terminal/ChartTabs.tsx`, `modules/terminal/chart/ChartGrid.tsx`.
 
-## Chart settings (right-click)
+## Chart settings (colours, theme, feed)
 
-Chart appearance no longer has its own page. Right-click any chart, use the chart's ⚙ button, or press **F8** (MT5's chart-properties key). The menu has:
+Chart appearance no longer has its own page. Open it from right-click › **Settings…**, the chart's ⚙ button, **F8** (MT5's chart-properties key) or **Ctrl+,** (TradingView's). The menu has:
 
 - chart type
 - bull/bear candle and TP/profit · SL/loss colours, plus one-click palettes: Aztex, Classic, Colour-blind and Mono
@@ -96,11 +96,56 @@ Studio is its own app, like MetaEditor next to MT5:
 - **Live sync.** Terminal and Studio share one library through storage (`lib/sync/crossWindow.ts`). An indicator saved in Studio appears in the terminal's Indicator menu immediately, and **Show on chart** brings the terminal window forward.
 - **Own backtest symbol.** Studio keeps its own backtest symbol and timeframe (`aztex.studio.market`), so it never moves your chart.
 
-## Top bar
+## Top bar, bottom bar & account menu
 
-- Modules: Terminal (F1), Data & Discovery (F2), On-chain (F3), Community (F5), OTC Desk (F6).
-- **Account** is the round icon at the far right (F7).
-- Studio is the code icon (F4). The theme toggle sits between them.
+The layout follows TradingView: one slim row on top, pages along the bottom.
+
+- **Top row.** Brand, the command line, and the account strip (equity, available, unrealized, realized, **Add crypto**, **Withdraw**). On the right: news, search (Ctrl/⌘ K), Aztex Studio, and the account menu.
+- **Bottom bar.** The page tabs: Terminal (F1), Data & Discovery (F2), On-chain (F3, with an unread-alert count), Community (F5) and OTC Desk (F6). On the right: your fee tier, network fees, feed status and latency, and the session clock.
+- **Account menu** (round icon, top right):
+  - who you are and your equity
+  - Account & balances (F7) and Add crypto
+  - Chart settings (Ctrl+,)
+  - New chart tab, New window, Aztex Studio (F4), Keyboard shortcuts (?)
+  - **Layout** density: Web / Mobile / Desktop
+  - **Theme**: System / Dark / Light. System follows the OS setting live.
+
+## Chart tools (TradingView style)
+
+**Drawing toolbar** down the left edge of the chart:
+
+- **Drawing tools:**
+  - cross (pan, select, move)
+  - trend line (Alt+T)
+  - horizontal line (Alt+H)
+  - Fib retracement (Alt+F)
+  - rectangle
+  - brush
+  - text
+- **Measure.** Drag, or click then click, for Δprice, Δ%, bars and duration.
+- **Zoom.** Drag across bars to zoom into them.
+- **Magnet.** Snaps points to the candle's open, high, low or close.
+- **Lock all drawings.** Locked drawings can't be selected, moved or deleted.
+- **Hide all drawings.**
+- **Undo** (Ctrl+Z).
+- **Remove…** Drawings, indicators, or both.
+- **Selecting and moving.** With the cross, click a drawing to select it (handles show). Drag it to move it, or press Del to remove it.
+- **Saved per chart.** Drawings are kept per symbol/timeframe and anchored by time. Geometry is in `lib/chart/drawings.ts` (unit-tested).
+
+**Right-click a chart** (`ChartContextMenu.tsx`) to act at the price under the pointer:
+
+- **Copy price**
+- **Add alert** (Alt+A). The alert shows as a line with a bell and an axis tag, and fires once with a toast on any page.
+- **Buy / Sell at that price** (Alt+Shift+B / Alt+Shift+S). Sized like the ticket, with its TP/SL offsets and bracket setting. Below the market that's a buy **limit** / sell **stop**; above it, a buy **stop** / sell **limit**.
+- **Add order** (Shift+T). Loads the ticket with a limit at that price.
+- **Reset chart view** (Alt+R)
+- **Object tree.** Indicators, drawings, alerts and resting orders, each with show/hide/remove.
+- **Remove** indicators, drawings or alerts.
+- **Settings…** (colours, theme, data feed).
+
+**Stop entry orders** (`placeStopOrder` in `stores/trading.ts`) rest off-book. Once the price trades through the trigger they go in as market orders. They show on the chart and in Orders & fills, where they can be cancelled.
+
+**Keyboard shortcuts.** Press **?** or use the ⌨ button on the workspace bar for the full sheet (`app/ShortcutsSheet.tsx`). The price-action keys work at the mouse position (`modules/terminal/chart/chartCursor.ts`).
 
 ## News & calendar dock
 
@@ -263,7 +308,7 @@ src/
 
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions, orders & fills), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
-Keyboard: **F1–F3, F5–F7** switch modules; **F4** opens Aztex Studio; **F8** opens chart settings; **/** focuses the command line. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+Keyboard: **F1–F3, F5–F7** switch pages; **F4** opens Aztex Studio; **F8** or **Ctrl+,** opens chart settings; **/** focuses the command line; **?** lists every shortcut. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
 ## Indicator quick edit (on the chart)
 

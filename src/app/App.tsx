@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { TopBar, AccountStrip } from './TopBar';
-import { GasTicker } from './GasTicker';
+import { TopBar, BottomBar } from './TopBar';
 import { useFunctionKeys } from './useFunctionKeys';
 import { CommandPalette } from './CommandPalette';
 import { DepositModal } from './DepositModal';
@@ -13,11 +12,15 @@ import { startNewsFeed } from './newsFeed';
 import { startOnchainFeed } from './onchainFeed';
 import { NewsDock } from './NewsDock';
 import { startChartTabsSync } from './chartTabsSync';
+import { startPriceAlerts } from './priceAlerts';
 import { ChartSettingsMenu } from '@/modules/terminal/chart/ChartSettingsMenu';
+import { ChartContextMenu } from '@/modules/terminal/chart/ChartContextMenu';
+import { ObjectTree } from '@/modules/terminal/chart/ObjectTree';
+import { ShortcutsSheet } from './ShortcutsSheet';
+import { useChartShortcuts } from './useChartShortcuts';
 import { syncAcrossWindows } from '@/lib/sync/crossWindow';
 import { useStudioStore } from '@/stores/useStudioStore';
 import { useChartStore } from '@/stores/useChartStore';
-import { CliBar } from '@/modules/terminal/CliBar';
 import { Toasts } from '@/components/ui/Toasts';
 import { TerminalPage } from '@/modules/terminal/TerminalPage';
 import { useThemeStore } from '@/stores/useThemeStore';
@@ -41,21 +44,18 @@ export function App() {
   useEffect(() => startScannerFeed(), []);
   useEffect(() => startNewsFeed(), []);
   useEffect(() => startOnchainFeed(), []);
+  useEffect(() => startPriceAlerts(), []);
   // Studio runs in its own window: pick up what it saves (library, chart indicators, theme).
   useEffect(() => {
     return syncAcrossWindows([useStudioStore, useChartStore, useThemeStore]);
   }, []);
   useFunctionKeys();
+  useChartShortcuts();
 
   return (
     <div className="app" data-platform={platform}>
       <ThemeSync />
       <TopBar />
-      <div className="cmdrow">
-        <CliBar />
-        <AccountStrip />
-        <GasTicker />
-      </div>
       <main className="main">
         <NewsDock side="left" />
         <div className="content">
@@ -80,11 +80,15 @@ export function App() {
         </div>
         <NewsDock side="right" />
       </main>
+      <BottomBar />
       {/* App-level overlay: visible regardless of route. */}
       <Toasts />
       <CommandPalette />
       <DepositModal />
       <ChartSettingsMenu />
+      <ChartContextMenu />
+      <ObjectTree />
+      <ShortcutsSheet />
     </div>
   );
 }

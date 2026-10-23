@@ -48,6 +48,8 @@ interface MarketState {
   addWatch: (symbol: string) => void;
   removeWatch: (symbol: string) => void;
   toggleWatch: (symbol: string) => void;
+  /** Move a watchlist symbol to position `to` (drag to reorder). */
+  moveWatch: (symbol: string, to: number) => void;
   applyTickers: (t: Ticker[]) => void;
   setCandles: (key: string, candles: Candle[], error?: string | null) => void;
   upsertCandle: (key: string, c: Candle) => void;
@@ -86,6 +88,13 @@ export const useMarketStore = create<MarketState>()(
       addWatch: (sym) => set((s) => (s.watchlist.includes(sym) ? s : { watchlist: [...s.watchlist, sym] })),
       removeWatch: (sym) => set((s) => ({ watchlist: s.watchlist.filter((w) => w !== sym) })),
       toggleWatch: (sym) => set((s) => ({ watchlist: s.watchlist.includes(sym) ? s.watchlist.filter((w) => w !== sym) : [...s.watchlist, sym] })),
+      moveWatch: (sym, to) =>
+        set((s) => {
+          if (!s.watchlist.includes(sym)) return s;
+          const rest = s.watchlist.filter((w) => w !== sym);
+          const i = Math.max(0, Math.min(rest.length, Math.round(to)));
+          return { watchlist: [...rest.slice(0, i), sym, ...rest.slice(i)] };
+        }),
       applyTickers: (ts) =>
         set((s) => {
           const assets = { ...s.assets };

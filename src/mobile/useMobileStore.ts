@@ -12,13 +12,15 @@ export type MobileSheet =
   | { kind: 'tools' }
   | { kind: 'chart-settings' };
 
+export type QuotesMode = 'simple' | 'advanced';
+
 interface MobileState {
   sheet: MobileSheet | null;
   open: (s: MobileSheet) => void;
   close: () => void;
-  /** Quotes list: TradingView-style prices or MT5-style bid/ask boxes. */
-  quotesMode: 'simple' | 'bidask';
-  setQuotesMode: (m: 'simple' | 'bidask') => void;
+  /** Quotes list, as in MT5: Simple (symbol, bid, ask) or Advanced (+ tick time, spread, low / high). */
+  quotesMode: QuotesMode;
+  setQuotesMode: (m: QuotesMode) => void;
 }
 
 export const useMobileStore = create<MobileState>()(
@@ -27,9 +29,15 @@ export const useMobileStore = create<MobileState>()(
       sheet: null,
       open: (sheet) => set({ sheet }),
       close: () => set({ sheet: null }),
-      quotesMode: 'simple',
+      quotesMode: 'advanced',
       setQuotesMode: (quotesMode) => set({ quotesMode }),
     }),
-    { name: 'aztex.mobile', version: 1, partialize: (s) => ({ quotesMode: s.quotesMode }) },
+    {
+      name: 'aztex.mobile',
+      version: 2,
+      partialize: (s) => ({ quotesMode: s.quotesMode }),
+      // v1 had a sparkline list ('simple') and bid/ask boxes ('bidask'); both become MT5's Advanced view.
+      migrate: (persisted, version) => (version < 2 ? { ...(persisted as object), quotesMode: 'advanced' } : persisted) as MobileState,
+    },
   ),
 );

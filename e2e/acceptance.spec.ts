@@ -979,13 +979,19 @@ test.describe('Phone app', () => {
     // Desktop chrome is gone; the five MT5-style tabs are there.
     await expect(page.locator('.app')).toHaveCount(0);
     for (const t of ['quotes', 'chart', 'trade', 'history', 'menu']) await expect(page.getByTestId(`m-tab-${t}`)).toBeVisible();
-    await expect(page.getByTestId('m-quote-BTC')).toBeVisible();
-    // Bid / ask boxes, like MT5's quotes.
-    await page.getByTestId('m-quotes-mode').tap();
-    await expect(page.getByTestId('m-quote-BTC').locator('.m-ba')).toHaveCount(2);
+    // MT5 quotes, Advanced by default: tick time, spread in points, bid over Low, ask over High.
+    const btc = page.getByTestId('m-quote-BTC');
+    await expect(btc).toContainText(/Spread: \d+/);
+    await expect(btc.getByTestId('m-bid')).toContainText('Low:');
+    await expect(btc.getByTestId('m-ask')).toContainText('High:');
+    await expect(btc.locator('.m-px b')).toHaveCount(2);
+    // Simple: symbol, bid and ask under a column header.
+    await page.getByTestId('m-quotes-mode').getByRole('button', { name: 'Simple' }).tap();
+    await expect(page.locator('.m-quotes-cols')).toContainText('Bid');
+    await expect(btc).not.toContainText('Spread');
 
     // Tap a quote: its full-screen chart.
-    await page.getByTestId('m-quote-ETH').locator('.m-quote-main').tap();
+    await page.getByTestId('m-quote-ETH').tap();
     await expect(page).toHaveURL(/\/terminal$/);
     await expect(page.getByTestId('m-symbol')).toContainText('ETH');
     await expect(page.getByTestId('price-chart')).toBeVisible();
@@ -1025,6 +1031,39 @@ test.describe('Phone app', () => {
     await expect(page.getByTestId('m-deal')).toHaveCount(2);
     await expect(page.getByTestId('m-deal').first()).toContainText('close');
     await expect(page.getByTestId('m-deal').first().locator('.m-row-pnl')).toHaveText(/^[+-−]?\d/);
+  });
+
+  test('quotes: hold a row for its actions; the pencil removes and drag-reorders symbols', async ({ page }) => {
+    await freshPhone(page);
+    const cdp = await page.context().newCDPSession(page);
+    const r = (await page.getByTestId('m-quote-ETH').boundingBox())!;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: r.x + 60, y: r.y + r.height / 2 }] } as never);
+    await page.waitForTimeout(650);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] } as never);
+    // The sheet stays open after the finger lifts, and the hold doesn't open the chart.
+    const sheet = page.getByTestId('m-quote-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(page).toHaveURL(/\/watchlist$/);
+    await sheet.getByTestId('m-quote-trade').tap();
+    await expect(page.getByTestId('m-order-sheet')).toContainText('ETH');
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('m-edit-quotes').tap();
+    const order = () => page.locator('.m-edit-row b').allInnerTexts();
+    const before = await order();
+    await page.getByRole('button', { name: 'Remove XRP' }).tap();
+    const left = before.filter((x) => x !== 'XRP');
+    expect(await order()).toEqual(left);
+    // Drag the first symbol two rows down.
+    const h = (await page.getByRole('button', { name: `Drag to reorder ${left[0]}` }).boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + 112, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(order).toEqual([left[1], left[2], left[0], ...left.slice(3)]);
+    await page.getByTestId('m-edit-done').tap();
+    await expect(page.getByTestId('m-quotes').locator('li').first()).toHaveAttribute('data-testid', `m-quote-${left[1]}`);
+    await expect(page.getByTestId('m-quote-XRP')).toHaveCount(0);
   });
 
   test('pending orders from the sheet show under Trade and cancel with a tap', async ({ page }) => {

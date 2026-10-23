@@ -115,11 +115,12 @@ The layout follows TradingView: one slim row on top, pages along the bottom.
 On a phone-sized screen (≤ 760 px wide, or a landscape phone), Aztex becomes a phone app (`src/mobile/`). It takes its layout from MT5 for iOS/Android and its chart feel from TradingView mobile. Desktop shows the same app inside a phone frame when the layout is set to **Mobile**.
 
 - **Bottom tabs:** Quotes · Chart · Trade · History · Menu. Trade shows a badge with the open position count.
-- **Quotes.** Two views:
-  - **Simple:** name, sparkline, price and a change pill.
-  - **Bid / ask:** MT5-style boxes with the last digits enlarged, plus low/high, spread and time.
-  - Tap a row for its chart, or ⋯ for New order / Chart / Alert at price / Remove.
-  - **+** adds symbols.
+- **Quotes**, laid out like MT5's (Simple / Advanced switch in the header):
+  - **Advanced** (default): each row has the last tick time, the symbol and the spread in points. Next to them are the bid over the day's low and the ask over the day's high.
+  - **Simple:** symbol with 24h change, bid and ask, under a column header.
+  - Prices use MT5's digits: the two digits that move are big, and with 3+ decimals the last digit is raised (`0.58|23|3`). Each price is coloured by its last tick until the next one (`mobile/quoteFormat.ts`, unit-tested). In the light theme, up/down colours are darkened so they stay readable.
+  - Tap a row for its chart. Hold it for New order / Chart / Alert at price / Remove.
+  - The **pencil** edits the list: tap the red button to remove a symbol, drag the handle to reorder. **+** adds symbols.
 - **Chart.** Full screen, with symbol and price at the top and timeframe chips. Indicator chips let you edit, hide or remove each one.
   - **Touch:** drag to pan, **pinch** to zoom (around your fingers, or pinned to the latest candle while live), **long-press** for a crosshair. The crosshair stays until you tap; drag to move it.
   - **Bottom bar:** **Sell | volume | Buy**.

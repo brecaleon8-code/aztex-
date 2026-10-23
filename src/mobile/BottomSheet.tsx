@@ -9,6 +9,9 @@ import { X } from 'lucide-react';
 export function BottomSheet({ title, sub, onClose, children, footer, testId, tall }: { title: ReactNode; sub?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; testId?: string; tall?: boolean }) {
   const [dy, setDy] = useState(0);
   const start = useRef<number | null>(null);
+  // Close on a tap that starts on the backdrop: the lift of the press that opened the sheet (a
+  // long-press on a quote) lands there too and must not close it straight away.
+  const downOnBackdrop = useRef(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -35,7 +38,14 @@ export function BottomSheet({ title, sub, onClose, children, footer, testId, tal
   };
   return (
     <div className="m-sheet-layer" role="presentation">
-      <div className="m-backdrop" onClick={onClose} />
+      <div
+        className="m-backdrop"
+        onPointerDown={() => (downOnBackdrop.current = true)}
+        onClick={() => {
+          if (downOnBackdrop.current) onClose();
+          downOnBackdrop.current = false;
+        }}
+      />
       <section className={`m-sheet ${tall ? 'tall' : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined} style={dy ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined} data-testid={testId}>
         <div className="m-sheet-grab" {...grab}>
           <span />

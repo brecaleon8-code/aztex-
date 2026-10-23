@@ -17,6 +17,22 @@
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
 }
+/* Up / down text. On a light screen the chart's bright profit / loss colours are darkened enough
+   to read as text (MT5's light quotes are dark blue / red for the same reason). */
+.m-app {
+  --up-text: var(--profit);
+  --down-text: var(--loss);
+}
+:root[data-theme='light'] .m-app {
+  --up-text: color-mix(in srgb, var(--profit) 60%, #000);
+  --down-text: color-mix(in srgb, var(--loss) 80%, #000);
+}
+:root[data-theme='light'] .m-app .up {
+  color: var(--up-text);
+}
+:root[data-theme='light'] .m-app .down {
+  color: var(--down-text);
+}
 /* Inside the desktop phone frame: fixed-position children (toasts) stay in the frame. */
 .m-app.framed {
   --sat: 40px;
@@ -185,33 +201,126 @@
   background: var(--warn);
 }
 
-/* ── Quotes ── */
+/* ── Quotes (MT5 layout) ── */
+.m-quotes-mode .seg {
+  width: 196px;
+  margin: 0 auto;
+}
+.m-quotes-mode .seg-btn {
+  flex: 1;
+}
 .m-quotes {
   margin: 0;
   padding: 0;
   list-style: none;
 }
+.m-quotes-cols,
 .m-quote {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px 118px;
+  column-gap: 6px;
+  padding: 0 14px;
+}
+.m-quotes-cols {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-top: 6px;
+  padding-bottom: 5px;
+  background: var(--bg);
   border-bottom: 1px solid var(--line-soft);
+  font-size: 11px;
+  color: var(--text-faint);
 }
-.m-quote-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
+.m-quotes-cols span:not(:first-child) {
+  text-align: right;
+}
+.m-quote {
   align-items: center;
-  gap: 10px;
-  padding: 11px 2px 11px 14px;
-  border: 0;
-  background: transparent;
-  text-align: left;
+  min-height: 62px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: background-color var(--t-fast) var(--ease);
 }
-.m-quote-main:active,
+.m-quote.simple {
+  min-height: 54px;
+}
+.m-quote:active,
 .m-row:active,
 .m-item:active {
   background: color-mix(in srgb, var(--text) 5%, transparent);
 }
+.m-q-sym {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.m-q-sym b {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.m-q-meta {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.m-q-meta.up {
+  color: var(--up-text);
+}
+.m-q-meta.down {
+  color: var(--down-text);
+}
+.m-q-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+/* MT5's price: small lead, big "pips", raised last digit; coloured by the last tick. */
+.m-px {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.05;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--t-fast) var(--ease);
+}
+.m-px b {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.m-px sup {
+  align-self: flex-start;
+  margin-left: 1px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.m-px.up {
+  color: var(--up-text);
+}
+.m-px.down {
+  color: var(--down-text);
+}
+.m-quote.simple .m-px b {
+  font-size: 23px;
+}
+/* Symbol rows (symbol search sheet) */
 .m-q-badge {
   flex: none;
   display: grid;
@@ -225,100 +334,51 @@
   font-size: 13px;
   font-weight: 700;
 }
-.m-q-name {
+/* Edit list: remove + drag handle */
+.m-quotes-edit {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-edit-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 6px 0 16px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+  font-size: 15px;
+  transition: transform var(--t-med) var(--ease);
+}
+.m-edit-row b {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
-.m-q-name b {
-  font-size: 15px;
-  font-weight: 650;
+.m-edit-row.dragging {
+  z-index: 2;
+  background: var(--panel-solid);
+  box-shadow: var(--pop-shadow);
+  transition: none;
 }
-.m-q-name span {
-  font-size: 12px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.m-q-name span.up {
-  color: var(--profit);
-}
-.m-q-name span.down {
-  color: var(--loss);
-}
-.m-q-px {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-.m-q-px .mono {
-  font-size: 15px;
-  font-weight: 500;
-}
-.m-pill {
-  min-width: 66px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font: 600 11.5px/1.4 var(--font-mono);
-  text-align: center;
-}
-.m-pill.up {
-  background: color-mix(in srgb, var(--profit) 16%, transparent);
-}
-.m-pill.down {
-  background: color-mix(in srgb, var(--loss) 16%, transparent);
-}
-.m-q-more {
-  flex: none;
-  width: 38px;
-  height: 52px;
+.m-edit-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border: 0;
-  background: transparent;
+  border-radius: 50%;
+  background: var(--loss);
+  color: #fff !important;
+}
+.m-edit-handle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   color: var(--text-faint);
-}
-/* MT5 bid / ask boxes */
-.m-quote.ba .m-quote-main {
-  gap: 6px;
-}
-.m-ba {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  width: 102px;
-  padding: 5px 8px;
-  border-radius: 9px;
-  background: var(--panel-alt);
-  border: 1px solid var(--line-soft);
-  transition: color var(--t-fast) var(--ease);
-}
-.m-ba-label {
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.m-digits {
-  font-size: 12.5px;
-  line-height: 1.1;
-}
-.m-digits b {
-  font-size: 19px;
-  font-weight: 650;
-}
-.m-ba.up .m-digits {
-  color: var(--profit);
-}
-.m-ba.down .m-digits {
-  color: var(--loss);
-}
-.m-ba-sub {
-  font-size: 10px;
-  color: var(--text-faint);
+  touch-action: none;
+  cursor: grab;
 }
 
 /* ── Chart ── */

@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Aztex",
+  "short_name": "Aztex",
+  "description": "Crypto trading terminal: quotes, charts, one-tap orders, positions and history.",
+  "start_url": "/watchlist",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0d0f",
+  "theme_color": "#0c0d0f",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/brand/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

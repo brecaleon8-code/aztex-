@@ -87,6 +87,8 @@ export interface OrderRecord {
   positionId?: string;
   status: OrderStatus;
   reason?: string;
+  /** Realized P/L of this order's fills, for orders that closed or reduced a position. */
+  pnl?: number;
   /** Mid price when the order was sent — the benchmark for slippage. */
   arrivalMid: number;
   fees: number;

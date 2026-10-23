@@ -256,6 +256,7 @@ export function placeOrder(req: OrderRequest): OrderResult {
     if (reduceOnly) {
       const r = reduceOpposite(req.symbol, req.side, pv.take.filled, px, 'taker');
       fee = feeFor(px * r.applied, useFeeStore.getState().tier, 'taker');
+      ex().patch(rec.id, { pnl: r.pnl });
     } else {
       const r = openPosition({ symbol: req.symbol, side: req.side, size: pv.take.filled, tp: req.tp, sl: req.sl, orderType: req.orderType, bracket, orderId: rec.id }, px, 'taker');
       if (!r.ok) return reject(rec, r.error);
@@ -373,13 +374,14 @@ export function cancelBracketLeg(orderId: string) {
   toast({ kind: 'info', title: `${o.kind === 'take_profit' ? 'Take-profit' : 'Stop-loss'} cancelled`, detail: `${o.symbol} · ${fmtPrice(o.limitPrice ?? o.triggerPrice ?? 0)}` });
 }
 
-/** A market close recorded as its own order (manual close / flatten / bracket exit). */
-function recordClose(p: Position, px: number, liq: Liquidity, kind: OrderRecord['kind'], source: OrderRecord['source'], reason?: string) {
+/** A market close recorded as its own order (manual close / flatten / bracket exit). Returns its id. */
+function recordClose(p: Position, px: number, liq: Liquidity, kind: OrderRecord['kind'], source: OrderRecord['source'], reason?: string): string {
   const m = useMarketStore.getState().assets[p.symbol];
   const rec = newRecord({ symbol: p.symbol, side: opposite(p.side), kind, qty: p.size, tif: 'IOC', postOnly: false, reduceOnly: true, bracket: false, positionId: p.id, parentId: p.orderId, arrivalMid: m ? (m.bid + m.ask) / 2 : px, source, reason, limitPrice: kind === 'take_profit' ? p.tp : undefined, triggerPrice: kind === 'stop_loss' ? p.sl : undefined });
   ex().upsert(rec);
   recordFills(rec.id, p.symbol, opposite(p.side), [{ price: px, qty: p.size, estimated: false }], liq);
   ex().patch(rec.id, { status: 'filled' });
+  return rec.id;
 }
 
 /** Close one position: fade/shrink, then remove and settle P/L into the wallet. */
@@ -394,13 +396,32 @@ export function closePosition(id: string): Promise<void> {
       if (live) {
         const asset = useMarketStore.getState().assets[live.symbol];
         const px = asset ? (live.side === 'Long' ? asset.bid : asset.ask) : live.current;
-        recordClose(live, px, 'taker', 'close', 'close');
+        const recId = recordClose(live, px, 'taker', 'close', 'close');
         const pnl = reducePosition(live, live.size, px, 'taker', 'Position closed manually');
+        ex().patch(recId, { pnl });
         toast({ kind: pnl >= 0 ? 'success' : 'info', title: `Closed ${live.side.toLowerCase()} ${live.symbol}`, detail: `${fmtQty(live.size)} @ ${fmtPrice(px)} · P/L ${fmtSigned(pnl)} USDT${feeNote(feeFor(px * live.size, useFeeStore.getState().tier, 'taker'))}` });
       }
       resolve();
     }, CLOSE_ANIM_MS),
   );
+}
+
+/**
+ * Move a position's take-profit / stop-loss. Live bracket legs follow. TP must stay on the profit side
+ * of the current price and SL on the loss side.
+ */
+export function modifyLevels(id: string, tp: number, sl: number): OrderResult {
+  const p = usePositionStore.getState().positions.find((x) => x.id === id);
+  if (!p) return { ok: false, error: 'Position not found' };
+  if (!(tp > 0) || !(sl > 0)) return { ok: false, error: 'Enter TP and SL prices' };
+  const long = p.side === 'Long';
+  if (long ? !(tp > p.current && sl < p.current) : !(tp < p.current && sl > p.current)) {
+    return { ok: false, error: long ? 'For a long, TP must be above and SL below the current price' : 'For a short, TP must be below and SL above the current price' };
+  }
+  usePositionStore.getState().patch(id, { tp, sl, tpHit: false, slHit: false });
+  for (const o of bracketLegs(id)) ex().patch(o.id, o.kind === 'take_profit' ? { limitPrice: tp } : { triggerPrice: sl });
+  toast({ kind: 'success', title: `Levels updated · ${p.side} ${p.symbol}`, detail: `TP ${fmtPrice(tp)} · SL ${fmtPrice(sl)}${p.bracket ? ' · bracket orders moved' : ''}` });
+  return { ok: true, id };
 }
 
 export function flattenAll(): Promise<number> {
@@ -417,8 +438,10 @@ export function flattenAll(): Promise<number> {
         if (!live) continue;
         const a = assets[live.symbol];
         const px = a ? (live.side === 'Long' ? a.bid : a.ask) : live.current;
-        recordClose(live, px, 'taker', 'close', 'close', 'Flatten all');
-        total += reducePosition(live, live.size, px, 'taker', 'Flattened');
+        const recId = recordClose(live, px, 'taker', 'close', 'close', 'Flatten all');
+        const pnl = reducePosition(live, live.size, px, 'taker', 'Flattened');
+        ex().patch(recId, { pnl });
+        total += pnl;
       }
       toast({ kind: total >= 0 ? 'success' : 'info', title: `Flattened ${open.length} position${open.length > 1 ? 's' : ''}`, detail: `Realized P/L ${fmtSigned(total)} USDT` });
       resolve(open.length);
@@ -454,7 +477,7 @@ export function onPrices() {
       }
       const r = reduceOpposite(o.symbol, o.side, q, o.limitPrice, 'maker');
       recordFills(o.id, o.symbol, o.side, [{ price: o.limitPrice, qty: r.applied, estimated: false }], 'maker');
-      ex().patch(o.id, { status: 'filled' });
+      ex().patch(o.id, { status: 'filled', pnl: r.pnl });
       toast({ kind: 'success', title: 'Limit order filled', detail: `${sideWord(o.side)} ${fmtQty(r.applied)} ${o.symbol} @ ${fmtPrice(o.limitPrice)} · reduce-only · P/L ${fmtSigned(r.pnl)}` });
       continue;
     }
@@ -496,6 +519,7 @@ export function onPrices() {
     recordFills(leg.id, p.symbol, opposite(p.side), [{ price: px, qty: p.size, estimated: false }], liq);
     ex().patch(leg.id, { status: 'filled', reason: tpFill ? undefined : `Stop triggered at ${fmtPrice(p.sl)}` });
     const pnl = reducePosition(p, p.size, px, liq, tpFill ? 'OCO: take-profit filled' : 'OCO: stop-loss filled');
+    ex().patch(leg.id, { pnl });
     toast({
       kind: tpFill ? 'success' : 'error',
       title: `${tpFill ? 'Take-profit' : 'Stop-loss'} filled · ${p.side} ${p.symbol} closed`,

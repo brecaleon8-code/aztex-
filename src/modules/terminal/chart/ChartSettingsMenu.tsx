@@ -44,9 +44,7 @@ const same = (a: AppearanceColors, b: AppearanceColors) => (Object.keys(a) as (k
 export function ChartSettingsMenu() {
   const at = useUiStore((s) => s.chartMenu);
   const close = useUiStore((s) => s.closeChartMenu);
-  const { colors, setColor, resetColors, theme, setTheme } = useThemeStore();
-  const providerId = useMarketStore((s) => s.providerId);
-  const { mode, setMode, profile, toggleProfile, bookProfile, toggleBookProfile, drawings, clearDrawings } = useChartStore();
+  const { drawings, clearDrawings } = useChartStore();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
@@ -98,6 +96,36 @@ export function ChartSettingsMenu() {
         </button>
       </div>
 
+      <ChartSettingsSections />
+
+      <div className="cm-section cm-actions">
+        <button className="menu-item" onClick={clearDrawings} disabled={drawings.length === 0}>
+          <Trash2 size={13} /> <span className="grow">Clear drawings</span>
+          <span className="mono faint">{drawings.length || ''}</span>
+        </button>
+        <button
+          className="menu-item"
+          onClick={() => {
+            close();
+            openStudio();
+          }}
+        >
+          <SquareCode size={13} /> <span className="grow">Open Aztex Studio</span>
+          <kbd className="cm-kbd">F4</kbd>
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** The settings themselves — shared by the desktop popover and the phone's bottom sheet. */
+export function ChartSettingsSections() {
+  const { colors, setColor, resetColors, theme, setTheme } = useThemeStore();
+  const providerId = useMarketStore((s) => s.providerId);
+  const { mode, setMode, profile, toggleProfile, bookProfile, toggleBookProfile } = useChartStore();
+  return (
+    <>
       <div className="cm-section">
         <label className="cm-row">
           <span className="cm-label">Chart type</span>
@@ -183,24 +211,6 @@ export function ChartSettingsMenu() {
           />
         </div>
       </div>
-
-      <div className="cm-section cm-actions">
-        <button className="menu-item" onClick={clearDrawings} disabled={drawings.length === 0}>
-          <Trash2 size={13} /> <span className="grow">Clear drawings</span>
-          <span className="mono faint">{drawings.length || ''}</span>
-        </button>
-        <button
-          className="menu-item"
-          onClick={() => {
-            close();
-            openStudio();
-          }}
-        >
-          <SquareCode size={13} /> <span className="grow">Open Aztex Studio</span>
-          <kbd className="cm-kbd">F4</kbd>
-        </button>
-      </div>
-    </div>,
-    document.body,
+    </>
   );
 }

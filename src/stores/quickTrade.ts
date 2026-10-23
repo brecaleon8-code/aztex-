@@ -38,15 +38,19 @@ export function quickKinds(price: number, last: number): Record<'buy' | 'sell', 
   return price <= last ? { buy: 'limit', sell: 'stop' } : { buy: 'stop', sell: 'limit' };
 }
 
-/** The ticket's size (its % of equity or USDT amount) at `price`. */
-export function ticketSizeAt(price: number): number {
-  const t = useOrderStore.getState();
+/** Account equity right now: cash + capital in positions + unrealized P/L + crypto holdings. */
+export function equityNow(): number {
   const { balance, holdings } = useWalletStore.getState();
   const { positions } = usePositionStore.getState();
   const assets = useMarketStore.getState().assets;
   const holdingsValue = Object.entries(holdings).reduce((s, [sym, q]) => s + q * priceOf(sym, assets), 0);
-  const equity = balance + committedNotional(positions) + totalUnrealized(positions) + holdingsValue;
-  return positionSize(t.sizingMode, t.sizingMode === 'pct' ? t.pctValue : t.usdtValue, equity, price).size;
+  return balance + committedNotional(positions) + totalUnrealized(positions) + holdingsValue;
+}
+
+/** The ticket's size (its % of equity or USDT amount) at `price`. */
+export function ticketSizeAt(price: number): number {
+  const t = useOrderStore.getState();
+  return positionSize(t.sizingMode, t.sizingMode === 'pct' ? t.pctValue : t.usdtValue, equityNow(), price).size;
 }
 
 export function quickOrder(symbol: string, side: Side, price: number): OrderResult {

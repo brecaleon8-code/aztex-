@@ -11,7 +11,7 @@ import './news-dock.css';
 
 /* ── Shared helpers ─────────────────────────────────────────────────────────────────────── */
 
-function useNow(ms: number) {
+export function useNow(ms: number) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), ms);
@@ -176,7 +176,7 @@ function DockPanel({ side }: { side: DockSide }) {
 
 /* ── Headlines ──────────────────────────────────────────────────────────────────────────── */
 
-function Feed({ now }: { now: number }) {
+export function Feed({ now }: { now: number }) {
   const { stories, categories, toggleCategory, setAllCategories, mineOnly, setMineOnly, minImpact, setMinImpact } = useNewsStore();
   const selected = useMarketStore((s) => s.selected);
   const watchlist = useMarketStore((s) => s.watchlist);
@@ -296,7 +296,7 @@ function dayLabel(t: number, now: number) {
   return d === 0 ? `Today · ${name}` : d === 1 ? `Tomorrow · ${name}` : d === -1 ? `Yesterday · ${name}` : name;
 }
 
-function Calendar({ now }: { now: number }) {
+export function Calendar({ now }: { now: number }) {
   const { events, calMinImpact, setCalMinImpact } = useNewsStore();
   const [kind, setKind] = useState<'all' | 'macro' | 'crypto'>('all');
   const [past, setPast] = useState(false);

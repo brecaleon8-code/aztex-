@@ -5,7 +5,7 @@ import { usePositionStore } from './usePositionStore';
 import { useWalletStore, STARTING_BALANCE } from './useWalletStore';
 import { useFeeStore } from './useFeeStore';
 import { useExecutionStore } from './useExecutionStore';
-import { closePosition, onPrices, placeOrder, previewFor, CLOSE_ANIM_MS, cancelWorkingOrder } from './trading';
+import { closePosition, onPrices, placeOrder, previewFor, CLOSE_ANIM_MS, cancelWorkingOrder, modifyLevels } from './trading';
 import { FEE_TIERS } from '@/lib/account/fees';
 
 const TAKER = FEE_TIERS.standard.taker;
@@ -165,5 +165,51 @@ describe('order router', () => {
     placeOrder({ ...base, side: 'Long', orderType: 'limit', size: 1, limitPrice: 90 });
     cancelWorkingOrder(orders()[0].id);
     expect(orders()[0]).toMatchObject({ status: 'cancelled', reason: 'Cancelled by user' });
+  });
+
+  it('closing and reducing orders carry their realized P/L (for the history list)', async () => {
+    placeOrder({ ...base, side: 'Long', orderType: 'market', size: 2 });
+    setBtc(110, null);
+    placeOrder({ ...base, side: 'Short', orderType: 'market', size: 1, reduceOnly: true });
+    expect(orders()[0].pnl).toBeCloseTo(109.5 - 100.5);
+    const done = closePosition(usePositionStore.getState().positions[0].id);
+    vi.advanceTimersByTime(CLOSE_ANIM_MS);
+    await done;
+    expect(orders()[0]).toMatchObject({ kind: 'close' });
+    expect(orders()[0].pnl).toBeCloseTo(109.5 - 100.5);
+    // Opening orders have none.
+    expect(orders().find((o) => o.kind === 'market' && !o.reduceOnly)?.pnl).toBeUndefined();
+  });
+
+  it('bracket exits record their P/L too', () => {
+    placeOrder({ ...base, side: 'Long', orderType: 'market', size: 1, bracket: true, tp: 105, sl: 95 });
+    setBtc(106, null);
+    expect(orders().find((o) => o.kind === 'take_profit')?.pnl).toBeCloseTo(105 - 100.5);
+  });
+});
+
+describe('modifyLevels', () => {
+  it('moves TP / SL on the position and its live bracket legs', () => {
+    placeOrder({ ...base, side: 'Long', orderType: 'market', size: 1, bracket: true, tp: 110, sl: 90 });
+    const id = usePositionStore.getState().positions[0].id;
+    expect(modifyLevels(id, 115, 95)).toEqual({ ok: true, id });
+    expect(usePositionStore.getState().positions[0]).toMatchObject({ tp: 115, sl: 95 });
+    const legs = orders().filter((o) => o.source === 'bracket');
+    expect(legs.find((o) => o.kind === 'take_profit')?.limitPrice).toBe(115);
+    expect(legs.find((o) => o.kind === 'stop_loss')?.triggerPrice).toBe(95);
+    // The moved stop is what triggers now.
+    setBtc(96, null);
+    expect(usePositionStore.getState().positions).toHaveLength(1);
+    setBtc(94.5, null);
+    expect(usePositionStore.getState().positions).toHaveLength(0);
+  });
+
+  it('rejects levels on the wrong side of the market', () => {
+    placeOrder({ ...base, side: 'Short', orderType: 'market', size: 1 });
+    const id = usePositionStore.getState().positions[0].id;
+    expect(modifyLevels(id, 105, 110)).toMatchObject({ ok: false, error: expect.stringMatching(/short/) });
+    expect(modifyLevels(id, 90, 0)).toMatchObject({ ok: false });
+    expect(modifyLevels('nope', 90, 110)).toMatchObject({ ok: false, error: 'Position not found' });
+    expect(modifyLevels(id, 90, 110).ok).toBe(true);
   });
 });

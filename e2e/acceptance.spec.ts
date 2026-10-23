@@ -650,10 +650,13 @@ test.describe('Fit to screen', () => {
     expect((await page.getByTestId('chart-panel').boundingBox())!.height).toBeGreaterThan(400);
     await page.getByRole('button', { name: 'Restore chart' }).click();
 
-    // The Mobile preview keeps a normal scrolling stack.
+    // The Mobile layout previews the phone app in a phone frame; one click goes back.
     await page.getByTestId('account-menu').click();
     await page.getByRole('group', { name: 'Layout density' }).getByRole('button', { name: 'Mobile' }).click();
-    await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'off');
+    await expect(page.getByTestId('phone-preview').getByTestId('mobile-app')).toBeVisible();
+    await expect(page.getByTestId('phone-preview').getByTestId('m-chart')).toBeVisible();
+    await page.getByTestId('exit-phone-preview').click();
+    await expect(page.locator('.terminal-grid')).toHaveAttribute('data-fit', 'on');
   });
 });
 
@@ -958,5 +961,175 @@ test.describe('TradingView-style chart tools', () => {
     await page.getByTestId('menu-new-tab').click();
     await page.getByTestId('new-tab-ADA').click();
     await expect(page.getByTestId('chart-tab').last()).toHaveAttribute('data-symbol', 'ADA');
+  });
+});
+
+test.describe('Phone app', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  async function freshPhone(page: Page, path = '/watchlist') {
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await expect(page.getByTestId('mobile-app')).toBeVisible();
+  }
+
+  test('bottom tabs, quotes → chart, MT5 order sheet, position sheet and history', async ({ page }) => {
+    await freshPhone(page);
+    // Desktop chrome is gone; the five MT5-style tabs are there.
+    await expect(page.locator('.app')).toHaveCount(0);
+    for (const t of ['quotes', 'chart', 'trade', 'history', 'menu']) await expect(page.getByTestId(`m-tab-${t}`)).toBeVisible();
+    await expect(page.getByTestId('m-quote-BTC')).toBeVisible();
+    // Bid / ask boxes, like MT5's quotes.
+    await page.getByTestId('m-quotes-mode').tap();
+    await expect(page.getByTestId('m-quote-BTC').locator('.m-ba')).toHaveCount(2);
+
+    // Tap a quote: its full-screen chart.
+    await page.getByTestId('m-quote-ETH').locator('.m-quote-main').tap();
+    await expect(page).toHaveURL(/\/terminal$/);
+    await expect(page.getByTestId('m-symbol')).toContainText('ETH');
+    await expect(page.getByTestId('price-chart')).toBeVisible();
+    await page.getByTestId('m-tf-5m').tap();
+    await expect(page.getByTestId('m-tf-5m')).toHaveClass(/on/);
+
+    // Buy → order sheet → market order.
+    await page.getByTestId('m-buy').tap();
+    const sheet = page.getByTestId('m-order-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByTestId('m-side-buy')).toHaveAttribute('aria-pressed', 'true');
+    await expect(sheet.getByTestId('m-order-preview')).toContainText('Cost');
+    const qty = Number(await sheet.getByTestId('m-qty').locator('input').inputValue());
+    await sheet.getByRole('button', { name: /Increase Volume/ }).tap();
+    expect(Number(await sheet.getByTestId('m-qty').locator('input').inputValue())).toBeGreaterThan(qty);
+    await sheet.getByTestId('m-order-submit').tap();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator('.m-tab .m-badge')).toHaveText('1');
+
+    // Trade tab: account + the position; its sheet moves SL / TP and closes it.
+    await page.getByTestId('m-tab-trade').tap();
+    await expect(page.getByTestId('m-account')).toContainText('Equity');
+    await expect(page.getByTestId('m-position')).toHaveCount(1);
+    await expect(page.getByTestId('m-position')).toContainText('ETH');
+    await page.getByTestId('m-position').tap();
+    const pos = page.getByTestId('m-position-sheet');
+    await pos.getByRole('button', { name: /Increase Stop loss/ }).tap();
+    await pos.getByTestId('m-save-levels').tap();
+    await expect(page.locator('.toast').last()).toContainText('Levels updated');
+    await pos.getByTestId('m-close-position').tap();
+    await expect(pos).toHaveCount(0);
+    await expect(page.getByTestId('m-position')).toHaveCount(0);
+
+    // History: the closing deal carries its realized P/L.
+    await page.getByTestId('m-tab-history').tap();
+    await expect(page.getByTestId('m-history-summary')).toContainText('Profit');
+    await expect(page.getByTestId('m-deal')).toHaveCount(2);
+    await expect(page.getByTestId('m-deal').first()).toContainText('close');
+    await expect(page.getByTestId('m-deal').first().locator('.m-row-pnl')).toHaveText(/^[+-−]?\d/);
+  });
+
+  test('pending orders from the sheet show under Trade and cancel with a tap', async ({ page }) => {
+    await freshPhone(page, '/terminal');
+    await page.getByTestId('m-sell').tap();
+    const sheet = page.getByTestId('m-order-sheet');
+    await sheet.getByRole('radio', { name: 'Stop' }).or(sheet.getByRole('button', { name: 'Stop', exact: true })).first().tap();
+    await expect(sheet.getByTestId('m-price')).toBeVisible();
+    await expect(sheet.getByTestId('m-order-submit')).toContainText('stop @');
+    await sheet.getByTestId('m-order-submit').tap();
+    await page.getByTestId('m-tab-trade').tap();
+    await expect(page.getByTestId('m-order')).toHaveCount(1);
+    await expect(page.getByTestId('m-order')).toContainText('sell stop');
+    await page.getByTestId('m-order').getByRole('button', { name: /Cancel/ }).tap();
+    await expect(page.getByTestId('m-order')).toHaveCount(0);
+  });
+
+  test('chart gestures: pinch to zoom, long-press crosshair, tap to clear', async ({ page }) => {
+    await freshPhone(page, '/terminal');
+    const chart = page.getByTestId('price-chart');
+    const box = (await chart.boundingBox())!;
+    const bars = async () => Number((await page.locator('.chart-zoom .label').innerText()).replace(/\D/g, ''));
+    const before = await bars();
+    // Narrow plot: fewer default bars than the desktop's 90.
+    expect(before).toBeLessThan(90);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, pts: [number, number][]) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) } as never);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await touch('touchStart', [[cx - 30, cy], [cx + 30, cy]]);
+    for (let i = 1; i <= 6; i++) await touch('touchMove', [[cx - 30 - i * 12, cy], [cx + 30 + i * 12, cy]]);
+    await touch('touchEnd', []);
+    await expect.poll(bars).toBeLessThan(before);
+
+    // Long press: crosshair; it stays after lifting, and a tap clears it.
+    await touch('touchStart', [[cx - 50, cy + 30]]);
+    await page.waitForTimeout(550);
+    await touch('touchEnd', []);
+    await expect(chart.locator('.crosshair line')).toHaveCount(2);
+    await touch('touchStart', [[cx, cy]]);
+    await touch('touchEnd', []);
+    await expect(chart.locator('.crosshair line')).toHaveCount(0);
+  });
+
+  test('chart sheets: symbol search, drawing tools, indicators and chart settings', async ({ page }) => {
+    await freshPhone(page, '/terminal');
+    await page.getByTestId('m-symbol').tap();
+    await page.getByTestId('m-symbol-sheet').getByRole('textbox').fill('sol');
+    await page.getByTestId('m-pick-SOL').tap();
+    await expect(page.getByTestId('m-symbol')).toContainText('SOL');
+
+    await page.getByTestId('m-tools').tap();
+    await page.getByTestId('m-tool-trend').tap();
+    await expect(page.getByTestId('m-tool-pill')).toBeVisible();
+    await expect(page.getByTestId('m-tools')).toHaveClass(/on/);
+    const box = (await page.getByTestId('price-chart').boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width * 0.25, box.y + box.height * 0.6);
+    await page.touchscreen.tap(box.x + box.width * 0.6, box.y + box.height * 0.3);
+    await expect(page.getByTestId('price-chart').locator('.drawing')).toHaveCount(1);
+    await page.getByTestId('m-tools').tap();
+    await page.getByTestId('m-clear-drawings').tap();
+    await expect(page.getByTestId('price-chart').locator('.drawing')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('m-tools-sheet')).toHaveCount(0);
+
+    await page.getByTestId('m-indicators').tap();
+    const ind = page.getByTestId('m-indicators-sheet');
+    const count = await ind.locator('.m-row').count();
+    await ind.getByTestId('m-add-ind-SMA 50').tap();
+    await expect(ind.locator('.m-row')).toHaveCount(count + 1);
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('m-chart-settings').tap();
+    const settings = page.getByTestId('m-chart-settings-sheet');
+    await settings.getByTestId('ctx-chart-type').selectOption('line');
+    await settings.getByTestId('preset-classic').tap();
+    await page.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0);
+  });
+
+  test('menu: account, deposit, desktop pages full screen with a back button, news', async ({ page }) => {
+    await freshPhone(page, '/menu');
+    await expect(page.getByTestId('m-profile')).toBeVisible();
+    await page.getByTestId('m-deposit').tap();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    for (const [name, url] of [
+      ['Markets & discovery', /\/discovery$/],
+      ['On-chain', /\/onchain$/],
+      ['OTC desk', /\/otc$/],
+    ] as const) {
+      await page.getByRole('button', { name }).tap();
+      await expect(page).toHaveURL(url);
+      await expect(page.locator('.m-sub-page')).toBeVisible();
+      // No sideways scrolling of the page itself.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      await page.getByTestId('m-back').tap();
+      await expect(page).toHaveURL(/\/menu$/);
+    }
+    await page.getByTestId('m-menu-news').tap();
+    await expect(page.getByTestId('news-story').first()).toBeVisible();
+    // The feed sits below the screen header (not the desktop dock's overlay).
+    const head = (await page.locator('.m-header').boundingBox())!;
+    expect((await page.locator('.m-news').boundingBox())!.y).toBeGreaterThanOrEqual(head.y + head.height - 1);
+    await page.getByRole('radio', { name: 'Calendar' }).or(page.getByRole('button', { name: 'Calendar', exact: true })).first().tap();
+    await expect(page.locator('.nd-ev').first()).toBeVisible();
   });
 });

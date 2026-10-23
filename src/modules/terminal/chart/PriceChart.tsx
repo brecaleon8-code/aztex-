@@ -6,7 +6,7 @@ import { useChartStore } from '@/stores/useChartStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { heikinAshi } from '@/lib/chart/heikinAshi';
-import { clampViewport, onSeriesGrow, pan, zoom, ZOOM_IN, ZOOM_OUT, type Viewport } from '@/lib/chart/viewport';
+import { clampViewport, defaultBarsFor, onSeriesGrow, pan, pinchZoom, zoom, ZOOM_IN, ZOOM_OUT, type Viewport } from '@/lib/chart/viewport';
 import { fibLevels, flagPath, linePath, makeXScale, makeYScale, niceTicks, type XScale, type YScale } from '@/lib/chart/scale';
 import { computeIndicator, indicatorLabel, type ComputedIndicator } from '@/lib/indicators/compute';
 import { extent } from '@/lib/indicators/series';
@@ -36,6 +36,9 @@ const OSC_H = 90;
 const READOUT_H = 26;
 const FP_STATS_H = 38;
 const DEFAULT_VISIBLE = 90;
+/** Touch: hold this long (without moving more than TAP_SLOP px) for the crosshair. */
+const LONG_PRESS_MS = 380;
+const TAP_SLOP = 8;
 const VISIBLE_BY_MODE: Partial<Record<string, number>> = { footprint: 12, renko: 60 };
 /** Footprint cells get unreadable (and expensive) beyond this many bars; fall back to candles. */
 const FOOTPRINT_MAX_BARS = 90;
@@ -119,7 +122,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const series = renkoRes ? renkoRes.bricks : candles;
   const realLast = candles[candles.length - 1];
   const vkey = `${key}|${renkoRes ? `renko:${renkoRes.box}` : mode === 'footprint' ? 'fp' : 'time'}`;
-  const defaultVisible = VISIBLE_BY_MODE[mode] ?? DEFAULT_VISIBLE;
+  const defaultVisible = defaultBarsFor(VISIBLE_BY_MODE[mode] ?? DEFAULT_VISIBLE, width - AXIS_W);
 
   // Viewport over the full series.
   const n = series.length;
@@ -132,7 +135,8 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const seen = useRef({ key: '', n: 0 });
   useEffect(() => {
     if (vkey !== seen.current.key) {
-      if (n > 0) {
+      // Wait for the first measure: the default bar count depends on the plot width.
+      if (n > 0 && width > 0) {
         setVp(clampViewport({ visibleCount: defaultVisible, viewEnd: n }, n));
         seen.current = { key: vkey, n };
       }
@@ -144,7 +148,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
       setVp((v) => onSeriesGrow(v, prev, n));
       seen.current.n = n;
     }
-  }, [vkey, n, defaultVisible]);
+  }, [vkey, n, defaultVisible, width]);
 
   const display = useMemo(() => (mode === 'heikin' ? heikinAshi(series) : series), [series, mode]);
   // Drawings are stored by time on time-based charts and placed by index here, so they stay on the
@@ -252,6 +256,21 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const [zoomBox, setZoomBox] = useState<{ x0: number; x1: number } | null>(null);
   const moving = useRef<{ id: string; start: DataPoint; orig: Drawing; moved: boolean } | null>(null);
   const [hoverDrawing, setHoverDrawing] = useState<string | null>(null);
+  // Touch: fingers on the chart, a two-finger pinch, the long-press timer, and the crosshair it
+  // turns on (TradingView mobile: hold to inspect, drag to move it, tap to put it away).
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d0: number; vp0: Viewport; anchor: number } | null>(null);
+  const longPress = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const [touchCross, setTouchCross] = useState(false);
+  const crossRef = useRef(false);
+  crossRef.current = touchCross;
+  const crossDrag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const lastPointer = useRef('mouse');
+  const cancelLongPress = () => {
+    if (longPress.current) clearTimeout(longPress.current.timer);
+    longPress.current = null;
+  };
+  useEffect(() => () => cancelLongPress(), []);
   const { magnet, drawingsLocked, drawingsHidden, selectedDrawing } = store;
   const alerts = usePriceAlertStore((s) => s.alerts);
   const symAlerts = alerts.filter((a) => a.symbol === symbol);
@@ -263,6 +282,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
     setTextDraft(null);
     setBrush(null);
     setZoomBox(null);
+    setTouchCross(false);
   }, [tool, key]);
 
   // Focused chart only: Esc cancels, Delete removes the selected drawing, Ctrl+Z undoes, Alt+R resets the view.
@@ -328,8 +348,35 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const canEdit = focused && !drawingsLocked && !drawingsHidden;
 
   const onPointerDown = (e: RPointerEvent<SVGSVGElement>) => {
+    lastPointer.current = e.pointerType;
     if (e.button !== 0 || n === 0) return;
     const { x, y } = local(e);
+    if (e.pointerType === 'touch') {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.current.size >= 2) {
+        // Second finger: drop whatever the first one started and pinch-zoom instead.
+        cancelLongPress();
+        drag.current = null;
+        moving.current = null;
+        crossDrag.current = null;
+        setPanning(false);
+        setBrush(null);
+        setZoomBox(null);
+        if (ruler && !ruler.done) setRuler(null);
+        const [a, b] = [...touches.current.values()];
+        const r = mainRef.current!.getBoundingClientRect();
+        pinch.current = { d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), vp0: vpRef.current, anchor: ((a.x + b.x) / 2 - r.left) / plotW };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (crossRef.current && tool === 'cursor') {
+        // Crosshair is up: drag moves it, a tap puts it away.
+        crossDrag.current = { x: e.clientX, y: e.clientY, moved: false };
+        setHover({ x, y });
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
     if (x > plotW || y > plotH) return;
     if (ruler?.done) setRuler(null);
     if (ruler && !ruler.done && ruler.clicks) {
@@ -351,6 +398,21 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
       drag.current = { lastX: e.clientX, acc: 0 };
       setPanning(true);
       e.currentTarget.setPointerCapture(e.pointerId);
+      if (e.pointerType === 'touch') {
+        cancelLongPress();
+        longPress.current = {
+          x: e.clientX,
+          y: e.clientY,
+          timer: setTimeout(() => {
+            longPress.current = null;
+            drag.current = null;
+            setPanning(false);
+            setTouchCross(true);
+            setHover({ x, y });
+            navigator.vibrate?.(8);
+          }, LONG_PRESS_MS),
+        };
+      }
       return;
     }
     const p = pointAt(x, y);
@@ -369,7 +431,33 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
 
   const onPointerMove = (e: RPointerEvent<SVGSVGElement>) => {
     const pt = local(e);
-    setHover(pt);
+    if (e.pointerType === 'touch') {
+      if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pz = pinch.current;
+      if (pz) {
+        if (touches.current.size >= 2) {
+          const [a, b] = [...touches.current.values()];
+          const next = pinchZoom(pz.vp0, Math.hypot(a.x - b.x, a.y - b.y) / pz.d0, pz.anchor, nRef.current);
+          if (next.visibleCount !== vpRef.current.visibleCount || next.viewEnd !== vpRef.current.viewEnd) {
+            vpRef.current = next;
+            setVp(next);
+          }
+        }
+        return;
+      }
+      const lp = longPress.current;
+      if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > TAP_SLOP) cancelLongPress();
+      const cd = crossDrag.current;
+      if (cd && !cd.moved && Math.hypot(e.clientX - cd.x, e.clientY - cd.y) > TAP_SLOP) cd.moved = true;
+      // A panning finger shouldn't drag a crosshair along; drawing tools and the crosshair do follow it.
+      if (crossRef.current || tool !== 'cursor') setHover(pt);
+      if (crossRef.current) {
+        const inPlot = pt.x >= 0 && pt.x <= plotW && pt.y >= 0 && pt.y <= plotH;
+        chartCursor.symbol = inPlot ? symbol : null;
+        chartCursor.price = inPlot ? ys.toPrice(pt.y) : null;
+        return;
+      }
+    } else setHover(pt);
     const inPlot = pt.x >= 0 && pt.x <= plotW && pt.y >= 0 && pt.y <= plotH;
     chartCursor.symbol = inPlot ? symbol : null;
     chartCursor.price = inPlot ? ys.toPrice(pt.y) : null;
@@ -406,7 +494,25 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
     }
   };
 
-  const endPan = () => {
+  const endPan = (e?: RPointerEvent<SVGSVGElement>) => {
+    if (e?.pointerType === 'touch') {
+      touches.current.delete(e.pointerId);
+      cancelLongPress();
+      if (pinch.current) {
+        // Lifting one finger ends the pinch; the other one does nothing until it lifts too.
+        if (touches.current.size === 0) pinch.current = null;
+        return;
+      }
+      const cd = crossDrag.current;
+      crossDrag.current = null;
+      if (cd) {
+        if (!cd.moved) {
+          setTouchCross(false);
+          setHover(null);
+        }
+        return;
+      }
+    }
     moving.current = null;
     if (ruler && !ruler.done && !ruler.clicks) {
       const dragged = Math.hypot(xs.toX(ruler.b.index) - xs.toX(ruler.a.index), ys.toY(ruler.b.price) - ys.toY(ruler.a.price)) > 4;
@@ -503,6 +609,8 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            // A long press on a touch screen is the crosshair, not the right-click menu.
+            if (lastPointer.current === 'touch') return;
             const pt = local(e as unknown as RPointerEvent);
             const inPlot = pt.x >= 0 && pt.x <= plotW && pt.y >= 0 && pt.y <= plotH;
             // Right-click on a drawing selects it (Del removes it), as on TradingView.
@@ -510,7 +618,9 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
             if (hit) store.selectDrawing(hit.id);
             useUiStore.getState().openChartContext({ x: e.clientX, y: e.clientY, symbol, price: inPlot ? ys.toPrice(pt.y) : null });
           }}
-          onPointerLeave={() => {
+          onPointerLeave={(e) => {
+            // The touch crosshair stays up after the finger lifts (until a tap clears it).
+            if (e.pointerType === 'touch' && crossRef.current) return;
             chartCursor.symbol = null;
             chartCursor.price = null;
             if (!drag.current) setHover(null);

@@ -24,6 +24,9 @@ import { useChartStore } from '@/stores/useChartStore';
 import { Toasts } from '@/components/ui/Toasts';
 import { TerminalPage } from '@/modules/terminal/TerminalPage';
 import { useThemeStore } from '@/stores/useThemeStore';
+import { useIsPhone } from '@/mobile/useIsPhone';
+import { MobileApp } from '@/mobile/MobileApp';
+import { PhonePreview } from '@/mobile/PhonePreview';
 import './app.css';
 
 // The Terminal ships in the main bundle; secondary modules load on demand.
@@ -37,7 +40,7 @@ const AccountPage = lazy(() => import('@/modules/account/AccountPage').then((m) 
 
 export function App() {
   const platform = useThemeStore((s) => s.platform);
-  const { pathname } = useLocation();
+  const phone = useIsPhone();
   // Tabs first, so the feed connects straight to the active tab's chart.
   useEffect(() => startChartTabsSync(), []);
   useEffect(() => startMarketFeed(), []);
@@ -49,9 +52,23 @@ export function App() {
   useEffect(() => {
     return syncAcrossWindows([useStudioStore, useChartStore, useThemeStore]);
   }, []);
+
+  // Phones get the phone app; on desktop, the "Mobile" layout previews it in a phone frame.
+  if (phone || platform === 'mobile')
+    return (
+      <>
+        <ThemeSync />
+        {phone ? <MobileApp /> : <PhonePreview />}
+        <DepositModal />
+      </>
+    );
+  return <DesktopShell platform={platform} />;
+}
+
+function DesktopShell({ platform }: { platform: string }) {
+  const { pathname } = useLocation();
   useFunctionKeys();
   useChartShortcuts();
-
   return (
     <div className="app" data-platform={platform}>
       <ThemeSync />
@@ -73,6 +90,10 @@ export function App() {
             <Route path="/get-studio" element={<StudioDownloadPage />} />
             <Route path="/studio" element={<Navigate to="/get-studio" replace />} />
             <Route path="/account" element={<AccountPage />} />
+            {/* Phone-app screens: on desktop everything is on the terminal. */}
+            {['/watchlist', '/trade', '/history', '/menu', '/news'].map((p) => (
+              <Route key={p} path={p} element={<Navigate to="/terminal" replace />} />
+            ))}
             <Route path="*" element={<Navigate to="/terminal" replace />} />
           </Routes>
           </Suspense>

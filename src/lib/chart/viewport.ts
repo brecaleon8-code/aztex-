@@ -56,3 +56,23 @@ export function onSeriesGrow(vp: Viewport, prevTotal: number, total: number): Vi
   if (vp.viewEnd >= prevTotal) return clampViewport({ ...vp, viewEnd: total }, total);
   return clampViewport(vp, total);
 }
+
+/**
+ * Two-finger pinch. `ratio` is the current finger spread over the spread at the start (> 1 zooms
+ * in); `anchor` is where the pinch centre sits across the plot (0 = left, 1 = right). A live view
+ * stays pinned to the latest candle; otherwise the candle under the fingers stays put.
+ */
+export function pinchZoom(vp0: Viewport, ratio: number, anchor: number, total: number): Viewport {
+  if (!(ratio > 0)) return clampViewport(vp0, total);
+  const count = vp0.visibleCount / ratio;
+  if (isLive(vp0, total)) return clampViewport({ visibleCount: count, viewEnd: vp0.viewEnd }, total);
+  const a = Math.min(1, Math.max(0, anchor));
+  const pivot = vp0.viewEnd - vp0.visibleCount + a * vp0.visibleCount;
+  return clampViewport({ visibleCount: count, viewEnd: pivot + (1 - a) * count }, total);
+}
+
+/** Bars to show by default: fewer on a narrow (phone) plot so candles stay wide enough to read and tap. */
+export function defaultBarsFor(base: number, plotW: number): number {
+  if (!(plotW > 0) || plotW >= 420) return base;
+  return Math.min(base, Math.max(24, Math.round(plotW / 7)));
+}

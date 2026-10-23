@@ -1,6 +1,6 @@
 import type { Candle } from '@/types';
 import { heikinAshi } from './heikinAshi';
-import { clampViewport, isLive, onSeriesGrow, pan, zoom, MIN_VISIBLE } from './viewport';
+import { clampViewport, defaultBarsFor, isLive, onSeriesGrow, pan, pinchZoom, zoom, MIN_VISIBLE } from './viewport';
 import { fibLevels, linePath, makeXScale, makeYScale, niceTicks } from './scale';
 
 describe('heikinAshi', () => {
@@ -58,6 +58,24 @@ describe('viewport', () => {
     expect(onSeriesGrow({ visibleCount: 50, viewEnd: 300 }, 300, 301).viewEnd).toBe(301);
     expect(onSeriesGrow({ visibleCount: 50, viewEnd: 250 }, 300, 301).viewEnd).toBe(250);
     expect(isLive({ visibleCount: 50, viewEnd: 250 }, 300)).toBe(false);
+  });
+  it('pinch: spreading fingers zooms in; a live view stays pinned to the latest candle', () => {
+    expect(pinchZoom({ visibleCount: 100, viewEnd: 300 }, 2, 0.3, 300)).toEqual({ visibleCount: 50, viewEnd: 300 });
+    expect(pinchZoom({ visibleCount: 100, viewEnd: 300 }, 0.5, 0.3, 300)).toEqual({ visibleCount: 200, viewEnd: 300 });
+  });
+  it('pinch: away from the live edge, the candle under the fingers stays put', () => {
+    // 100..200 visible, fingers at 40% → candle 140 stays at 40%.
+    const v = pinchZoom({ visibleCount: 100, viewEnd: 200 }, 2, 0.4, 300);
+    expect(v.visibleCount).toBe(50);
+    expect(v.viewEnd - v.visibleCount + 0.4 * v.visibleCount).toBeCloseTo(140, 0);
+    expect(pinchZoom({ visibleCount: 100, viewEnd: 200 }, 0, 0.4, 300)).toEqual({ visibleCount: 100, viewEnd: 200 });
+  });
+  it('fewer default bars on a phone-width plot', () => {
+    expect(defaultBarsFor(90, 1200)).toBe(90);
+    expect(defaultBarsFor(90, 0)).toBe(90);
+    expect(defaultBarsFor(90, 330)).toBe(47);
+    expect(defaultBarsFor(90, 120)).toBe(24);
+    expect(defaultBarsFor(12, 330)).toBe(12);
   });
 });
 

@@ -107,8 +107,35 @@ The layout follows TradingView: one slim row on top, pages along the bottom.
   - Account & balances (F7) and Add crypto
   - Chart settings (Ctrl+,)
   - New chart tab, New window, Aztex Studio (F4), Keyboard shortcuts (?)
-  - **Layout** density: Web / Mobile / Desktop
+  - **Layout** density: Web / Mobile / Desktop. **Mobile** shows the phone app in a phone frame, with a QR code to open it on your phone.
   - **Theme**: System / Dark / Light. System follows the OS setting live.
+
+## Phone app
+
+On a phone-sized screen (≤ 760 px wide, or a landscape phone), Aztex becomes a phone app (`src/mobile/`). It takes its layout from MT5 for iOS/Android and its chart feel from TradingView mobile. Desktop shows the same app inside a phone frame when the layout is set to **Mobile**.
+
+- **Bottom tabs:** Quotes · Chart · Trade · History · Menu. Trade shows a badge with the open position count.
+- **Quotes.** Two views:
+  - **Simple:** name, sparkline, price and a change pill.
+  - **Bid / ask:** MT5-style boxes with the last digits enlarged, plus low/high, spread and time.
+  - Tap a row for its chart, or ⋯ for New order / Chart / Alert at price / Remove.
+  - **+** adds symbols.
+- **Chart.** Full screen, with symbol and price at the top and timeframe chips. Indicator chips let you edit, hide or remove each one.
+  - **Touch:** drag to pan, **pinch** to zoom (around your fingers, or pinned to the latest candle while live), **long-press** for a crosshair. The crosshair stays until you tap; drag to move it.
+  - **Bottom bar:** **Sell | volume | Buy**.
+  - Sheets for **symbol search**, **indicators**, **drawing tools** (cross, trend, horizontal, Fib, rectangle, brush, text, measure, zoom, magnet, lock, hide, undo, clear) and **chart settings**.
+- **Order sheet** (MT5's trade screen):
+  - Sell/Buy toggle with live bid/ask, and Market / Limit / Stop.
+  - Volume stepper (press and hold to repeat) with 1/5/10/25 % of equity.
+  - Price stepper for pending orders; SL / TP steppers; OCO bracket switch.
+  - Cost, fee, risk and reward preview, and one big confirm button.
+- **Trade.** Equity, balance, margin in positions, holdings and realized P/L, then positions and pending orders (tap × to cancel). Tap a position for its sheet: P/L, R multiple, move SL / TP (also moves live bracket orders: `modifyLevels` in `stores/trading.ts`), or close it.
+- **History.** Today / Week / Month / All. Shows profit, fees and win rate, then deals by day with realized P/L. Closing orders record their P/L in `OrderRecord.pnl`. Switch to Orders for every order and its status.
+- **Menu.** Profile, Deposit / Withdraw, then:
+  - Markets, On-chain (with alert badge), News & calendar, OTC, Community and Account. These open full screen with a back button and are laid out in one column.
+  - Chart settings and Studio.
+  - Theme (System/Dark/Light), data feed, and **Add to home screen**.
+- **Installable.** `public/manifest.webmanifest` and Apple meta tags make it a home-screen app. It opens on Quotes, runs full screen, and respects notch and home-indicator safe areas.
 
 ## Chart tools (TradingView style)
 
@@ -217,6 +244,7 @@ In the wordmark, the letters and the X's centre cell use `currentColor`, so they
 ```
 src/
   app/            App shell, routing, sidebar, status strip, gas ticker, market/scanner feed wiring
+  mobile/         phone app: shell + bottom tabs, Quotes/Chart/Trade/History/Menu screens, bottom sheets, phone preview
   modules/
     terminal/     watchlist, chart/ (PriceChart, toolbar, indicator menu), order book, ticket, positions, P/L, CLI
     discovery/    currency search, market share, comparison chart, blockchain scanner + alerts
@@ -436,3 +464,4 @@ The renderer is split so a swap stays contained. The pure math lives in `lib/cha
 - **Order book depth.** The live order book uses Binance's partial-depth snapshots (top 20). A full L2 diff stream with local book maintenance is the next step if deeper books are needed. The UI contract (snapshots) stays the same either way.
 - **Mock-only areas.** Wallet, OTC quotes, the scanner, dominance and community are mocks behind clear seams (`lib/mock/*`, `app/scannerFeed.ts`). Each needs its own backend, as §6–§9 describe. **Wallet and custody must get a dedicated security review. Nothing in the mock wallet is safe for real funds.**
 - **Fills.** Positions are spot-like at 1×: opening a position reserves its full notional. The mock fills market orders at the bid or ask with no slippage model.
+- **Phone app offline / push.** The phone app installs to the home screen but has no service worker yet, so it needs a connection and can't send push notifications while closed. Price and on-chain alerts fire while it's open.

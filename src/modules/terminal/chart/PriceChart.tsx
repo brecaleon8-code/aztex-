@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Minus, Plus, ChevronsRight, Settings2 } from 'lucide-react';
-import type { Candle, DataPoint, Drawing, Timeframe } from '@/types';
+import type { Candle, ChartMode, DataPoint, Drawing, IndicatorInstance, Timeframe } from '@/types';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useThemeStore } from '@/stores/useThemeStore';
@@ -25,7 +26,7 @@ import { rowSizeFor } from '@/lib/orderflow/footprint';
 import { useFootprintStore } from '@/stores/useFootprintStore';
 import { usePriceAlertStore } from '@/stores/usePriceAlertStore';
 import { hitDrawing, measure, shiftDrawing, snapToOhlc } from '@/lib/chart/drawings';
-import { chartCursor, CHART_RESET_EVENT } from './chartCursor';
+import { chartCursor, CHART_RESET_EVENT, CHART_ZOOM_EVENT, type ChartZoomDetail } from './chartCursor';
 import { useUiStore } from '@/stores/useUiStore';
 import { barFootprint, BookProfileLayer, FootprintLayer, FootprintStats, type BarFootprint } from './FootprintLayer';
 
@@ -51,6 +52,8 @@ export interface PaneSource {
   candles: Candle[];
   candlesKey: string;
   error: string | null;
+  /** The pane's own look (a docked chart window's mode and indicators); the chart store's otherwise. */
+  view?: { mode: ChartMode; indicators: IndicatorInstance[]; profile: boolean; bookProfile: boolean; renkoBox: number | null };
 }
 const NO_DELTA: Record<number, number> = {};
 const NO_DRAWINGS: Drawing[] = [];
@@ -65,7 +68,7 @@ const typingIn = (el: EventTarget | null) => {
  * strategy marks and that symbol's position levels; drawing tools, the book and the live tape stay
  * with the focused chart. `compact`: no OHLC readout row (the pane header shows the price).
  */
-export function PriceChart({ fill = false, pane, compact = false }: { fill?: boolean; pane?: PaneSource; compact?: boolean }) {
+export function PriceChart({ fill = false, pane, compact = false, readoutSlot, controlId }: { fill?: boolean; pane?: PaneSource; compact?: boolean; readoutSlot?: HTMLElement | null; controlId?: string }) {
   const mCandles = useMarketStore((s) => s.candles);
   const mKey = useMarketStore((s) => s.candlesKey);
   const mError = useMarketStore((s) => s.candlesError);
@@ -75,7 +78,9 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   const error = pane ? pane.error : mError;
   const tf = pane ? pane.tf : mTf;
   const store = useChartStore();
-  const { mode, indicators: allIndicators, addDrawing, profile: showProfile, bookProfile: showBook, renkoBox } = store;
+  const look = pane?.view ?? store;
+  const { mode, indicators: allIndicators, profile: showProfile, bookProfile: showBook, renkoBox } = look;
+  const { addDrawing } = store;
   // Unfocused panes only pan and zoom; they show (read-only) the drawings parked for their symbol/timeframe.
   const tool = pane ? 'cursor' : store.tool;
   const storedDrawings = pane ? (store.drawingStash[`${pane.symbol}:${pane.tf}`] ?? NO_DRAWINGS) : store.drawings;
@@ -176,7 +181,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
   let oscH = OSC_H;
   let height = storeHeight;
   if (fill && box.h > 0) {
-    const avail = box.h - (compact ? 0 : READOUT_H) - (fpWanted ? FP_STATS_H : 0);
+    const avail = box.h - (compact || readoutSlot ? 0 : READOUT_H) - (fpWanted ? FP_STATS_H : 0);
     if (oscillators.length) oscH = Math.max(52, Math.min(OSC_H, Math.floor((avail * 0.24) / Math.max(1, oscillators.length * 0.75))));
     height = Math.max(150, avail - oscillators.length * oscH);
   }
@@ -319,6 +324,18 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
       window.removeEventListener(CHART_RESET_EVENT, onReset);
     };
   }, [focused]);
+  // A docked chart window's toolbar zooms its own chart (by window id).
+  useEffect(() => {
+    if (!controlId) return;
+    const onZoom = (e: Event) => {
+      const d = (e as CustomEvent<ChartZoomDetail>).detail;
+      if (d?.id !== controlId) return;
+      if (d.dir === 'reset') resetRef.current();
+      else setVp((v) => zoom(v, d.dir === 'in' ? ZOOM_IN : ZOOM_OUT, nRef.current));
+    };
+    window.addEventListener(CHART_ZOOM_EVENT, onZoom);
+    return () => window.removeEventListener(CHART_ZOOM_EVENT, onZoom);
+  }, [controlId]);
   resetRef.current = () => {
     setRuler(null);
     setVp(clampViewport({ visibleCount: defaultVisible, viewEnd: nRef.current }, nRef.current));
@@ -584,7 +601,9 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
 
   return (
     <div className={`chart no-select ${fill ? 'fill' : ''}`} ref={wrapRef}>
-      {!compact && <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />}
+      {readoutSlot
+        ? createPortal(<Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />, readoutSlot)
+        : !compact && <Readout c={series[readIdx]} prev={series[readIdx - 1]} dec={dec} hovering={hoverIdx != null} unit={renkoRes ? `Brick · box ${fmtStep(renkoRes.box)}` : undefined} />}
       <div className="chart-main" style={{ height }}>
         {overlays.some((o) => o.error) && (
           <div className="chart-ind-errors" data-testid="overlay-error">
@@ -790,7 +809,7 @@ export function PriceChart({ fill = false, pane, compact = false }: { fill?: boo
           />
         )}
 
-        <div className="chart-zoom">
+        <div className={`chart-zoom ${controlId ? 'in-toolbar' : ''}`}>
           <button className="btn sm icon" aria-label="Zoom in" onClick={() => setVp((v) => zoom(v, ZOOM_IN, n))}>
             <Plus size={12} />
           </button>

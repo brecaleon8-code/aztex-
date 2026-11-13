@@ -23,7 +23,7 @@ export function OtcPage() {
       <div className="otc-grid">
         <Rfq />
         <Desks />
-        <Blotter />
+        <OtcBlotter />
       </div>
     </div>
   );
@@ -39,7 +39,7 @@ function useNow(active: boolean) {
   return now;
 }
 
-function Rfq() {
+export function Rfq() {
   const [symbol, setSymbol] = useState('BTC');
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState(25);
@@ -141,7 +141,7 @@ function Rfq() {
   );
 }
 
-function Desks() {
+export function Desks() {
   return (
     <Panel title="Participating desks" flush>
       <table className="table">
@@ -168,7 +168,7 @@ function Desks() {
   );
 }
 
-function Blotter() {
+export function OtcBlotter() {
   const blotter = useOtcStore((s) => s.blotter);
   return (
     <Panel title="OTC blotter" sub={`${blotter.length} fills`} flush className="otc-blotter" testId="blotter">

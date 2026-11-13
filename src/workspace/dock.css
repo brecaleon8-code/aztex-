@@ -1,0 +1,337 @@
+/* ── Docked workspace ────────────────────────────────────────────────────────────────────────
+   Windows tile edge to edge, 4px apart; the splitter *is* the gap and lights up in the accent.
+   Window frame: 1px hairline, 8px radius, no shadow; 28px header in --panel-alt; the focused
+   window gets an accent frame plus a 2px accent top edge. Colours come from the design tokens,
+   so light and dark both follow the theme. */
+.dock-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.dock-host .flexlayout__layout {
+  --flexlayout-font-family: var(--font-ui);
+  --flexlayout-font-size: 12px;
+  --flexlayout-font-weight: 500;
+  --flexlayout-color-text: var(--text);
+  --flexlayout-color-background: var(--bg);
+  --flexlayout-color-base: var(--bg);
+  --flexlayout-color-1: var(--panel);
+  --flexlayout-color-2: var(--panel-alt);
+  --flexlayout-color-3: var(--raised);
+  --flexlayout-color-4: var(--border);
+  --flexlayout-color-5: var(--line-strong);
+  --flexlayout-color-6: var(--border);
+  --flexlayout-splitter-size: 4px;
+  --flexlayout-splitter-active-size: 4px;
+  --flexlayout-color-splitter: transparent;
+  --flexlayout-color-splitter-hover: var(--accent);
+  --flexlayout-color-splitter-drag: var(--accent);
+  --flexlayout-color-tabset-background: var(--panel-alt);
+  --flexlayout-color-tabset-divider-line: var(--border);
+  --flexlayout-color-tab-content: var(--panel);
+  --flexlayout-color-tab-selected: var(--text);
+  --flexlayout-color-tab-selected-background: var(--panel);
+  --flexlayout-color-tab-unselected: var(--text-dim);
+  --flexlayout-color-tab-unselected-background: transparent;
+  --flexlayout-color-drag-rect-border: var(--accent);
+  --flexlayout-color-drag-rect-background: var(--panel-solid);
+  --flexlayout-color-drag-rect: var(--text);
+  --flexlayout-color-drag1: var(--accent);
+  --flexlayout-color-drag2: var(--accent);
+  --flexlayout-color-drag1-background: var(--accent-soft);
+  --flexlayout-color-drag2-background: var(--accent-soft);
+  --flexlayout-color-edge-marker: var(--accent);
+  --flexlayout-color-edge-icon: var(--on-accent);
+  --flexlayout-color-popup-border: var(--border);
+  --flexlayout-color-popup-unselected-background: var(--panel-solid);
+  --flexlayout-color-popup-selected-background: var(--raised);
+  --flexlayout-color-toolbar-button-hover: var(--raised);
+  --flexlayout-color-focus: var(--accent);
+  --flexlayout-color-icon: var(--text-faint);
+  background: var(--bg);
+}
+
+/* Window frame */
+.dock-host .flexlayout__tabset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.dock-host .flexlayout__tabset-selected {
+  border-color: var(--accent);
+}
+.dock-host .flexlayout__tabset_tabbar_outer {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 2px 0 0;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dock-host .flexlayout__tabset-selected .flexlayout__tabset_tabbar_outer {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.dock-host .flexlayout__tabset_tabbar_inner_tab_container {
+  padding-left: 0;
+}
+.dock-host .flexlayout__tabset_tabbar_inner_tab_container_top {
+  border-top: 0;
+}
+.dock-host .flexlayout__tab_button {
+  height: 27px;
+  margin: 0;
+  padding: 0 6px 0 9px;
+  gap: 6px;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: grab;
+}
+.dock-host .flexlayout__tab_button--selected {
+  color: var(--text);
+  background: var(--panel);
+}
+.dock-host .flexlayout__tab_button--unselected:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.dock-host .flexlayout__tab_button_trailing {
+  opacity: 0;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+  border-radius: 3px;
+}
+.dock-host .flexlayout__tab_button:hover .flexlayout__tab_button_trailing,
+.dock-host .flexlayout__tab_button--selected .flexlayout__tab_button_trailing {
+  opacity: 1;
+}
+.dock-host .flexlayout__tab_button_trailing:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.dock-host .flexlayout__tabset_tab_divider {
+  width: 0;
+}
+.dock-host .flexlayout__tab {
+  background: var(--panel);
+  border-radius: 0 0 7px 7px;
+  overflow: hidden;
+}
+/* Built-in maximize / close buttons are replaced by ours. */
+.dock-host .flexlayout__tab_toolbar_button-max,
+.dock-host .flexlayout__tab_toolbar_button-min,
+.dock-host .flexlayout__tab_toolbar_button-close {
+  display: none;
+}
+.dock-host .flexlayout__tab_toolbar {
+  gap: 0;
+  padding-right: 2px;
+}
+.dock-host .flexlayout__tab_toolbar_button {
+  width: 24px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--text-faint);
+}
+
+/* Splitters: the 4px gap between windows. */
+.dock-host .flexlayout__splitter {
+  background: transparent;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.dock-host .flexlayout__splitter:hover,
+.dock-host .flexlayout__splitter_drag {
+  background: var(--accent);
+}
+.dock-host .flexlayout__outline_rect {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.dock-host .flexlayout__drag_rect,
+.flexlayout__drag_rect {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel-solid);
+  color: var(--text);
+  font: 500 12px var(--font-ui);
+  padding: 4px 10px;
+  box-shadow: var(--pop-shadow);
+}
+.dock-host .flexlayout__edge_rect {
+  background: var(--accent);
+}
+
+/* Tab content */
+.win-tab-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.win-tab-sym {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.flexlayout__tab_button--selected .win-tab-sym {
+  color: var(--text-dim);
+}
+.win-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding-left: 4px;
+}
+.win-btn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);
+}
+.win-btn:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.win-btn[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* Link group dots: none, red, blue, green, amber. */
+.link-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line-strong);
+  background: transparent;
+}
+.link-dot.none {
+  box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+.link-dot.red {
+  background: #e05252;
+}
+.link-dot.blue {
+  background: #4f8ff0;
+}
+.link-dot.green {
+  background: var(--accent);
+}
+.link-dot.amber {
+  background: #d9a23b;
+}
+.link-dot.static {
+  cursor: default;
+}
+.link-dot:hover:not(.static) {
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--line-strong);
+}
+
+/* Window body */
+.win {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+}
+.win > .panel,
+.win > * > .panel {
+  flex: 1;
+  min-height: 0;
+}
+.win-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 16px;
+  color: var(--text-faint);
+  font-size: 12px;
+  text-align: center;
+}
+/* Panels inside windows: no frame of their own, controls as a slim sub-toolbar. */
+.panel.in-window {
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+  overflow: hidden;
+}
+.panel.in-window > .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+.panel.in-window > .panel-body.flush {
+  padding: 0;
+}
+.panel.in-window > .win-subbar {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 6px 0 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--line-soft);
+  background: transparent;
+  cursor: default;
+}
+.win-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 34%) minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+.win-split > * {
+  min-height: 0;
+}
+.win-split > * + * {
+  border-left: 1px solid var(--line-soft);
+}
+.win-split-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+.win-split-side > * + * {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* Menus anchored to window chrome */
+.pop-menu {
+  z-index: 300;
+  overflow-y: auto;
+}
+.pop-menu .pm-search {
+  width: calc(100% - 8px);
+  margin: 4px;
+  height: 28px;
+}
+.pop-menu .pm-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.pop-menu .menu-item.danger {
+  color: var(--loss);
+}

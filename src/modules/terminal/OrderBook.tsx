@@ -10,7 +10,6 @@ import { fmtPct, fmtPrice, fmtQty, priceDecimals, splitPrice, fmtBookQty } from 
 import type { OrderBookLevel } from '@/types';
 import { useTickFlash } from '@/app/useTickFlash';
 import { useTicketPreview } from './useTicket';
-import { useTerminalFit } from './fitContext';
 
 const LEVELS = 10;
 
@@ -35,8 +34,8 @@ export function OrderBook({ drag }: { drag?: PanelDragProps }) {
       ? { buy: t.side === 'Long', qty: pv.take.filled, avgPx: pv.take.avgPx, worstPx: pv.take.worstPx, label: `${fmtQty(pv.take.filled)} → avg ${fmtPrice(pv.take.avgPx)} · ${Math.abs(pv.slippageBps) < 0.05 ? '0.0' : pv.slippageBps.toFixed(1)} bp` }
       : null;
 
-  // Fit-to-screen: show as many levels per side as the panel has room for (no inner scrolling).
-  const fit = useTerminalFit();
+  // Show as many levels per side as the window has room for (no inner scrolling).
+  const fit = true;
   const obRef = useRef<HTMLDivElement>(null);
   const [levels, setLevels] = useState(LEVELS);
   useLayoutEffect(() => {

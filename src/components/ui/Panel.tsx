@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type DragEvent, type ReactNode } from 'react';
+import { createContext, useContext, useRef, type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import { GripVertical } from 'lucide-react';
 
 export interface PanelDragProps {
@@ -23,9 +23,29 @@ interface PanelProps {
   testId?: string;
 }
 
+/**
+ * Inside a dock window the window header already carries the title, so a panel drops its own
+ * title row and keeps only its controls (as a slim sub-toolbar).
+ */
+export const PanelChromeContext = createContext<'page' | 'window'>('page');
+
 export function Panel({ code, title, sub, actions, children, className = '', bodyClassName = '', flush, style, drag, testId }: PanelProps) {
   // Controls inside the header (buttons, selects) must not start a panel drag.
   const fromControl = useRef(false);
+  const chrome = useContext(PanelChromeContext);
+  if (chrome === 'window')
+    return (
+      <section className={`panel in-window ${className}`} style={style} data-testid={testId}>
+        {(sub || actions) && (
+          <header className="panel-head win-subbar">
+            {sub && <span className="panel-sub">{sub}</span>}
+            <div className="spacer" />
+            {actions && <div className="panel-actions">{actions}</div>}
+          </header>
+        )}
+        <div className={`panel-body ${flush ? 'flush' : ''} ${bodyClassName}`}>{children}</div>
+      </section>
+    );
   return (
     <section className={`panel ${className}`} style={style} data-testid={testId}>
       <header

@@ -33,7 +33,7 @@ export function CommunityPage() {
   );
 }
 
-function Identity() {
+export function Identity() {
   const { handle, friendCode, linkHandle, unlinkHandle } = useCommunityStore();
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
@@ -103,7 +103,7 @@ function Identity() {
   );
 }
 
-function Contacts() {
+export function Contacts() {
   const { contacts, active, setActive, addContact, threads } = useCommunityStore();
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
@@ -151,7 +151,7 @@ function Contacts() {
   );
 }
 
-function Chat() {
+export function Chat() {
   const { active, threads, send } = useCommunityStore();
   const [text, setText] = useState('');
   const [trade, setTrade] = useState<TradeChipData | undefined>();
@@ -238,7 +238,7 @@ function Chat() {
   );
 }
 
-function Forum() {
+export function Forum() {
   const { posts, post, handle } = useCommunityStore();
   const [text, setText] = useState('');
   const [trade, setTrade] = useState<TradeChipData | undefined>();

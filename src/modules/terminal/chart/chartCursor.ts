@@ -7,3 +7,11 @@ export const chartCursor: { symbol: string | null; price: number | null } = { sy
 
 /** Ask the focused chart to go back to the live edge at its default zoom (Alt+R). */
 export const CHART_RESET_EVENT = 'aztex:chart-reset';
+
+/** Zoom a docked chart window from its toolbar: `detail.id` is the window id. */
+export const CHART_ZOOM_EVENT = 'aztex:chart-zoom';
+export interface ChartZoomDetail {
+  id: string;
+  dir: 'in' | 'out' | 'reset';
+}
+export const zoomChart = (id: string, dir: ChartZoomDetail['dir']) => window.dispatchEvent(new CustomEvent<ChartZoomDetail>(CHART_ZOOM_EVENT, { detail: { id, dir } }));

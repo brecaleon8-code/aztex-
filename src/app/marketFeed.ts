@@ -6,25 +6,14 @@ import { onPrices } from '@/stores/trading';
 import { useFootprintStore } from '@/stores/useFootprintStore';
 import { TIMEFRAME_MS } from '@/lib/mock/candles';
 import { useSeriesStore } from '@/stores/useSeriesStore';
-import { activeTabOf, paneCount, useChartTabsStore, type ChartPane } from '@/stores/useChartTabsStore';
-
-/** Series the other (unfocused) charts of the active tab need, by candles key. */
-export function wantedSeries(tabs: Parameters<typeof activeTabOf>[0], providerId: string): Map<string, ChartPane> {
-  const tab = activeTabOf(tabs);
-  const want = new Map<string, ChartPane>();
-  if (!tab) return want;
-  const n = paneCount(tab.layout);
-  const focused = tab.active < n ? tab.active : 0;
-  tab.panes.slice(0, n).forEach((p, i) => {
-    if (i !== focused) want.set(candlesKeyOf(p.symbol, p.tf, providerId), p);
-  });
-  return want;
-}
+import { wantedChartSeries } from '@/workspace/series';
+import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
+import { useLinkStore } from '@/workspace/useLinkStore';
 
 /**
  * Wires the active MarketDataProvider to the stores. Re-subscribes the symbol-scoped streams when
  * the selected symbol / timeframe changes, and rebuilds everything when the provider changes.
- * Multi-chart layouts get candle-only streams for their other panes (`useSeriesStore`).
+ * Chart windows other than the focused one get candle-only streams of their own (`useSeriesStore`).
  */
 export function startMarketFeed(): Unsubscribe {
   const symbols = ASSET_UNIVERSE.map((a) => a.symbol);
@@ -46,10 +35,10 @@ export function startMarketFeed(): Unsubscribe {
   let scoped: Unsubscribe[] = [];
   const secondary = new Map<string, Unsubscribe>();
 
-  /** Candle streams for the unfocused panes of a multi-chart layout. */
+  /** Candle streams for the chart windows that aren't the focused chart. */
   const syncSecondary = () => {
     const { providerId } = useMarketStore.getState();
-    const want = wantedSeries(useChartTabsStore.getState(), providerId);
+    const want = wantedChartSeries(providerId);
     const series = useSeriesStore.getState();
     for (const [k, off] of secondary) {
       if (!want.has(k)) {
@@ -127,16 +116,23 @@ export function startMarketFeed(): Unsubscribe {
   connectProvider();
   const unsub = useMarketStore.subscribe((s, prev) => {
     if (s.providerId !== prev.providerId) connectProvider();
-    else if (s.selected !== prev.selected || s.timeframe !== prev.timeframe) connectSymbol();
+    else if (s.selected !== prev.selected || s.timeframe !== prev.timeframe) {
+      connectSymbol();
+      syncSecondary();
+    }
   });
-  const unsubTabs = useChartTabsStore.subscribe((s, prev) => {
-    if (s.tabs !== prev.tabs || s.activeTab !== prev.activeTab) syncSecondary();
+  const unsubWs = useWorkspaceStore.subscribe((s, prev) => {
+    if (s.workspaces !== prev.workspaces || s.active !== prev.active) syncSecondary();
+  });
+  const unsubLinks = useLinkStore.subscribe((s, prev) => {
+    if (s.groups !== prev.groups) syncSecondary();
   });
 
   return () => {
     if (sparkTimer) clearInterval(sparkTimer);
     unsub();
-    unsubTabs();
+    unsubWs();
+    unsubLinks();
     global.forEach((f) => f());
     scoped.forEach((f) => f());
     secondary.forEach((f) => f());

@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ACCOUNT_NAV, NAV } from './TopBar';
+import { ACCOUNT_NAV, NAV } from './shell/nav';
 import { openStudio } from './studioLauncher';
 import { useUiStore } from '@/stores/useUiStore';
+import { SEARCH_FOCUS_EVENT } from './shell/UniversalSearch';
 
 /**
  * F1–F7 jump between modules (F4 opens the Studio app, like MetaEditor); F8 opens the chart's
- * settings. "/" focuses the command line.
+ * settings. "/" focuses the search field in the top bar.
  */
 export function useFunctionKeys() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export function useFunctionKeys() {
       const typing = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable;
       if (e.key === '/' && !typing) {
         e.preventDefault();
-        document.querySelector<HTMLInputElement>('[aria-label="Command line"]')?.focus();
+        window.dispatchEvent(new Event(SEARCH_FOCUS_EVENT));
       }
     };
     window.addEventListener('keydown', onKey);

@@ -1,0 +1,176 @@
+/* ── Terminal windows ──────────────────────────────────────────────────────────────────────── */
+
+/* Chart window: one header line, one 28px toolbar, then the drawing rail beside the chart. */
+.chart-win {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cw-head,
+.cw-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  min-width: 0;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.cw-head {
+  gap: 10px;
+}
+.cw-head .mono,
+.cw-readout {
+  font-size: 12px;
+}
+.cw-sym {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 650;
+  font-size: 13px;
+}
+.cw-sym .faint {
+  font-weight: 500;
+  font-size: 11.5px;
+}
+.cw-sym:hover,
+.cw-sym[aria-expanded='true'] {
+  background: var(--hover);
+}
+.cw-last {
+  font-weight: 600;
+  color: var(--text);
+}
+.cw-ba {
+  display: inline-flex;
+  gap: 4px;
+}
+.cw-readout {
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, #000 92%, transparent);
+}
+.cw-readout .readout {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 0;
+  min-height: 0;
+  font-size: 11.5px;
+}
+.cw-tfs {
+  display: inline-flex;
+  gap: 1px;
+}
+.cw-tf,
+.cw-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 11.5px var(--font-ui);
+  transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);
+}
+.cw-tf {
+  font-family: var(--font-mono);
+}
+.cw-btn {
+  padding: 0 4px;
+}
+.cw-tf:hover,
+.cw-btn:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.cw-tf.on,
+.cw-btn.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.cw-btn.starred {
+  color: var(--mark);
+}
+.cw-btn.txt {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.cw-sep {
+  flex: none;
+  width: 1px;
+  height: 14px;
+  background: var(--line);
+}
+.cw-select {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+.cw-toolbar .btn.sm {
+  height: 22px;
+  font-size: 11.5px;
+}
+.cw-chips {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cw-chips .chip {
+  flex: none;
+}
+.cw-toolbar .renko-box .input {
+  height: 22px;
+  width: 80px;
+}
+.chart-win .chart-stage {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.chart-win .chart-canvas .chart.fill {
+  flex: 1 1 0;
+}
+.chart-win .chart-zoom.in-toolbar {
+  display: none;
+}
+.chart-win:not(.focused) .draw-toolbar {
+  opacity: 0.55;
+}
+.cw-strat {
+  position: absolute;
+  right: 70px;
+  top: 64px;
+  z-index: 3;
+}
+@container (max-width: 560px) {
+  .cw-ba,
+  .cw-readout {
+    display: none;
+  }
+}
+.chart-win {
+  container-type: inline-size;
+}

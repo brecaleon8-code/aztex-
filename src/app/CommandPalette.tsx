@@ -5,21 +5,21 @@ import { ASSET_UNIVERSE } from '@/lib/mock/assets';
 import { fuzzyFilter } from '@/lib/fuzzy';
 import { fmtPct, fmtPrice } from '@/lib/format';
 import { useMarketStore } from '@/stores/useMarketStore';
-import { useLayoutStore, ALL_PANELS, WORKSPACES } from '@/stores/useLayoutStore';
 import { useChartStore } from '@/stores/useChartStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { usePositionStore } from '@/stores/usePositionStore';
 import { flattenAll } from '@/stores/trading';
 import { useNewsStore } from '@/stores/useNewsStore';
 import { useUiStore } from '@/stores/useUiStore';
-import { PANEL_LABELS } from '@/modules/terminal/TerminalPage';
 import type { ChartMode, Timeframe } from '@/types';
-import { ACCOUNT_NAV, NAV } from './TopBar';
+import { ACCOUNT_NAV, NAV } from './shell/nav';
 import { openStudio } from './studioLauncher';
-import { CHART_LAYOUTS, useChartTabsStore } from '@/stores/useChartTabsStore';
+import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
+import { REGISTRY } from '@/workspace/registry';
+import { TEMPLATES } from '@/workspace/templates';
 import './palette.css';
 
-type Group = 'Symbols' | 'Go to' | 'Workspaces' | 'Panels' | 'Chart' | 'Actions';
+type Group = 'Symbols' | 'Go to' | 'Workspaces' | 'Windows' | 'Chart' | 'Actions';
 interface Command {
   id: string;
   group: Group;
@@ -33,7 +33,7 @@ const GROUP_ICON: Record<Group, ReactNode> = {
   Symbols: <CandlestickChart size={14} />,
   'Go to': <Navigation size={14} />,
   Workspaces: <LayoutGrid size={14} />,
-  Panels: <LayoutGrid size={14} />,
+  Windows: <LayoutGrid size={14} />,
   Chart: <Clock size={14} />,
   Actions: <Zap size={14} />,
 };
@@ -59,8 +59,8 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const assets = useMarketStore((s) => s.assets);
-  const workspace = useLayoutStore((s) => s.workspace);
-  const panels = useLayoutStore((s) => s.workspaces[s.workspace]);
+  const allWs = useWorkspaceStore((s) => s.workspaces);
+  const activeWs = useWorkspaceStore((s) => s.active.terminal);
   const theme = useThemeStore((s) => s.theme);
   const profile = useChartStore((s) => s.profile);
   const hasPositions = usePositionStore((s) => s.positions.length > 0);
@@ -112,54 +112,52 @@ export function CommandPalette() {
       cmds.push({
         id: `tab-${a.symbol}`,
         group: 'Symbols',
-        label: `${a.symbol} in a new tab`,
-        keywords: `${a.symbol} ${a.name} open tab`,
+        label: `${a.symbol} in a new chart window`,
+        keywords: `${a.symbol} ${a.name} open tab window chart`,
         run: () => {
-          useChartTabsStore.getState().openTab(a.symbol, useMarketStore.getState().timeframe);
           toTerminal();
+          useWorkspaceStore.getState().addWindow('chart', { linkGroup: null, settings: { symbol: a.symbol, tf: useMarketStore.getState().timeframe } });
         },
       });
     }
     for (const n of [...NAV, ACCOUNT_NAV]) cmds.push({ id: `nav-${n.to}`, group: 'Go to', label: n.label, hint: <kbd>{n.key}</kbd>, run: () => navigate(n.to) });
     cmds.push({ id: 'studio', group: 'Go to', label: 'Aztex Studio (opens its own window)', keywords: 'studio editor metaeditor indicator strategy backtest', hint: <kbd>F4</kbd>, run: () => void openStudio() });
-    for (const w of WORKSPACES)
+    for (const w of allWs.filter((x) => x.scope === 'terminal'))
       cmds.push({
         id: `ws-${w.id}`,
         group: 'Workspaces',
-        label: `${w.label} workspace`,
-        hint: w.id === workspace ? 'current' : w.hint,
+        label: `${w.name} workspace`,
+        hint: w.id === activeWs ? 'current' : undefined,
         run: () => {
-          useLayoutStore.getState().setWorkspace(w.id);
+          useWorkspaceStore.getState().setActive('terminal', w.id);
           toTerminal();
         },
       });
-    for (const p of ALL_PANELS) {
-      const on = panels.includes(p);
+    for (const t of TEMPLATES.filter((x) => x.scope === 'terminal'))
       cmds.push({
-        id: `panel-${p}`,
-        group: 'Panels',
-        label: `${on ? 'Hide' : 'Show'} ${PANEL_LABELS[p]}`,
-        keywords: `panel ${PANEL_LABELS[p]}`,
-        hint: on ? 'on' : 'off',
+        id: `tpl-${t.id}`,
+        group: 'Workspaces',
+        label: `New ${t.name} tab`,
+        keywords: `layout template ${t.hint}`,
+        hint: t.hint,
         run: () => {
-          useLayoutStore.getState().togglePanel(p);
+          useWorkspaceStore.getState().openWorkspace('terminal', t.id);
           toTerminal();
         },
       });
-    }
+    for (const d of Object.values(REGISTRY))
+      cmds.push({
+        id: `win-${d.type}`,
+        group: 'Windows',
+        label: `Add ${d.title} window`,
+        keywords: `window panel ${d.title}`,
+        run: () => {
+          toTerminal();
+          useWorkspaceStore.getState().addWindow(d.type);
+        },
+      });
     for (const tf of TIMEFRAMES) cmds.push({ id: `tf-${tf}`, group: 'Chart', label: `Timeframe ${tf}`, keywords: `interval ${tf}`, run: () => useMarketStore.getState().setTimeframe(tf) });
     for (const [m, label] of MODES) cmds.push({ id: `mode-${m}`, group: 'Chart', label: `Chart style: ${label}`, run: () => useChartStore.getState().setMode(m) });
-    for (const l of CHART_LAYOUTS)
-      cmds.push({
-        id: `layout-${l.id}`,
-        group: 'Chart',
-        label: `Layout: ${l.label}`,
-        keywords: 'multi chart grid split layout',
-        run: () => {
-          useChartTabsStore.getState().setLayout(l.id);
-          toTerminal();
-        },
-      });
     cmds.push({
       id: 'chart-settings',
       group: 'Chart',
@@ -173,7 +171,7 @@ export function CommandPalette() {
     });
     cmds.push({ id: 'vp', group: 'Chart', label: `${profile ? 'Hide' : 'Show'} volume profile`, keywords: 'vp poc value area', run: () => useChartStore.getState().toggleProfile() });
     cmds.push({ id: 'theme', group: 'Actions', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`, hint: <Palette size={12} />, run: () => useThemeStore.getState().toggleTheme() });
-    cmds.push({ id: 'reset', group: 'Actions', label: 'Reset workspace layout', run: () => useLayoutStore.getState().resetLayout() });
+    cmds.push({ id: 'reset', group: 'Actions', label: 'Reset workspace layout', run: () => useWorkspaceStore.getState().resetLayout() });
     cmds.push({ id: 'src-mock', group: 'Actions', label: 'Data source: simulated', run: () => useMarketStore.getState().setProvider('mock') });
     cmds.push({ id: 'src-live', group: 'Actions', label: 'Data source: Binance live', run: () => useMarketStore.getState().setProvider('live') });
     cmds.push({ id: 'news', group: 'Actions', label: 'Toggle news & calendar dock', hint: <kbd>Alt N</kbd>, keywords: 'headlines economic calendar events cpi fomc', run: () => useNewsStore.getState().toggleDock() });
@@ -186,7 +184,7 @@ export function CommandPalette() {
     cmds.push({ id: 'new-strategy', group: 'Actions', label: 'Build a strategy / indicator in Studio', keywords: 'studio backtest custom', run: () => void openStudio() });
     if (hasPositions) cmds.push({ id: 'flatten', group: 'Actions', label: 'Flatten all positions', keywords: 'close all', run: () => void flattenAll() });
     return cmds;
-  }, [assets, navigate, workspace, panels, theme, profile, hasPositions]);
+  }, [assets, navigate, allWs, activeWs, theme, profile, hasPositions]);
 
   const results = useMemo(() => fuzzyFilter(commands, q, (c) => `${c.label} ${c.keywords ?? ''} ${c.group}`, 60), [commands, q]);
 
@@ -211,7 +209,7 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             value={q}
-            placeholder="Search symbols, pages, panels, actions…"
+            placeholder="Search symbols, pages, windows, actions…"
             aria-label="Command palette search"
             onChange={(e) => {
               setQ(e.target.value);

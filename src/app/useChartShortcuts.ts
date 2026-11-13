@@ -2,13 +2,18 @@ import { useEffect } from 'react';
 import { useChartStore } from '@/stores/useChartStore';
 import { useMarketStore } from '@/stores/useMarketStore';
 import { useUiStore } from '@/stores/useUiStore';
-import { useChartTabsStore } from '@/stores/useChartTabsStore';
+import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
 import { alertAt, quickOrder, ticketAt } from '@/stores/quickTrade';
 import { toast } from '@/stores/useToastStore';
 import { chartCursor, CHART_RESET_EVENT } from '@/modules/terminal/chart/chartCursor';
 import type { DrawingTool } from '@/types';
 
+/** Opens a new chart window (TradingView's new chart tab), unlinked, on the current symbol. */
 export const NEW_TAB_EVENT = 'aztex:new-tab';
+export function openChartWindow() {
+  const m = useMarketStore.getState();
+  useWorkspaceStore.getState().addWindow('chart', { linkGroup: null, settings: { symbol: m.selected, tf: m.timeframe } });
+}
 
 const typing = (el: EventTarget | null) => {
   const t = el as HTMLElement | null;
@@ -44,8 +49,8 @@ export function useChartShortcuts() {
       else if (!alt && shift && !ctrl && code === 'KeyT') atCursor(ticketAt);
       else if (alt && shift && !ctrl && code === 'KeyT') window.dispatchEvent(new Event(NEW_TAB_EVENT));
       else if (alt && shift && !ctrl && code === 'KeyW') {
-        const t = useChartTabsStore.getState();
-        t.closeTab(t.activeTab);
+        const w = useWorkspaceStore.getState();
+        if (w.focused) w.closeWindow(w.focused);
       } else if (ctrl && !alt && code === 'Comma') useUiStore.getState().openChartMenu();
       else if (!alt && !ctrl && e.key === '?') useUiStore.getState().setShortcuts(true);
       else handled = false;

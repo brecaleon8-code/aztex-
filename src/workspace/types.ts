@@ -3,6 +3,7 @@ import type { IJsonModel } from 'flexlayout-react';
 /** Every kind of window the dock can host (see `registry.tsx`). */
 export type WindowType =
   | 'monitor'
+  | 'quote'
   | 'chart'
   | 'orderbook'
   | 'ticket'
@@ -63,4 +64,6 @@ export interface PersistedWorkspaces {
   workspaces: Workspace[];
   active: Partial<Record<Scope, string>>;
   layouts: SavedLayout[];
+  /** Set when the data was saved by an older version and has just been read in. */
+  upgradedFrom?: number;
 }

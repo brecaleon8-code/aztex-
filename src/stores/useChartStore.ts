@@ -59,16 +59,19 @@ interface ChartState {
 const UNDO_MAX = 50;
 const pushUndo = (s: { drawings: Drawing[]; drawingUndo: Drawing[][] }) => [...s.drawingUndo, s.drawings].slice(-UNDO_MAX);
 
+/** The chart's out-of-the-box indicators: EMA 21 and session VWAP on price, volume underneath. */
+export const DEFAULT_CHART_INDICATORS: IndicatorInstance[] = [
+  { id: 'ema21', kind: 'ema', type: 'overlay', color: '#D2AE72', period: 21 },
+  { id: 'vwap', kind: 'vwap', type: 'overlay', color: '#7FA7CF' },
+  { id: 'vol', kind: 'volume', type: 'oscillator', color: '#7FA7CF' },
+];
+
 export const useChartStore = create<ChartState>()(
   persist(
     (set, get) => ({
       mode: 'candles',
       tool: 'cursor',
-      indicators: [
-        { id: 'ema21', kind: 'ema', type: 'overlay', color: '#D2AE72', period: 21 },
-        { id: 'vwap', kind: 'vwap', type: 'overlay', color: '#7FA7CF' },
-        { id: 'vol', kind: 'volume', type: 'oscillator', color: '#7FA7CF' },
-      ],
+      indicators: DEFAULT_CHART_INDICATORS,
       drawings: [],
       drawingsKey: '',
       drawingStash: {},

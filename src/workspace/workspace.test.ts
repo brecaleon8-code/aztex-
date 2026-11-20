@@ -4,7 +4,8 @@ import { useMarketStore } from '@/stores/useMarketStore';
 import { addTab, makeWindow, reconcileWindows, remapIds, signature, stacks, tabIds, tabOf } from './layoutModel';
 import { TEMPLATES } from './templates';
 import { parsePersisted, PERSIST_VERSION } from './repository';
-import { freshWorkspaceState, useWorkspaceStore, windowSymbol } from './useWorkspaceStore';
+import { freshWorkspaceState, startChartViewSync, useWorkspaceStore, windowSymbol, workspaceStateFrom } from './useWorkspaceStore';
+import { DEFAULT_CHART_INDICATORS, useChartStore } from '@/stores/useChartStore';
 import { DEFAULT_GROUPS, useLinkStore } from './useLinkStore';
 import { startLinkSync } from './linkSync';
 import type { Workspace } from './types';
@@ -21,6 +22,12 @@ beforeEach(() => {
   useLinkStore.setState({ groups: { ...DEFAULT_GROUPS }, active: { kind: 'group', color: 'red' } });
   useMarketStore.setState({ selected: 'BTC', timeframe: '1m' });
 });
+
+/** The terminal starts on Monitoring with Trading beside it; these tests work on the Trading tab. */
+const toTrading = () => {
+  const s = useWorkspaceStore.getState();
+  s.setActive('terminal', s.workspaces.find((w) => w.scope === 'terminal' && w.name === 'Trading')!.id);
+};
 
 describe('layout model', () => {
   it('every template builds a valid tree whose tabs are exactly its windows', () => {
@@ -39,6 +46,62 @@ describe('layout model', () => {
     expect(groups).toEqual(expect.arrayContaining([['monitor', 'red'], ['chart', 'red'], ['orderbook', 'red'], ['ticket', 'red'], ['blotter', null]]));
   });
 
+  it('a fresh terminal opens on Monitoring with Trading beside it; Monitoring is all one red group', () => {
+    const fresh = freshWorkspaceState();
+    const tabs = fresh.workspaces.filter((w) => w.scope === 'terminal');
+    expect(tabs.map((w) => w.name)).toEqual(['Monitoring', 'Trading']);
+    expect(fresh.active.terminal).toBe(tabs[0].id);
+    const { windows } = TEMPLATES.find((t) => t.id === 'tpl-monitoring')!.build();
+    const ws = Object.values(windows);
+    expect(ws.map((w) => w.type).sort()).toEqual(['chart', 'monitor', 'news', 'news', 'quote']);
+    expect(ws.every((w) => w.linkGroup === 'red')).toBe(true);
+    expect(ws.find((w) => w.type === 'monitor' && w.settings.list === 'overview')).toBeTruthy();
+    expect(ws.find((w) => w.type === 'chart')!.settings).toMatchObject({ tf: '1d', view: { mode: 'area' } });
+  });
+
+  it('tabs saved by version 1 keep their arrangement and gain Monitoring in front, once', () => {
+    const v1 = freshWorkspaceState().workspaces.filter((w) => w.scope !== 'terminal' || w.name === 'Trading');
+    const trading = v1.find((w) => w.scope === 'terminal')!;
+    const p = parsePersisted(JSON.parse(JSON.stringify({ version: 1, workspaces: v1, active: { terminal: trading.id }, layouts: [] })))!;
+    expect(p.upgradedFrom).toBe(1);
+    const st = workspaceStateFrom(p);
+    const tabs = st.workspaces.filter((w) => w.scope === 'terminal');
+    expect(tabs.map((w) => w.name)).toEqual(['Monitoring', 'Trading']);
+    expect(tabs[1].id).toBe(trading.id);
+    expect(signature(tabs[1].dock, tabs[1].windows)).toBe(signature(trading.dock, trading.windows));
+    expect(st.active.terminal).toBe(tabs[0].id);
+    // Saved again (version 2) and read back: no second Monitoring tab.
+    const again = parsePersisted(JSON.parse(JSON.stringify({ version: PERSIST_VERSION, workspaces: st.workspaces, active: st.active, layouts: [] })))!;
+    expect(again.upgradedFrom).toBeUndefined();
+    expect(workspaceStateFrom(again).workspaces.filter((w) => w.scope === 'terminal')).toHaveLength(2);
+  });
+
+  it('each terminal tab brings its own chart look; a chart set up beforehand keeps its look', () => {
+    const factory = () => useChartStore.setState({ mode: 'candles', indicators: DEFAULT_CHART_INDICATORS, profile: true, bookProfile: true, renkoBox: null });
+    factory();
+    let stop = startChartViewSync();
+    const mon = terminal();
+    expect(mon.name).toBe('Monitoring');
+    expect(useChartStore.getState().mode).toBe('area');
+    expect(useChartStore.getState().indicators).toEqual([]);
+    toTrading();
+    expect(useChartStore.getState().mode).toBe('candles');
+    expect(useChartStore.getState().indicators.map((i) => i.id)).toEqual(['ema21', 'vwap', 'vol']);
+    useWorkspaceStore.getState().setActive('terminal', mon.id);
+    expect(useChartStore.getState().mode).toBe('area');
+    stop();
+
+    // A look someone already set (e.g. Studio's "Show on chart") wins over the template's.
+    useWorkspaceStore.setState(freshWorkspaceState());
+    const custom = [{ id: 'z', kind: 'rsi', type: 'oscillator', color: '#fff', period: 14 }] as typeof DEFAULT_CHART_INDICATORS;
+    useChartStore.setState({ mode: 'candles', indicators: custom });
+    stop = startChartViewSync();
+    expect(useChartStore.getState().indicators).toBe(custom);
+    expect(winOf(terminal(), 'chart').settings.view).toMatchObject({ mode: 'candles', indicators: custom });
+    stop();
+    factory();
+  });
+
   it('round-trips through JSON storage unchanged', () => {
     const s = useWorkspaceStore.getState();
     const raw = JSON.parse(JSON.stringify({ version: PERSIST_VERSION, workspaces: s.workspaces, active: s.active, layouts: s.layouts }));
@@ -53,7 +116,7 @@ describe('layout model', () => {
     expect(parsePersisted({ version: 99, workspaces: [] })).toBeNull();
     expect(parsePersisted({ version: PERSIST_VERSION, workspaces: [{ id: 1 }, { id: 'x', name: 'x', scope: 'terminal', dock: {}, windows: {} }] })!.workspaces).toEqual([]);
     localStorage.setItem('aztex.workspaces', '{not json');
-    expect(freshWorkspaceState().workspaces.find((w) => w.scope === 'terminal')!.name).toBe('Trading');
+    expect(freshWorkspaceState().workspaces.filter((w) => w.scope === 'terminal').map((w) => w.name)).toEqual(['Monitoring', 'Trading']);
   });
 
   it('remaps window ids without changing the arrangement', () => {
@@ -73,6 +136,7 @@ describe('layout model', () => {
 });
 
 describe('saved layouts', () => {
+  beforeEach(toTrading);
   it('Save as, rearrange, then restore: same arrangement, sizes, tabs and link groups', () => {
     const st = useWorkspaceStore.getState();
     const ws = terminal();
@@ -107,10 +171,13 @@ describe('saved layouts', () => {
     st.deleteLayout();
     expect(useWorkspaceStore.getState().layouts).toHaveLength(0);
 
-    const only = terminal().id;
-    st.closeWorkspace(only);
-    expect(terminal().id).not.toBe(only);
-    expect(terminal().name).toBe('Trading');
+    // Closing every tab leaves the default layout open.
+    const ids = useWorkspaceStore.getState().workspaces.filter((w) => w.scope === 'terminal').map((w) => w.id);
+    for (const id of ids) st.closeWorkspace(id);
+    const left = useWorkspaceStore.getState().workspaces.filter((w) => w.scope === 'terminal');
+    expect(left).toHaveLength(1);
+    expect(ids).not.toContain(left[0].id);
+    expect(left[0].name).toBe('Monitoring');
   });
 
   it('opens new tabs from templates with unique names and reorders them', () => {
@@ -118,9 +185,9 @@ describe('saved layouts', () => {
     const a = st.openWorkspace('terminal', 'tpl-research');
     const b = st.openWorkspace('terminal', 'tpl-research');
     const names = () => useWorkspaceStore.getState().workspaces.filter((w) => w.scope === 'terminal').map((w) => w.name);
-    expect(names()).toEqual(['Trading', 'Research', 'Research 2']);
+    expect(names()).toEqual(['Monitoring', 'Trading', 'Research', 'Research 2']);
     st.moveWorkspace(b, 0);
-    expect(names()).toEqual(['Research 2', 'Trading', 'Research']);
+    expect(names()).toEqual(['Research 2', 'Monitoring', 'Trading', 'Research']);
     expect(useWorkspaceStore.getState().active.terminal).toBe(b);
     st.setActive('terminal', a);
     expect(terminal().id).toBe(a);
@@ -129,6 +196,7 @@ describe('saved layouts', () => {
 
 describe('link groups', () => {
   let stop: () => void;
+  beforeEach(toTrading);
   beforeEach(() => {
     stop = startLinkSync();
   });

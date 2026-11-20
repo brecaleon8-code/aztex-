@@ -1,7 +1,8 @@
 import type { PersistedWorkspaces, SavedLayout, Scope, Workspace } from './types';
 import { reconcileWindows, tabIds, withDockGlobal } from './layoutModel';
 
-export const PERSIST_VERSION = 1;
+/** 2: the terminal gained the Monitoring layout (version-1 tabs are kept; Monitoring is added in front once). */
+export const PERSIST_VERSION = 2;
 
 /**
  * Where workspaces and saved layouts live. Local storage for now; an account-backed server
@@ -35,12 +36,12 @@ function cleanLayout(l: unknown): SavedLayout | null {
 
 /** Validates a stored blob; anything unreadable is dropped (and the caller falls back to templates). */
 export function parsePersisted(raw: unknown): PersistedWorkspaces | null {
-  if (!isObj(raw) || raw.version !== PERSIST_VERSION || !Array.isArray(raw.workspaces)) return null;
+  if (!isObj(raw) || (raw.version !== PERSIST_VERSION && raw.version !== 1) || !Array.isArray(raw.workspaces)) return null;
   const workspaces = raw.workspaces.map(cleanWorkspace).filter((w): w is Workspace => !!w);
   const layouts = Array.isArray(raw.layouts) ? raw.layouts.map(cleanLayout).filter((l): l is SavedLayout => !!l) : [];
   const active: PersistedWorkspaces['active'] = {};
   if (isObj(raw.active)) for (const s of SCOPES) if (typeof raw.active[s] === 'string') active[s] = raw.active[s] as string;
-  return { version: PERSIST_VERSION, workspaces, active, layouts };
+  return { version: PERSIST_VERSION, workspaces, active, layouts, ...(raw.version === 1 ? { upgradedFrom: 1 } : {}) };
 }
 
 export class LocalStorageLayoutRepository implements LayoutRepository {

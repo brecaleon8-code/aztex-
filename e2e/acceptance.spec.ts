@@ -10,11 +10,18 @@ test.beforeEach(async ({ page }) => {
     });
 });
 
-async function freshTerminal(page: Page) {
+/** The terminal opens on the Monitoring layout; most tests trade, so they switch to the Trading tab. */
+async function toTrading(page: Page) {
+  await page.locator('[data-testid="ws-tab"][data-name="Trading"]').click();
+  await expect(page.getByTestId('ticket')).toBeVisible();
+}
+
+async function freshTerminal(page: Page, tab: 'Trading' | 'Monitoring' = 'Trading') {
   await page.goto('/terminal');
   await page.evaluate(() => localStorage.clear());
   await page.goto('/terminal');
   await expect(page.getByTestId('price-chart')).toBeVisible();
+  if (tab === 'Trading') await toTrading(page);
   if (test.info().project.metadata?.theme === 'light') await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 }
 
@@ -117,35 +124,34 @@ test.describe('Phase 1 — core terminal', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await expect(page.getByTestId('theme-light')).toHaveAttribute('aria-checked', 'true');
     await expect.poll(bg).not.toBe(dark);
-    // CLI bar stays a literal dark terminal in light mode.
   });
 
-  test('CLI drives real app state from any route', async ({ page }) => {
+  test('commands from the top search drive real app state from any route', async ({ page }) => {
     await freshTerminal(page);
+    await expect(page.getByTestId('cli')).toHaveCount(0); // no command bar at the bottom any more
     await page.getByRole('link', { name: 'OTC Desk' }).click();
-    const cli = page.getByLabel('Command line');
-    await cli.fill('buy 0.5 eth');
-    await cli.press('Enter');
-    await expect(page.getByTestId('cli-result')).toContainText('✓ BUY 0.5');
-    await cli.fill('theme light');
-    await cli.press('Enter');
+    const search = page.getByRole('combobox', { name: 'Search symbols, windows and commands' });
+    const run = async (line: string) => {
+      await page.keyboard.press('/');
+      await search.fill(line);
+      await search.press('Enter');
+    };
+    await run('buy 0.5 eth');
+    await expect(page.getByTestId('toast').last()).toContainText('BUY 0.5');
+    await run('theme light');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await cli.fill('frobnicate');
-    await cli.press('Enter');
-    await expect(page.getByTestId('cli-result')).toContainText('✗ Unknown command');
+    await run('frobnicate');
+    await expect(page.getByTestId('toast').last()).toContainText('Not a command');
     await page.getByTestId('rail-terminal').click();
     await expect(page.getByTestId('position-row')).toHaveCount(1);
-    await expect(page.getByTestId('chart-window')).toContainText('ETH/USDT');
-    await cli.fill('close all');
-    await cli.press('Enter');
+    await expect(page.locator('[data-testid="chart-window"][data-focused="true"]')).toHaveAttribute('data-symbol', 'ETH');
+    await run('close all');
     await expect(page.getByTestId('position-row')).toHaveCount(0);
   });
 });
 
 test('order flow: tape prints, flow stats, depth + heatmap views, volume profile, TWAP', async ({ page }) => {
-  await page.goto('/terminal');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/terminal');
+  await freshTerminal(page);
   // Order-flow tools are windows you add to a workspace (the Trading layout keeps them out).
   await expect(page.getByTestId('tape')).toHaveCount(0);
   await page.getByTestId('add-window').click();
@@ -235,9 +241,7 @@ test.describe('Phase 4 — OTC + appearance', () => {
   });
 
   test('chart colours live on the chart: right-click › Settings, gear, F8 or Ctrl+,; presets; live without reload', async ({ page }) => {
-    await page.goto('/terminal');
-    await page.evaluate(() => localStorage.clear());
-    await page.goto('/terminal');
+    await freshTerminal(page);
     const chart = page.getByTestId('price-chart');
     await expect(chart).toBeVisible();
     // Right-click the chart → quick actions → Settings… opens the chart settings at the cursor.
@@ -298,6 +302,64 @@ async function dragWindow(page: Page, tab: string | Locator, target: Locator, wh
 }
 
 test.describe('Docked workspace', () => {
+  test('the terminal opens on Monitoring: grouped monitor in side-by-side blocks, quote, daily area chart and news, all linked', async ({ page }) => {
+    await freshTerminal(page, 'Monitoring');
+    await expect(page.locator('[data-testid="ws-tab"][data-name="Monitoring"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('cli')).toHaveCount(0); // no command bar at the bottom
+
+    // The Overview groups flow into two blocks side by side on a wide window, one on a narrow one.
+    const groups = page.getByTestId('monitor-groups');
+    await expect(groups).toHaveAttribute('data-blocks', '2');
+    const blocks = groups.locator('table.mg-block');
+    const [a, b] = [(await blocks.nth(0).boundingBox())!, (await blocks.nth(1).boundingBox())!];
+    expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+    expect(b.x).toBeGreaterThanOrEqual(a.x + a.width - 2);
+    // Groups collapse to their header and open again.
+    const key = page.getByTestId('mon-group-key');
+    await expect(key.locator('tr.clickable')).toHaveCount(6);
+    await page.getByTestId('mon-group-toggle-key').click();
+    await expect(key.locator('tr.clickable')).toHaveCount(0);
+    await page.getByTestId('mon-group-toggle-key').click();
+    await expect(key.locator('tr.clickable')).toHaveCount(6);
+
+    // A daily area chart with no order-ticket levels (this layout has no ticket).
+    const chart = page.getByTestId('chart-window');
+    await expect(chart.getByTestId('chart-mode')).toHaveValue('area');
+    await expect(chart.getByTestId('tf-1d')).toHaveAttribute('aria-pressed', 'true');
+    await expect(chart.locator('text', { hasText: /^(TP|SL)$/ })).toHaveCount(0);
+
+    // Quote: large last price and the key statistics from daily history.
+    const quote = page.getByTestId('quote');
+    await expect(quote).toHaveAttribute('data-symbol', 'BTC');
+    await expect(quote.getByTestId('quote-52w-high')).toContainText(/\d{2} \w{3} \d{2}/);
+    await expect(quote.getByTestId('quote-ytd')).toContainText('%');
+
+    // Click a row: quote, chart and the linked news follow it.
+    await page.getByTestId('grp-platforms-SOL').click();
+    await expect(quote).toHaveAttribute('data-symbol', 'SOL');
+    await expect(chart).toHaveAttribute('data-symbol', 'SOL');
+    // The symbol-filtered News tab is labelled with it (the whole-wire tab carries no symbol).
+    await expect(page.locator('[data-testid="win-tab"][data-type="news"]').filter({ hasText: 'SOL' }).first()).toBeAttached();
+
+    // News: a Time / Headline / Source table with a search box.
+    const news = page.getByTestId('news').first();
+    await expect(news.locator('.nw-th')).toContainText('Headline');
+    await news.getByTestId('news-search').fill('zzzz-nothing');
+    await expect(news).toContainText('No stories match');
+    await news.getByTestId('news-search').fill('');
+    await expect(news.getByTestId('news-story').first()).toBeVisible();
+
+    // Trading is the next tab, with its candles; coming back restores the area chart.
+    await toTrading(page);
+    await expect(page.getByTestId('chart-window').getByTestId('chart-mode')).toHaveValue('candles');
+    await page.locator('[data-testid="ws-tab"][data-name="Monitoring"]').click();
+    await expect(page.getByTestId('chart-window').getByTestId('chart-mode')).toHaveValue('area');
+
+    // A narrow window: the groups stack into one block.
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await expect(groups).toHaveAttribute('data-blocks', '1');
+  });
+
   test('dragging a splitter resizes both neighbours live and the chart redraws crisply', async ({ page }) => {
     await freshTerminal(page);
     const chart = page.getByTestId('win-chart');
@@ -402,7 +464,7 @@ test.describe('Docked workspace', () => {
     await page.getByTestId('layout-name-input').fill('Desk A');
     await page.getByTestId('layout-name-ok').click();
     await expect(page.getByTestId('layout-name')).toHaveText('Desk A');
-    await expect(page.getByTestId('ws-tab').first()).toHaveAttribute('data-name', 'Desk A');
+    await expect(page.locator('[data-testid="ws-tab"][aria-selected="true"]')).toHaveAttribute('data-name', 'Desk A');
     const saved = await stacksOf(page);
     const size = async () => Math.round((await page.getByTestId('win-monitor').boundingBox())!.width);
     const savedW = await size();
@@ -429,7 +491,7 @@ test.describe('Docked workspace', () => {
     // Reset goes back to the saved layout; the templates open as new tabs without errors.
     await page.getByTestId('ws-new').click();
     await page.getByTestId('open-tpl-research').click();
-    await expect(page.getByTestId('ws-tab')).toHaveCount(2);
+    await expect(page.getByTestId('ws-tab')).toHaveCount(3); // Monitoring, Desk A, Research
     await expect(page.getByTestId('win-comparison')).toBeVisible();
     await expect(page.getByTestId('win-news')).toBeVisible();
     await page.getByTestId('ws-new').click();
@@ -437,10 +499,12 @@ test.describe('Docked workspace', () => {
     await expect(page.getByTestId('win-blotter')).toBeVisible();
     await expect(page.getByTestId('win-monitor')).toBeVisible();
     // Ctrl+1…9 switch tabs.
-    await page.keyboard.press('Control+Digit1');
-    await expect(page.getByTestId('layout-name')).toHaveText('Desk A');
     await page.keyboard.press('Control+Digit2');
+    await expect(page.getByTestId('layout-name')).toHaveText('Desk A');
+    await page.keyboard.press('Control+Digit3');
     await expect(page.getByTestId('layout-name')).toHaveText('Research');
+    await page.keyboard.press('Control+Digit1');
+    await expect(page.getByTestId('layout-name')).toHaveText('Monitoring');
     expect(errors).toEqual([]);
     await expect(page.locator('.err-inline, .err-page')).toHaveCount(0);
   });
@@ -546,9 +610,7 @@ test.describe('Docked workspace', () => {
 });
 
 test('pro polish: command palette, sparklines, risk panel, countdown, resting-order markers, R multiple', async ({ page }) => {
-  await page.goto('/terminal');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/terminal');
+  await freshTerminal(page);
   await expect(page.getByTestId('price-chart')).toBeVisible();
 
   // Watchlist sparklines load from provider history.
@@ -569,9 +631,9 @@ test('pro polish: command palette, sparklines, risk panel, countdown, resting-or
   await page.getByRole('group', { name: 'Blotter view' }).getByRole('button', { name: /Positions/ }).click();
 
   // Positions show R multiple.
-  const cli = page.getByLabel('Command line');
-  await cli.fill('buy 0.01 btc');
-  await cli.press('Enter');
+  await page.keyboard.press('/');
+  await page.getByRole('combobox', { name: 'Search symbols, windows and commands' }).fill('buy 0.01 btc');
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('position-r').first()).toContainText('R');
 
   // Command palette: fuzzy jump to a symbol, then add a window.
@@ -636,6 +698,7 @@ test.describe('Account features', () => {
 
     // Ticket shows the LP taker fee.
     await page.getByTestId('rail-terminal').click();
+    await toTrading(page);
     await expect(page.getByTestId('ticket-fee')).toBeVisible();
     await expect(page.locator('.ticket-summary')).toContainText('Liquidity Provider taker');
 
@@ -736,8 +799,7 @@ test.describe('Account features', () => {
     await expect(page.getByTestId('news-story').first()).toBeVisible();
 
     // Alt+N: the Trading tab has no News window, so it adds one; pressing it again only brings it forward.
-    await page.keyboard.press('Control+Digit1');
-    await expect(page.getByTestId('ws-tab').first()).toHaveAttribute('aria-selected', 'true');
+    await toTrading(page);
     await expect(page.locator('.dock-host').getByTestId('win-news')).toHaveCount(0);
     await page.keyboard.press('Alt+KeyN');
     await expect(page.locator('.dock-host').getByTestId('win-news')).toHaveCount(1);
@@ -926,8 +988,8 @@ test.describe('Fit to screen', () => {
     expect(await bottomOf(chart)).toBeLessThanOrEqual(vh);
     expect(await bottomOf(page.getByTestId('place-order'))).toBeLessThanOrEqual(vh);
     expect(await bottomOf(page.getByTestId('blotter-window'))).toBeLessThanOrEqual(vh);
-    // The command line and the status row stay on screen at the bottom.
-    expect(await bottomOf(page.getByTestId('cli'))).toBeLessThanOrEqual(vh);
+    // The status row stays on screen at the bottom.
+    expect(await bottomOf(page.getByTestId('status-bar'))).toBeLessThanOrEqual(vh);
 
     // A taller window gives the space to the windows, still without page scroll.
     await page.setViewportSize({ width: 1600, height: 1000 });
@@ -1303,7 +1365,7 @@ test.describe('Phone app', () => {
     await expect(sheet.getByTestId('m-order-preview')).toContainText('Cost');
     const qty = Number(await sheet.getByTestId('m-qty').locator('input').inputValue());
     await sheet.getByRole('button', { name: /Increase Volume/ }).tap();
-    expect(Number(await sheet.getByTestId('m-qty').locator('input').inputValue())).toBeGreaterThan(qty);
+    await expect.poll(async () => Number(await sheet.getByTestId('m-qty').locator('input').inputValue())).toBeGreaterThan(qty);
     await sheet.getByTestId('m-order-submit').tap();
     await expect(sheet).toHaveCount(0);
     await expect(page.locator('.m-tab .m-badge')).toHaveText('1');

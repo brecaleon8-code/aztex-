@@ -130,7 +130,7 @@ export function DenseTable<R>({ columns, rows, rowKey, sort, onSort, widths, onW
 }
 
 /** A cell that flashes green (up) or red (down) for 300ms when its value changes. */
-function FlashTd({ value, className, children }: { value: number; className: string; children: ReactNode }) {
+export function FlashTd({ value, className, children }: { value: number; className: string; children: ReactNode }) {
   const prev = useRef(value);
   const [f, setF] = useState<{ dir: '' | 'up' | 'down'; n: number }>({ dir: '', n: 0 });
   useEffect(() => {

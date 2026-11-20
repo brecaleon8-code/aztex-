@@ -1,4 +1,5 @@
 import type { IJsonModel } from 'flexlayout-react';
+import { DEFAULT_CHART_INDICATORS } from '@/stores/useChartStore';
 import { makeWindow, model, split, stack } from './layoutModel';
 import type { Scope, WindowState } from './types';
 
@@ -18,13 +19,32 @@ const byId = (...ws: WindowState[]) => Object.fromEntries(ws.map((w) => [w.id, w
  */
 export const TEMPLATES: Template[] = [
   {
+    id: 'tpl-monitoring',
+    name: 'Monitoring',
+    scope: 'terminal',
+    hint: 'Grouped monitor, quote, daily chart and news',
+    build: () => {
+      // Left: the market in groups (the Monitor's Overview list), the quote underneath.
+      // Right: a daily area chart over a news stack (the whole wire, then the linked symbol's).
+      const monitor = makeWindow('monitor', 'red', { list: 'overview' });
+      const quote = makeWindow('quote', 'red');
+      const chart = makeWindow('chart', 'red', { tf: '1d', view: { mode: 'area', indicators: [], profile: false, bookProfile: false, renkoBox: null } });
+      const wire = makeWindow('news', 'red');
+      const linkedNews = makeWindow('news', 'red', { linkedOnly: true });
+      return {
+        dock: model(split(100, split(58, stack(56, monitor), stack(44, quote)), split(42, stack(54, chart), stack(46, wire, linkedNews)))),
+        windows: byId(monitor, quote, chart, wire, linkedNews),
+      };
+    },
+  },
+  {
     id: 'tpl-trading',
     name: 'Trading',
     scope: 'terminal',
     hint: 'Monitor, chart, book, ticket and blotter',
     build: () => {
       const monitor = makeWindow('monitor', 'red');
-      const chart = makeWindow('chart', 'red', { tf: '1m' });
+      const chart = makeWindow('chart', 'red', { tf: '1m', view: { mode: 'candles', indicators: DEFAULT_CHART_INDICATORS, profile: true, bookProfile: true, renkoBox: null } });
       const blotter = makeWindow('blotter');
       const book = makeWindow('orderbook', 'red');
       const ticket = makeWindow('ticket', 'red');
@@ -120,11 +140,18 @@ export const TEMPLATES: Template[] = [
   },
 ];
 
+/** The tabs a fresh profile starts with, first one active (the terminal keeps Trading one click away). */
+export const STARTER_TABS: Record<Scope, string[]> = {
+  terminal: ['tpl-monitoring', 'tpl-trading'],
+  discovery: ['tpl-discovery'],
+  community: ['tpl-community'],
+  otc: ['tpl-otc'],
+};
 export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id);
 export const templatesFor = (scope: Scope) => TEMPLATES.filter((t) => t.scope === scope);
 /** The layout each scope opens with (and falls back to when a saved read fails). */
 export const DEFAULT_TEMPLATE: Record<Scope, string> = {
-  terminal: 'tpl-trading',
+  terminal: 'tpl-monitoring',
   discovery: 'tpl-discovery',
   community: 'tpl-community',
   otc: 'tpl-otc',

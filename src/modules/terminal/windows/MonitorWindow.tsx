@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, Columns3, MoreHorizontal, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronsDownUp, ChevronsUpDown, Columns3, MoreHorizontal, Plus, Search, X } from 'lucide-react';
 import { DenseTable, type Column, type SortState } from '@/components/ui/DenseTable/DenseTable';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { useMarketStore } from '@/stores/useMarketStore';
@@ -13,8 +13,10 @@ import { useWindowSettings, useWindowSymbol, useSetWindowSymbol } from '@/worksp
 import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
 import { PopMenu } from '@/workspace/PopMenu';
 import { useSpark } from '../useSpark';
+import { MonitorGroups } from './MonitorGroups';
+import { OVERVIEW_GROUPS, OVERVIEW_LIST } from './monitorGroups';
 
-type Settings = { list: string; columns: string[]; sort: SortState; widths: Record<string, number> };
+type Settings = { list: string; columns: string[]; sort: SortState; widths: Record<string, number>; collapsed: string[] };
 
 const COLUMN_IDS = ['symbol', 'last', 'chg', 'chgPct', 'bid', 'ask', 'spread', 'vol', 'spark'] as const;
 type ColId = (typeof COLUMN_IDS)[number];
@@ -26,8 +28,9 @@ const chgAbs = (a: Asset) => a.price - a.price / (1 + a.change24h / 100);
 
 /**
  * Monitor: the watchlist as a columnar table. Sortable headers, a column picker, 24px rows,
- * prices flash on change, tabs for named lists. Clicking a row loads that symbol into every
- * window in the same link group.
+ * prices flash on change, tabs for named lists. The Overview tab shows the market in collapsible
+ * groups that flow into side-by-side blocks on a wide window. Clicking a row loads that symbol
+ * into every window in the same link group.
  */
 export function MonitorWindow() {
   const [settings, patch] = useWindowSettings<Settings>();
@@ -35,6 +38,8 @@ export function MonitorWindow() {
   const main = useMarketStore((s) => s.watchlist);
   const lists = useMonitorStore((s) => s.lists);
   const custom = lists.find((l) => l.id === listId);
+  const overview = listId === OVERVIEW_LIST;
+  const collapsed = settings.collapsed ?? [];
   const symbols = listId === MAIN_LIST || !custom ? main : custom.symbols;
   const assets = useMarketStore((s) => s.assets);
   const current = useWindowSymbol();
@@ -86,29 +91,59 @@ export function MonitorWindow() {
   return (
     <div className="mon" data-testid="watchlist">
       <ListTabs listId={listId} onPick={(id) => patch({ list: id })} />
-      <div className="mon-bar">
-        <AddSymbol have={symbols} onAdd={add} />
-        <span className="spacer" />
-        <ColumnPicker shown={shownCols} onChange={(c) => patch({ columns: c })} />
-      </div>
-      <DenseTable
-        columns={columns}
-        rows={rows}
-        rowKey={(a) => a.symbol}
-        sort={settings.sort ?? null}
-        onSort={(s) => patch({ sort: s })}
-        widths={settings.widths}
-        onWidths={(w) => patch({ widths: w })}
-        onRowClick={(a) => setSymbol(a.symbol)}
-        onRowContextMenu={(a, e) => {
-          e.preventDefault();
-          setMenu({ el: e.currentTarget as HTMLElement, symbol: a.symbol });
-        }}
-        rowClass={(a) => (a.symbol === current ? 'selected' : '')}
-        rowProps={(a) => ({ 'data-testid': `watch-${a.symbol}` })}
-        empty="No symbols in this list. Search above to add one."
-        testId="monitor-table"
-      />
+      {overview ? (
+        <>
+          <div className="mon-bar">
+            <span className="faint">Market overview · 24h</span>
+            <span className="spacer" />
+            <button
+              className="cw-btn"
+              onClick={() => patch({ collapsed: collapsed.length ? [] : OVERVIEW_GROUPS.map((g) => g.id) })}
+              aria-label={collapsed.length ? 'Expand all groups' : 'Collapse all groups'}
+              title={collapsed.length ? 'Expand all groups' : 'Collapse all groups'}
+              data-testid="mon-collapse-all"
+            >
+              {collapsed.length ? <ChevronsUpDown size={13} /> : <ChevronsDownUp size={13} />}
+            </button>
+          </div>
+          <MonitorGroups
+            groups={OVERVIEW_GROUPS}
+            collapsed={collapsed}
+            onToggle={(id) => patch({ collapsed: collapsed.includes(id) ? collapsed.filter((c) => c !== id) : [...collapsed, id] })}
+            sort={settings.sort ?? null}
+            onSort={(s) => patch({ sort: s })}
+            current={current}
+            onPick={setSymbol}
+            onMenu={(symbol, e) => setMenu({ el: e.currentTarget as HTMLElement, symbol })}
+          />
+        </>
+      ) : (
+        <>
+          <div className="mon-bar">
+            <AddSymbol have={symbols} onAdd={add} />
+            <span className="spacer" />
+            <ColumnPicker shown={shownCols} onChange={(c) => patch({ columns: c })} />
+          </div>
+          <DenseTable
+            columns={columns}
+            rows={rows}
+            rowKey={(a) => a.symbol}
+            sort={settings.sort ?? null}
+            onSort={(s) => patch({ sort: s })}
+            widths={settings.widths}
+            onWidths={(w) => patch({ widths: w })}
+            onRowClick={(a) => setSymbol(a.symbol)}
+            onRowContextMenu={(a, e) => {
+              e.preventDefault();
+              setMenu({ el: e.currentTarget as HTMLElement, symbol: a.symbol });
+            }}
+            rowClass={(a) => (a.symbol === current ? 'selected' : '')}
+            rowProps={(a) => ({ 'data-testid': `watch-${a.symbol}` })}
+            empty="No symbols in this list. Search above to add one."
+            testId="monitor-table"
+          />
+        </>
+      )}
       {menu && (
         <PopMenu anchor={menu.el} onClose={() => setMenu(null)} width={210} testId="mon-row-menu">
           <div className="menu-group">{menu.symbol}</div>
@@ -140,17 +175,19 @@ export function MonitorWindow() {
           >
             Alert at the last price
           </button>
-          <div className="divider" />
-          <button
-            className="menu-item danger"
-            onClick={() => {
-              remove(menu.symbol);
-              setMenu(null);
-            }}
-            data-testid="mon-remove"
-          >
-            <X size={13} /> <span className="grow">Remove from list</span>
-          </button>
+          {!overview && <div className="divider" />}
+          {!overview && (
+            <button
+              className="menu-item danger"
+              onClick={() => {
+                remove(menu.symbol);
+                setMenu(null);
+              }}
+              data-testid="mon-remove"
+            >
+              <X size={13} /> <span className="grow">Remove from list</span>
+            </button>
+          )}
         </PopMenu>
       )}
     </div>
@@ -171,6 +208,9 @@ function ListTabs({ listId, onPick }: { listId: string; onPick: (id: string) => 
   const { createList, renameList, deleteList } = useMonitorStore.getState();
   return (
     <div className="mon-tabs" role="tablist" aria-label="Lists">
+      <button role="tab" aria-selected={listId === OVERVIEW_LIST} className={`mon-tab ${listId === OVERVIEW_LIST ? 'on' : ''}`} onClick={() => onPick(OVERVIEW_LIST)} data-testid="mon-list-overview">
+        Overview
+      </button>
       <button role="tab" aria-selected={listId === MAIN_LIST} className={`mon-tab ${listId === MAIN_LIST ? 'on' : ''}`} onClick={() => onPick(MAIN_LIST)} data-testid="mon-list-main">
         Watchlist
       </button>

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { Actions, DockLocation, type IJsonModel } from 'flexlayout-react';
 import { uid } from '@/lib/format';
-import { useChartStore } from '@/stores/useChartStore';
+import { DEFAULT_CHART_INDICATORS, useChartStore } from '@/stores/useChartStore';
 import { useMarketStore } from '@/stores/useMarketStore';
 import type { ChartMode, IndicatorInstance } from '@/types';
 import { addTab, LINKABLE, makeWindow, reconcileWindows, remapIds, tabOf, withDockGlobal } from './layoutModel';
-import { DEFAULT_TEMPLATE, TEMPLATES, templateById } from './templates';
+import { DEFAULT_TEMPLATE, STARTER_TABS, TEMPLATES, templateById } from './templates';
 import { LocalStorageLayoutRepository, PERSIST_VERSION, type LayoutRepository } from './repository';
 import { contextOf, sameContext, symbolOf, useLinkStore } from './useLinkStore';
 import { dockModels } from './dockModels';
@@ -80,7 +80,7 @@ function normalise(workspaces: Workspace[], active: Partial<Record<Scope, string
   for (const s of SCOPES) {
     let mine = out.filter((w) => w.scope === s);
     if (mine.length === 0) {
-      out.push(fromTemplate(s));
+      for (const id of STARTER_TABS[s]) out.push(fromSource(id, []) ?? fromTemplate(s));
       mine = out.filter((w) => w.scope === s);
     }
     act[s] = mine.some((w) => w.id === active[s]) ? active[s]! : mine[0].id;
@@ -94,9 +94,20 @@ function firstChart(ws: Workspace | undefined): string | null {
 }
 
 let repository: LayoutRepository = new LocalStorageLayoutRepository();
+/** True when this session started from templates (no saved tabs, or tabs saved by an older version). */
+let startedFromTemplates = false;
 
 function initialState(p: PersistedWorkspaces | null) {
-  const { workspaces, active } = normalise(p?.workspaces ?? [], p?.active ?? {});
+  startedFromTemplates = !p || p.upgradedFrom != null;
+  let saved = p?.workspaces ?? [];
+  const savedActive = { ...(p?.active ?? {}) };
+  // Tabs saved before the Monitoring layout existed: put it in front and open on it, once.
+  if (p?.upgradedFrom === 1 && saved.some((w) => w.scope === 'terminal') && !saved.some((w) => w.scope === 'terminal' && w.layoutId === 'tpl-monitoring')) {
+    const mon = fromSource('tpl-monitoring', [])!;
+    saved = [mon, ...saved];
+    savedActive.terminal = mon.id;
+  }
+  const { workspaces, active } = normalise(saved, savedActive);
   const terminal = workspaces.find((w) => w.id === active.terminal);
   return { workspaces, active, layouts: p?.layouts ?? [], focused: null, activeChart: firstChart(terminal) };
 }
@@ -132,19 +143,29 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     return { dock: structuredClone(cur.dock), windows: structuredClone(cur.windows), links: { ...useLinkStore.getState().groups } };
   };
 
+  /** Makes another chart the terminal's focused chart: the outgoing look is saved, the incoming loaded. */
+  const switchChart = (next: string | null) => {
+    if (next === get().activeChart) return;
+    flushChart();
+    set({ activeChart: next });
+    loadChartView(next);
+  };
+  /** After the terminal's active tab changes: keep the focused chart if it's there, else its first chart. */
+  const followTerminalTab = () => {
+    const s = get();
+    const ws = s.workspaces.find((w) => w.id === s.active.terminal);
+    if (!s.activeChart || !ws?.windows[s.activeChart]) switchChart(firstChart(ws));
+  };
+
   return {
     ...initialState(loadSync()),
 
-    setActive: (scope, id) =>
-      set((s) => {
-        if (!s.workspaces.some((w) => w.id === id && w.scope === scope)) return s;
-        const next = { active: { ...s.active, [scope]: id } } as Partial<WorkspaceState>;
-        if (scope === 'terminal') {
-          const ws = s.workspaces.find((w) => w.id === id);
-          if (!s.activeChart || !ws?.windows[s.activeChart]) next.activeChart = firstChart(ws);
-        }
-        return next;
-      }),
+    setActive: (scope, id) => {
+      const s = get();
+      if (!s.workspaces.some((w) => w.id === id && w.scope === scope)) return;
+      set({ active: { ...s.active, [scope]: id } });
+      if (scope === 'terminal') followTerminalTab();
+    },
 
     openWorkspace: (scope, sourceId) => {
       const s = get();
@@ -154,7 +175,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       for (let i = 2; names.has(name); i++) name = `${ws.name} ${i}`;
       const created = { ...ws, name };
       set({ workspaces: [...s.workspaces, created], active: { ...s.active, [created.scope]: created.id } });
-      if (created.scope === 'terminal') set({ activeChart: firstChart(created) });
+      if (created.scope === 'terminal') switchChart(firstChart(created));
       return created.id;
     },
 
@@ -163,7 +184,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       if (n) replaceWs(id, (w) => ({ ...w, name: n }));
     },
 
-    closeWorkspace: (id) =>
+    closeWorkspace: (id) => {
+      const scope = get().workspaces.find((w) => w.id === id)?.scope;
       set((s) => {
         const ws = s.workspaces.find((w) => w.id === id);
         if (!ws) return s;
@@ -177,7 +199,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
           nextActive = fresh.id;
         } else if (nextActive === id) nextActive = (siblings[i + 1] ?? siblings[i - 1]).id;
         return { workspaces, active: { ...s.active, [ws.scope]: nextActive } };
-      }),
+      });
+      if (scope === 'terminal') followTerminalTab();
+    },
 
     moveWorkspace: (id, toIndex) =>
       set((s) => {
@@ -270,9 +294,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const f = findWin(winId);
       if (!f || f.win.type !== 'chart') return;
       if (prev) flushChart();
-      const view = findWin(winId)!.win.settings.view as ChartView | undefined;
-      if (view) useChartStore.setState({ mode: view.mode, indicators: view.indicators, profile: view.profile, bookProfile: view.bookProfile, renkoBox: view.renkoBox });
       set({ activeChart: winId });
+      loadChartView(winId);
     },
 
     saveLayout: (wsId) => {
@@ -368,6 +391,47 @@ export const activeWorkspace = (scope: Scope) => {
 /** Resolves a window's symbol against the current link groups. */
 export const windowSymbol = (win: WindowState) => symbolOf(win, useLinkStore.getState().groups, useMarketStore.getState().selected);
 
+/** The chart still has its out-of-the-box look (candles, default indicators and profiles). */
+function isFactoryLook(): boolean {
+  const c = useChartStore.getState();
+  return c.mode === 'candles' && c.profile && c.bookProfile && c.renkoBox == null && JSON.stringify(c.indicators) === JSON.stringify(DEFAULT_CHART_INDICATORS);
+}
+
+/** Loads a chart window's saved look (type, indicators, profiles) into the chart, if it has one. */
+function loadChartView(winId: string | null) {
+  if (!winId) return;
+  for (const ws of useWorkspaceStore.getState().workspaces) {
+    const view = ws.windows[winId]?.settings.view as ChartView | undefined;
+    if (view) useChartStore.setState({ mode: view.mode, indicators: view.indicators, profile: view.profile, bookProfile: view.bookProfile, renkoBox: view.renkoBox });
+    if (ws.windows[winId]) return;
+  }
+}
+
+/**
+ * Keeps the focused chart's window in step with the chart's look, so its saved view is always
+ * current (tab switches, saved layouts and reloads all read it). A session that started from
+ * templates loads the template's look first; otherwise the chart's own persisted look wins.
+ */
+export function startChartViewSync(): () => void {
+  const st = useWorkspaceStore.getState();
+  // A chart someone already set up (e.g. Studio's "Show on chart" before the terminal opened) keeps its look.
+  if (startedFromTemplates && isFactoryLook()) loadChartView(st.activeChart);
+  const write = () => {
+    const s = useWorkspaceStore.getState();
+    const id = s.activeChart;
+    const ws = id ? s.workspaces.find((w) => w.windows[id]) : undefined;
+    if (!id || !ws) return;
+    const view = chartViewNow();
+    const cur = ws.windows[id].settings.view as ChartView | undefined;
+    if (cur && cur.mode === view.mode && cur.indicators === view.indicators && cur.profile === view.profile && cur.bookProfile === view.bookProfile && cur.renkoBox === view.renkoBox) return;
+    useWorkspaceStore.setState({ workspaces: s.workspaces.map((w) => (w.id === ws.id ? { ...w, windows: { ...w.windows, [id]: { ...w.windows[id], settings: { ...w.windows[id].settings, view } } } } : w)) });
+  };
+  write();
+  return useChartStore.subscribe((c, prev) => {
+    if (c.mode !== prev.mode || c.indicators !== prev.indicators || c.profile !== prev.profile || c.bookProfile !== prev.bookProfile || c.renkoBox !== prev.renkoBox) write();
+  });
+}
+
 /** Swap the persistence backend (e.g. a server repository once accounts exist). */
 export function setWorkspaceRepository(repo: LayoutRepository) {
   repository = repo;
@@ -411,3 +475,5 @@ export { TEMPLATES };
 
 /** Default tabs (one per scope, from templates): the state the app falls back to. */
 export const freshWorkspaceState = () => initialState(null);
+/** The state a saved read starts the app in (exported for tests). */
+export const workspaceStateFrom = (p: PersistedWorkspaces | null) => initialState(p);

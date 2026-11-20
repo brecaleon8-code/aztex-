@@ -23,6 +23,7 @@ export const DOCK_GLOBAL: IGlobalAttributes = {
 
 export const WINDOW_TITLES: Record<WindowType, string> = {
   monitor: 'Monitor',
+  quote: 'Quote',
   chart: 'Chart',
   orderbook: 'Order book',
   ticket: 'Order ticket',
@@ -142,7 +143,7 @@ export function sameArrangement(a: IJsonModel, b: IJsonModel): boolean {
 }
 
 /** Window types that show a symbol, and so take part in link groups. */
-export const LINKABLE = new Set<WindowType>(['monitor', 'chart', 'orderbook', 'ticket', 'news', 'tape', 'flow']);
+export const LINKABLE = new Set<WindowType>(['monitor', 'quote', 'chart', 'orderbook', 'ticket', 'news', 'tape', 'flow']);
 
 /**
  * Copies a tree and its windows under fresh window ids (a saved layout can be open in several tabs,

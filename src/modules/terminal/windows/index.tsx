@@ -10,6 +10,7 @@ import './windows.css';
 
 export { ChartWindow } from './ChartWindow';
 export { MonitorWindow } from './MonitorWindow';
+export { QuoteWindow } from './QuoteWindow';
 export { BlotterWindow } from './BlotterWindow';
 
 export function TicketWindow() {

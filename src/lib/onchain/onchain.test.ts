@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { parseQuery } from './query';
 import { classifyTransfer, concentration, exchangeNetflow } from './flows';
 import { matchActivity, matchFee, matchTransfer, recordActivity, tokenKey, type ActivityState, type AlertRule } from './alerts';
@@ -132,6 +132,11 @@ describe('alert engine', () => {
 describe('simulator', () => {
   const sim = new SimOnchainProvider();
   it('lookups are deterministic per query', async () => {
+    // Freeze the clock: block times derive from "now", and two lookups may straddle a tick.
+    vi.useFakeTimers({ now: Date.UTC(2026, 0, 15, 12), toFake: ['Date'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const h = '0x' + 'b'.repeat(64);
     expect(await sim.getTx('ethereum', h)).toEqual(await sim.getTx('ethereum', h));
     const a = await sim.getAddress('ethereum', '0x28C6c06298d514Db089934071355E5743bf21d60');

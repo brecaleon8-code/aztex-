@@ -386,55 +386,6 @@
   height: 28px;
 }
 
-/* Bottom stack: the command line (always a dark terminal, whatever the theme) and the status row. */
-.shell-bottom {
-  display: flex;
-  flex-direction: column;
-}
-.shell-bottom .cli {
-  flex: none;
-  height: 44px;
-  min-width: 0;
-  padding: 0 8px 0 14px;
-  border: 0;
-  border-top: 1px solid #1d2420;
-  border-radius: 0;
-  background: #07090a;
-  color: #b6f5cf;
-  box-shadow: none;
-}
-.shell-bottom .cli:focus-within {
-  box-shadow: inset 0 0 0 1px rgba(64, 255, 154, 0.35);
-}
-.shell-bottom .cli-prompt {
-  color: #3dff9a;
-  text-shadow: 0 0 6px rgba(61, 255, 154, 0.45);
-}
-.shell-bottom .cli-line input {
-  color: #b6f5cf;
-  caret-color: #3dff9a;
-  font-size: 13px;
-}
-.shell-bottom .cli-line input::placeholder {
-  color: #3c5a49;
-}
-.shell-bottom .cli-result {
-  color: #7fbf98;
-}
-.shell-bottom .cli-ok {
-  color: #3dff9a;
-}
-.shell-bottom .cli-err {
-  color: #ff6b6b;
-}
-.shell-bottom .cli-go {
-  background: #12301f;
-  color: #3dff9a;
-  border: 1px solid #1f5236;
-}
-.shell-bottom .cli-go:hover {
-  background: #184028;
-}
 .status-bar {
   display: flex;
   align-items: center;

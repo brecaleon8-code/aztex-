@@ -143,7 +143,8 @@ function TabTitle({ wsId, winId }: { wsId: string; winId: string }) {
   return (
     <span className="win-tab-title" data-testid="win-tab" data-type={win.type} data-link={win.linkGroup ?? 'none'}>
       {WINDOW_TITLES[win.type]}
-      {linkable && win.type !== 'monitor' && <span className="win-tab-sym mono">{symbolOf(win, groups, selected)}</span>}
+      {/* The symbol it shows; the whole-wire News window and the Monitor show many, so no symbol. */}
+      {linkable && win.type !== 'monitor' && !(win.type === 'news' && !win.settings.linkedOnly) && <span className="win-tab-sym mono">{symbolOf(win, groups, selected)}</span>}
     </span>
   );
 }

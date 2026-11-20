@@ -18,32 +18,44 @@ export function stepVol(symbol: string, stepMs: number): number {
   return (VOL[symbol] ?? 0.8) * Math.sqrt(stepMs / YEAR_MS);
 }
 
+/** Daily requests are cut from one walk this long, so the Quote window (400 days) and a 1d chart agree. */
+const DAILY_WALK = 1000;
+/** Strength of the slow trend term per timeframe: it reads well intraday but compounds over daily bars. */
+const DRIFT: Partial<Record<Timeframe, number>> = { '1d': 0.06, '4h': 0.15 };
+/** Daily bars drift back toward their long-run level (half-life ≈ 45 sessions), so a year stays plausible. */
+const REVERT: Partial<Record<Timeframe, number>> = { '1d': 0.015 };
+
 /**
  * Deep mock history (≥200 candles so zoom/pan has real data). Generated as a seeded random walk
  * and rescaled so the final close lands exactly on `endPrice`, keeping history consistent with
- * the live ticker regardless of timeframe.
+ * the live ticker regardless of timeframe. Daily requests of any size up to 1,000 are slices of
+ * one walk, so a 400-day request and a 320-day chart agree on every day they share.
  */
 export function generateCandles(symbol: string, tf: Timeframe, count = 320, endPrice = BASE_PRICES[symbol] ?? 100, now = Date.now()): Candle[] {
   const step = TIMEFRAME_MS[tf];
   const rand = mulberry32(hashSeed(`${symbol}:${tf}`));
   const vol = stepVol(symbol, step);
+  const drift = DRIFT[tf] ?? 0.25;
+  const revert = REVERT[tf] ?? 0;
+  const total = tf === '1d' ? Math.max(count, DAILY_WALK) : count;
   const lastOpen = Math.floor(now / step) * step;
   const raw: Candle[] = [];
   let price = 1;
   let regime = 0;
-  for (let i = 0; i < count; i++) {
-    if (i % 40 === 0) regime = gaussian(rand) * vol * 0.25; // slow-varying drift so trends look real
+  for (let i = 0; i < total; i++) {
+    if (i % 40 === 0) regime = gaussian(rand) * vol * drift; // slow-varying drift so trends look real
     const open = price;
-    const ret = regime + gaussian(rand) * vol;
+    const ret = regime + gaussian(rand) * vol - revert * Math.log(price);
     const close = open * Math.exp(ret);
     const wick = Math.abs(gaussian(rand)) * vol * 0.6;
     const wick2 = Math.abs(gaussian(rand)) * vol * 0.6;
     const high = Math.max(open, close) * Math.exp(wick);
     const low = Math.min(open, close) * Math.exp(-wick2);
     const volume = (0.6 + rand() * 1.4) * (1 + Math.abs(ret) / vol) * 100;
-    raw.push({ time: lastOpen - (count - 1 - i) * step, open, high, low, close, volume });
+    raw.push({ time: lastOpen - (total - 1 - i) * step, open, high, low, close, volume });
     price = close;
   }
+  raw.splice(0, total - count);
   const k = endPrice / price;
   const baseVol = (1_000_000 / endPrice) * (step / 60_000);
   return raw.map((c) => ({

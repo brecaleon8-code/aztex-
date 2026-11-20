@@ -13,7 +13,6 @@ import { startPriceAlerts } from './priceAlerts';
 import { ChartSettingsMenu } from '@/modules/terminal/chart/ChartSettingsMenu';
 import { ChartContextMenu } from '@/modules/terminal/chart/ChartContextMenu';
 import { ObjectTree } from '@/modules/terminal/chart/ObjectTree';
-import { CliBar } from '@/modules/terminal/CliBar';
 import { ShortcutsSheet } from './ShortcutsSheet';
 import { useChartShortcuts } from './useChartShortcuts';
 import { syncAcrossWindows } from '@/lib/sync/crossWindow';
@@ -26,7 +25,7 @@ import { MobileApp } from '@/mobile/MobileApp';
 import { PhonePreview } from '@/mobile/PhonePreview';
 import { DockHost } from '@/workspace/DockHost';
 import { startLinkSync } from '@/workspace/linkSync';
-import { startWorkspacePersistence } from '@/workspace/useWorkspaceStore';
+import { startChartViewSync, startWorkspacePersistence } from '@/workspace/useWorkspaceStore';
 import { TopBar } from './shell/TopBar';
 import { AppRail } from './shell/AppRail';
 import { TabStrip } from './shell/TabStrip';
@@ -48,6 +47,7 @@ export function App() {
   // Layouts and link groups first, so the feed connects straight to the focused chart's symbol.
   useEffect(() => startWorkspacePersistence(), []);
   useEffect(() => startLinkSync(), []);
+  useEffect(() => startChartViewSync(), []);
   useEffect(() => startMarketFeed(), []);
   useEffect(() => startScannerFeed(), []);
   useEffect(() => startNewsFeed(), []);
@@ -115,10 +115,7 @@ function DesktopShell({ platform }: { platform: string }) {
           </main>
         </div>
       </div>
-      <div className="shell-bottom">
-        <CliBar />
-        <StatusBar />
-      </div>
+      <StatusBar />
       {/* App-level overlay: visible regardless of route. */}
       <Toasts />
       <CommandPalette />

@@ -9,6 +9,7 @@ import { useSeriesStore } from '@/stores/useSeriesStore';
 import { wantedChartSeries } from '@/workspace/series';
 import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
 import { useLinkStore } from '@/workspace/useLinkStore';
+import { DAILY_LIMIT, useDailyStore } from '@/stores/useDailyStore';
 
 /**
  * Wires the active MarketDataProvider to the stores. Re-subscribes the symbol-scoped streams when
@@ -28,6 +29,17 @@ export function startMarketFeed(): Unsubscribe {
       p.getCandles(sym, '15m', 96)
         .then((c) => {
           if (p === provider) useMarketStore.getState().setSpark(sym, c.map((k) => k.close));
+        })
+        .catch(() => {});
+    }
+  };
+  /** Daily history for the symbols a Quote window asked for. */
+  const loadDaily = (syms: string[]) => {
+    const p = provider;
+    for (const sym of syms) {
+      p.getCandles(sym, '1d', DAILY_LIMIT)
+        .then((c) => {
+          if (p === provider) useDailyStore.getState().setBars(sym, c);
         })
         .catch(() => {});
     }
@@ -109,8 +121,13 @@ export function startMarketFeed(): Unsubscribe {
     connectSymbol();
     syncSecondary();
     loadSparks();
+    useDailyStore.getState().clear();
+    loadDaily(useDailyStore.getState().wanted);
     if (sparkTimer) clearInterval(sparkTimer);
-    sparkTimer = setInterval(loadSparks, 15 * 60_000);
+    sparkTimer = setInterval(() => {
+      loadSparks();
+      loadDaily(useDailyStore.getState().wanted);
+    }, 15 * 60_000);
   };
 
   connectProvider();
@@ -124,6 +141,9 @@ export function startMarketFeed(): Unsubscribe {
   const unsubWs = useWorkspaceStore.subscribe((s, prev) => {
     if (s.workspaces !== prev.workspaces || s.active !== prev.active) syncSecondary();
   });
+  const unsubDaily = useDailyStore.subscribe((s, prev) => {
+    if (s.wanted !== prev.wanted) loadDaily(s.wanted.filter((x) => !prev.wanted.includes(x)));
+  });
   const unsubLinks = useLinkStore.subscribe((s, prev) => {
     if (s.groups !== prev.groups) syncSecondary();
   });
@@ -133,6 +153,7 @@ export function startMarketFeed(): Unsubscribe {
     unsub();
     unsubWs();
     unsubLinks();
+    unsubDaily();
     global.forEach((f) => f());
     scoped.forEach((f) => f());
     secondary.forEach((f) => f());

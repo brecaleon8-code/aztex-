@@ -50,52 +50,142 @@
   min-height: 0;
   overflow-y: auto;
 }
+/* Headlines table: Time | Headline (with symbol tags) | Source. */
 .nw-row {
   display: grid;
-  grid-template-columns: 40px 64px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: 62px minmax(0, 1fr) minmax(64px, auto);
+  align-items: start;
+  gap: 10px;
   min-height: 24px;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
 }
 .nw-row:hover {
   background: var(--hover);
+}
+.nw-row.nw-th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  align-items: center;
+  height: 24px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: var(--panel);
+  border-bottom-color: var(--border);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+}
+.nw-row.nw-th:hover {
+  background: var(--panel);
+}
+.nw-row.high {
+  box-shadow: inset 2px 0 0 var(--warn);
 }
 .nw-row.high .nw-hl {
   color: var(--text);
   font-weight: 600;
 }
-.nw-time {
-  font-size: 11px;
+.nw-row.open {
+  background: var(--hl);
 }
-.nw-src {
+.nw-time {
+  padding-top: 1px;
   color: var(--text-faint);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.nw-main {
+  min-width: 0;
+  line-height: 1.4;
+}
+.nw-hl {
+  margin-right: 6px;
+  color: var(--text);
+}
+.nw-row:not(.open) .nw-main {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.nw-summary {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-dim);
+}
+.nw-src {
+  padding-top: 1px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nw-hl {
-  color: var(--text-dim);
-  line-height: 1.35;
-}
-.nw-tags {
-  display: inline-flex;
-  gap: 3px;
+.nw-th .right {
+  text-align: right;
 }
 .nw-tag {
-  height: 18px;
-  padding: 0 5px;
+  height: 16px;
+  margin-right: 3px;
+  padding: 0 4px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 3px;
   background: transparent;
   color: var(--text-dim);
-  font: 600 10.5px var(--font-mono);
+  font: 600 10px/14px var(--font-mono);
+  vertical-align: 1px;
+}
+.nw-tag:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
 }
 .nw-tag.on {
   border-color: var(--accent);
   color: var(--accent);
+}
+.nw-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 1 220px;
+  min-width: 90px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel-alt);
+}
+.nw-search:focus-within {
+  border-color: var(--accent);
+}
+.nw-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 12px var(--font-ui);
+}
+.nw-clear {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-faint);
+}
+.nw-count {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Calendar view: the shared calendar, as the window body instead of a side dock. */

@@ -3,6 +3,7 @@ import {
   BookOpenText,
   CandlestickChart,
   ChartPie,
+  CircleDollarSign,
   Gauge,
   Handshake,
   LineChart,
@@ -55,6 +56,7 @@ const def = (type: WindowType, icon: LucideIcon, group: WindowDef['group'], comp
 
 export const REGISTRY: Record<WindowType, WindowDef> = {
   monitor: def('monitor', Rows3, 'Market data', named(terminal, 'MonitorWindow')),
+  quote: def('quote', CircleDollarSign, 'Market data', named(terminal, 'QuoteWindow')),
   chart: def('chart', CandlestickChart, 'Market data', named(terminal, 'ChartWindow')),
   orderbook: def('orderbook', BookOpenText, 'Market data', named(terminal, 'OrderBookWindow')),
   tape: def('tape', ListOrdered, 'Market data', named(terminal, 'TapeWindow')),

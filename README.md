@@ -65,19 +65,27 @@ Every app (Terminal, Data & Discovery, Community, OTC) is a docked, multi-window
 
 **Shell, the same on every route**
 
-- **Top bar (40px):** logo mark; one search field for symbols, windows, pages and commands (`/` focuses it, results grouped under the field); Ctrl/⌘ K palette; clock; fee tier (maker / taker); the wallet with Deposit and Withdraw in its menu; the profile menu, which holds theme and layout density.
+- **Top bar (40px):** logo mark; one search field for symbols, windows, pages and commands (`/` focuses it, results grouped under the field; type `buy 0.1 btc` and press Enter to run it, the result shows as a toast); Ctrl/⌘ K palette; clock; fee tier (maker / taker); the wallet with Deposit and Withdraw in its menu; the profile menu, which holds theme and layout density.
 - **App rail (48px):** icons only, with tooltips; the active app gets an accent edge. Studio, Appearance and Account sit at the bottom.
 - **Workspace tabs (32px):** rename (double-click), reorder (drag), close; **+** opens a template or a saved layout; **Window** adds any window; **Layout** saves, saves as, renames, deletes or resets the current layout (a dot marks unsaved changes). Ctrl+1…9 switch tabs.
-- **Bottom stack:** the command line (a fixed dark terminal in every theme), then one 24px status row with feed, latency, order mode, clock, session and network fees.
+- **Status row (24px)** along the bottom: feed, latency, order mode, clock, session and network fees. There is no separate command bar; commands run from the top search field.
 
 **Windows**
 
 - **Tiling** with 4px splitters that light up on hover; neighbours resize live and charts re-measure as you drag. Minimum window size is 220 × 140.
 - **Docking:** drag a window by its tab onto an edge of another window to split it, or onto its centre to stack it as a tab; drag a tab out to undock it.
-- **Link groups:** each linkable window (Monitor, Chart, Order book, Ticket, News, Time & Sales, Order flow) has a dot on its tab: none, red, blue, green or amber. Windows sharing a colour share a symbol. The Trading template links Monitor, Chart, Order book and Ticket in red.
+- **Link groups:** each linkable window (Monitor, Quote, Chart, Order book, Ticket, News, Time & Sales, Order flow) has a dot on its tab: none, red, blue, green or amber. Windows sharing a colour share a symbol. The Trading template links Monitor, Chart, Order book and Ticket in red.
 - **Maximize** fills the dock (Esc restores). **Pop-out** moves a window into its own browser window, sharing the same state; closing that window docks it back.
-- **Templates:** Trading, Research and Execution for the terminal (plus a 2 × 2 Charts grid), and one per app.
-- **Saved layouts** store the dock tree, sizes, tab stacks, link groups, each window's settings and the symbol per group. Persistence goes through a `LayoutRepository` (localStorage today). An unreadable store falls back to the Trading template.
+- **Templates:** Monitoring, Trading, Research and Execution for the terminal (plus a 2 × 2 Charts grid), and one per app. The terminal opens on **Monitoring** with **Trading** as the next tab.
+- **Saved layouts** store the dock tree, sizes, tab stacks, link groups, each window's settings (a chart's type and indicators included, so each tab keeps its own chart look) and the symbol per group. Persistence goes through a `LayoutRepository` (localStorage today). An unreadable store falls back to the starting tabs. Tabs saved by an earlier version are kept, and the Monitoring tab is added in front of them once.
+
+**The Monitoring layout** (the terminal's first tab): a market-monitoring desk.
+
+- **Top left, Monitor › Overview:** the market in collapsible groups (Key markets, Payments, Smart-contract platforms, Infrastructure & scaling), each header showing the group's average 24h move. Columns are Symbol, Name, Last and Chg %, coloured by direction. On a wide window the groups flow into side-by-side blocks, each with its own header row; on a narrow one they stack into a single block.
+- **Bottom left, Quote:** the linked symbol in large type (last, 24h change, 24h volume), then today's open / high / low and previous close, the 52-week high and low with their dates, average volume and annualised volatility over 30 days, WTD / MTD / QTD / YTD and 1W / 1M / 3M / 1Y returns, market cap, supply, dominance and rank. History comes from the active feed's daily candles.
+- **Top right, Chart:** a daily area chart without indicators.
+- **Bottom right, News:** the whole wire first, then a tab filtered to the linked symbol.
+- Every window is in the red group, so clicking any row retargets the quote, chart and filtered news together. The order ticket's draft Entry / TP / SL levels only appear on a chart when the tab has a ticket.
 
 **Window contents**
 
@@ -86,7 +94,8 @@ Every app (Terminal, Data & Discovery, Community, OTC) is a docked, multi-window
 - **Order book:** ladder / depth / heatmap, cumulative-depth toggle, tick grouping, and a Time & Sales strip (last 20 prints).
 - **Order ticket:** compact two-column form; Place spans the bottom; the fee estimate uses your maker / taker tier.
 - **Blotter:** Positions, Open orders, Orders, Fills, OTC and execution Quality as tabs of dense sortable tables, with the SL → TP bar, Close, Flatten all, Cancel and Cancel all.
-- **News & events, Comparison, Market share, Scanner, Currency search, Messages, Forum, OTC desk** are windows too.
+- **News & events:** a Time / Headline / Source table with a search box, symbol tags (click one to load it into the link group) and a strip of upcoming listings and funding prints; click a headline for its summary. A Calendar view holds the economic and crypto calendar.
+- **Quote** (above), **Comparison, Market share, Scanner, Currency search, Messages, Forum, OTC desk** are windows too.
 
 **Styling rules:** 1px border, 8px radius, no shadows inside the dock; 28px header in the alternate panel colour; 8px body padding; 12px monospace numbers in tables (11px in the book); green and red only for price movement and P/L; the active window gets an accent frame and a 2px accent top edge; single-line empty states. Light and dark follow the same rules.
 
@@ -270,7 +279,7 @@ src/
   workspace/      docked workspace: model, templates, LayoutRepository, link groups, dock host, window registry
   mobile/         phone app: shell + bottom tabs, Quotes/Chart/Trade/History/Menu screens, bottom sheets, phone preview
   modules/
-    terminal/     chart/ (PriceChart, toolbar, indicator menu), order book, ticket, positions, P/L, CLI; windows/ (Monitor, Chart, Blotter, …)
+    terminal/     chart/ (PriceChart, toolbar, indicator menu), order book, ticket, positions, P/L, command parser; windows/ (Monitor, Quote, Chart, Blotter, …)
     news/         News & events window
     discovery/    currency search, market share, comparison chart, blockchain scanner + alerts
     community/    identity (X handle, friend code), contacts, chat with trade chips, forum
@@ -298,7 +307,7 @@ src/
   - Placing an order goes through three stages: about 450 ms placing, 1.4 s placed, then a toast.
   - Closing a position fades and shrinks the row, then settles the result into the wallet.
   - Limit orders that can't fill immediately rest as working orders and fill when price crosses them.
-  - The CLI bar is an App-level overlay. It stays phosphor-green on near-black in both themes.
+  - Commands (`buy 0.1 btc`, `close all`, `theme light`, `help`…) run from the top search field; the old bottom command bar is gone.
 - **Chart (§5).**
   - The SVG is sized to the measured pixel box with a `ResizeObserver`; there is no stretched `viewBox`.
   - Five render modes, including a proper Heikin-Ashi calculation.
@@ -361,7 +370,7 @@ src/
 
 **Workspaces.** The Terminal shows a curated set of panels per workspace so it stays data-rich without being overwhelming: **Trade** (watchlist, chart, ticket, order book, positions, orders & fills), **Order flow** (chart, book/heatmap, tape, flow stats, ticket) and **Monitor** (watchlist, positions, P/L, news). Each workspace keeps its own layout, and panels can be added or removed with **Panels**.
 
-Keyboard: **F1–F3, F5–F7** switch pages; **F4** opens Aztex Studio; **F8** or **Ctrl+,** opens chart settings; **/** focuses the command line; **?** lists every shortcut. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
+Keyboard: **F1–F3, F5–F7** switch pages; **F4** opens Aztex Studio; **F8** or **Ctrl+,** opens chart settings; **/** focuses the search field (symbols, windows and commands); **?** lists every shortcut. Panel function codes (GP, DOM, T&S…) appear in the dense **Desktop** platform mode.
 
 ## Indicator quick edit (on the chart)
 
@@ -487,6 +496,7 @@ The renderer is split so a swap stays contained. The pure math lives in `lib/cha
 ### Known limitations / next steps
 
 - **Order book depth.** The live order book uses Binance's partial-depth snapshots (top 20). A full L2 diff stream with local book maintenance is the next step if deeper books are needed. The UI contract (snapshots) stays the same either way.
+- **Quote statistics under the mock feed.** 52-week range, period returns, volatility and volume come from simulated daily candles (a seeded random walk scaled to each coin's volatility), so they are illustrative until the live feed is on. Market cap uses a fixed circulating supply per coin.
 - **Mock-only areas.** Wallet, OTC quotes, the scanner, dominance and community are mocks behind clear seams (`lib/mock/*`, `app/scannerFeed.ts`). Each needs its own backend, as §6–§9 describe. **Wallet and custody must get a dedicated security review. Nothing in the mock wallet is safe for real funds.**
 - **Fills.** Positions are spot-like at 1×: opening a position reserves its full notional. The mock fills market orders at the bid or ask with no slippage model.
 - **Phone app offline / push.** The phone app installs to the home screen but has no service worker yet, so it needs a connection and can't send push notifications while closed. Price and on-chain alerts fire while it's open.

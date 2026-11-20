@@ -1,3 +1,4 @@
+import { BASE_PRICES } from './assets';
 import { generateOrderBook, imbalance } from './orderbook';
 import { applyTick, generateCandles } from './candles';
 import { generateQuote, QUOTE_TTL_MS } from './otc';
@@ -33,6 +34,17 @@ describe('mock candles', () => {
   });
   it('is deterministic per symbol/timeframe', () => {
     expect(generateCandles('ETH', '5m', 50, 3000, 1e12)).toEqual(generateCandles('ETH', '5m', 50, 3000, 1e12));
+    // Any request size is a slice of the same walk: shared candles are identical.
+    const long = generateCandles('ETH', '1d', 400, 3000, 1e12);
+    const short = generateCandles('ETH', '1d', 320, 3000, 1e12);
+    expect(long.slice(-320)).toEqual(short);
+    // A year of daily candles moves like the asset's volatility, not by multiples (BTC ≈ 2×).
+    for (const sym of Object.keys(BASE_PRICES)) {
+      const year = generateCandles(sym, '1d', 365, 100, 1e12);
+      const hi = Math.max(...year.map((c) => c.high));
+      const lo = Math.min(...year.map((c) => c.low));
+      expect(hi / lo, sym).toBeLessThan(sym === 'BTC' || sym === 'ETH' ? 2.5 : 4.5);
+    }
   });
   it('applyTick updates the forming candle, then opens a new one', () => {
     const base = [{ time: 0, open: 10, high: 10, low: 10, close: 10, volume: 0 }];

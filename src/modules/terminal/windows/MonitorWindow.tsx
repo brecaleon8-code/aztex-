@@ -14,7 +14,7 @@ import { useWorkspaceStore } from '@/workspace/useWorkspaceStore';
 import { PopMenu } from '@/workspace/PopMenu';
 import { useSpark } from '../useSpark';
 import { MonitorGroups } from './MonitorGroups';
-import { OVERVIEW_GROUPS, OVERVIEW_LIST } from './monitorGroups';
+import { OVERVIEW_GROUPS, OVERVIEW_LIST } from './groupLayout';
 
 type Settings = { list: string; columns: string[]; sort: SortState; widths: Record<string, number>; collapsed: string[] };
 

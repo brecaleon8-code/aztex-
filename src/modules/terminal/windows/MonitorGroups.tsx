@@ -4,7 +4,7 @@ import { FlashTd, sortRows, type Column, type SortState } from '@/components/ui/
 import { useMarketStore } from '@/stores/useMarketStore';
 import { fmtPct, fmtPrice } from '@/lib/format';
 import type { Asset } from '@/types';
-import { blockCount, splitBlocks, type MonitorGroup } from './monitorGroups';
+import { blockCount, splitBlocks, type MonitorGroup } from './groupLayout';
 
 const dir = (a: Asset) => (a.change24h >= 0 ? 'up' : 'down');
 

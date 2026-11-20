@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockCount, splitBlocks, type MonitorGroup } from './monitorGroups';
+import { blockCount, splitBlocks, type MonitorGroup } from './groupLayout';
 
 const g = (id: string, n: number): MonitorGroup => ({ id, name: id, symbols: Array.from({ length: n }, (_, i) => `${id}${i}`) });
 

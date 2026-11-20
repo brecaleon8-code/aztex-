@@ -364,6 +364,27 @@ export function cancelWorkingOrder(id: string) {
   toast({ kind: 'info', title: 'Order cancelled', detail: `${sideWord(o.side)} ${fmtQty(o.size)} ${o.symbol} @ ${fmtPrice(o.limitPrice)}` });
 }
 
+/**
+ * Cancels every working entry order (resting limits and stop entries). Bracket exits stay with
+ * their positions. Returns how many were cancelled.
+ */
+export function cancelAllOrders(): number {
+  const { workingOrders, stopOrders } = usePositionStore.getState();
+  const n = workingOrders.length + stopOrders.length;
+  if (n === 0) return 0;
+  for (const o of workingOrders) {
+    usePositionStore.getState().removeWorking(o.id);
+    const rec = ex().orders.find((x) => x.id === o.id);
+    if (rec) ex().patch(o.id, { status: 'cancelled', reason: rec.filledQty > 0 ? 'Cancel all · rest of a partial fill' : 'Cancel all' });
+  }
+  for (const o of stopOrders) {
+    usePositionStore.getState().removeStop(o.id);
+    ex().patch(o.id, { status: 'cancelled', reason: 'Cancel all' });
+  }
+  toast({ kind: 'info', title: `${n} order${n === 1 ? '' : 's'} cancelled`, detail: 'Working limits and stops. Bracket exits stay with their positions.' });
+  return n;
+}
+
 /** Cancel one leg of a bracket; the position keeps the other leg. */
 export function cancelBracketLeg(orderId: string) {
   const o = ex().orders.find((x) => x.id === orderId);

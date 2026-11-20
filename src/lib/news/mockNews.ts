@@ -1,5 +1,5 @@
 import { hashSeed, mulberry32, pick } from '@/lib/mock/rng';
-import type { EconEvent, Impact, NewsCategory, NewsHandlers, NewsProvider, NewsStory, Region } from './types';
+import type { EconEvent, Impact, MarketEvent, NewsCategory, NewsHandlers, NewsProvider, NewsStory, Region } from './types';
 import { fmtEventValue, surprise } from './types';
 
 /* ── Headline wire ───────────────────────────────────────────────────────────────────────── */
@@ -182,6 +182,32 @@ export function releaseStory(e: EconEvent): NewsStory {
 
 /* ── Provider ────────────────────────────────────────────────────────────────────────────── */
 
+const FUNDING_MS = 8 * 3600_000;
+const VENUES = ['Aztex', 'Binance', 'OKX', 'Bybit', 'Coinbase'];
+
+/**
+ * Simulated listings and perpetual funding: the next 8-hour funding print for each symbol (rate
+ * stable per window) and a couple of listings over the next two days (stable per UTC day).
+ */
+export function buildMarketEvents(symbols: string[], now = Date.now()): MarketEvent[] {
+  const out: MarketEvent[] = [];
+  const next = Math.ceil(now / FUNDING_MS) * FUNDING_MS;
+  for (const s of symbols.slice(0, 10)) {
+    const r = mulberry32(hashSeed(`fund:${s}:${next}`));
+    const rate = round((r() - 0.35) * 0.06, 4);
+    out.push({ id: `f_${s}_${next}`, time: next, kind: 'funding', symbol: s, title: `${s}-PERP funding`, detail: `${rate >= 0 ? '+' : ''}${rate.toFixed(4)}%`, rate });
+  }
+  const day0 = Math.floor(now / DAY) * DAY;
+  for (let d = 0; d <= 1; d++) {
+    const r = mulberry32(hashSeed(`list:${day0 + d * DAY}`));
+    const sym = pick(r, symbols.slice(6));
+    const venue = pick(r, VENUES);
+    const time = day0 + d * DAY + (9 + Math.floor(r() * 10)) * 3600_000;
+    if (time > now - 3600_000) out.push({ id: `l_${sym}_${time}`, time, kind: 'listing', symbol: sym, title: `${sym} ${r() < 0.5 ? 'perpetual' : 'spot'} listing`, detail: venue });
+  }
+  return out.sort((a, b) => a.time - b.time || a.symbol.localeCompare(b.symbol));
+}
+
 export class MockNewsProvider implements NewsProvider {
   id = 'mock';
   label = 'Simulated wire';
@@ -194,6 +220,8 @@ export class MockNewsProvider implements NewsProvider {
     const released = events.filter((e) => e.time <= now && e.time > now - 6 * 3600_000 && (e.impact >= 2 || e.kind === 'crypto')).map(releaseStory);
     h.onStories([...backlog, ...released].sort((a, b) => b.time - a.time));
     h.onCalendar(events);
+    h.onMarketEvents?.(buildMarketEvents(this.symbols, now));
+    const marketClock = setInterval(() => h.onMarketEvents?.(buildMarketEvents(this.symbols)), 60_000);
 
     let storyTimer: ReturnType<typeof setTimeout>;
     const loop = () => {
@@ -217,6 +245,7 @@ export class MockNewsProvider implements NewsProvider {
     return () => {
       clearTimeout(storyTimer);
       clearInterval(clock);
+      clearInterval(marketClock);
     };
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { AppWindow, ChevronDown, CircleUserRound, Keyboard, Plus, Search, Settings, SquareCode, Wallet } from 'lucide-react';
+import { AppWindow, ChevronDown, CircleUserRound, Download, Keyboard, Plus, Search, Settings, SquareCode, Wallet } from 'lucide-react';
 import { Logo } from '../Logo';
 import { MOD_KEY } from '../CommandPalette';
 import { useTickFlash } from '../useTickFlash';
@@ -223,6 +223,9 @@ function ProfileMenu() {
           <button className="menu-item" onClick={act(() => openStudio())} data-testid="open-studio">
             <SquareCode size={15} /> <span className="grow">Aztex Studio</span>
             <kbd className="cm-kbd">F4</kbd>
+          </button>
+          <button className="menu-item" onClick={act(() => navigate('/get-studio'))} data-testid="get-studio">
+            <Download size={15} /> <span className="grow">Install Studio as an app…</span>
           </button>
           <button className="menu-item" onClick={act(() => useUiStore.getState().setShortcuts(true))} data-testid="menu-shortcuts">
             <Keyboard size={15} /> <span className="grow">Keyboard shortcuts</span>

@@ -284,6 +284,11 @@ function RenkoBoxControl() {
         aria-label="Renko box size"
         data-testid="renko-box"
       />
+      {renkoBox != null && (
+        <button className="cw-btn" onClick={() => setRenkoBox(null)} title="Back to automatic (ATR)">
+          Auto
+        </button>
+      )}
     </label>
   );
 }

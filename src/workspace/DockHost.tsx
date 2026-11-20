@@ -1,9 +1,10 @@
-import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Actions, Layout, Model, TabNode, TabSetNode, type Action, type BorderNode, type ITabRenderValues, type ITabSetRenderValues } from 'flexlayout-react';
 import { Check, ExternalLink, Maximize2, Minimize2, MoreHorizontal, X } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PanelChromeContext } from '@/components/ui/Panel';
 import { useMarketStore } from '@/stores/useMarketStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import { REGISTRY } from './registry';
 import { WindowContext } from './WindowContext';
 import { useWorkspaceStore } from './useWorkspaceStore';
@@ -89,6 +90,17 @@ export function DockHost({ scope }: { scope: Scope }) {
 function WindowFrame({ wsId, winId }: { wsId: string; winId: string }) {
   const win = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === wsId)?.windows[winId]);
   const ctx = useMemo(() => ({ wsId, winId }), [wsId, winId]);
+  const ref = useRef<HTMLDivElement>(null);
+  const theme = useThemeStore((s) => s.theme);
+  const colors = useThemeStore((s) => s.colors);
+  // A popped-out window is its own document: give it the theme and the chart colours too.
+  useLayoutEffect(() => {
+    const doc = ref.current?.ownerDocument;
+    if (!doc || doc === document) return;
+    doc.documentElement.dataset.theme = theme;
+    for (const k of ['--bull', '--bear', '--profit', '--loss']) doc.documentElement.style.setProperty(k, document.documentElement.style.getPropertyValue(k));
+    doc.body.style.background = 'var(--bg)';
+  }, [theme, colors]);
   if (!win) return <div className="win-empty">This window is no longer available.</div>;
   const def = REGISTRY[win.type];
   const Body = def.component;
@@ -96,6 +108,7 @@ function WindowFrame({ wsId, winId }: { wsId: string; winId: string }) {
     <WindowContext.Provider value={ctx}>
       <PanelChromeContext.Provider value="window">
         <div
+          ref={ref}
           className={`win win-${win.type}`}
           data-testid={`win-${win.type}`}
           data-window={winId}
@@ -128,7 +141,7 @@ function TabTitle({ wsId, winId }: { wsId: string; winId: string }) {
   if (!win) return <span className="win-tab-title">{WINDOW_TITLES.monitor}</span>;
   const linkable = REGISTRY[win.type].linkable;
   return (
-    <span className="win-tab-title" data-testid="win-tab">
+    <span className="win-tab-title" data-testid="win-tab" data-type={win.type} data-link={win.linkGroup ?? 'none'}>
       {WINDOW_TITLES[win.type]}
       {linkable && win.type !== 'monitor' && <span className="win-tab-sym mono">{symbolOf(win, groups, selected)}</span>}
     </span>

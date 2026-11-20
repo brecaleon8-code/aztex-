@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, RotateCcw, Layers, AlertTriangle, Ban } from 'lucide-react';
-import { Panel, type PanelDragProps } from '@/components/ui/Panel';
+import { Check, Loader2, RotateCcw, AlertTriangle, Ban } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { NumericField } from '@/components/ui/NumericField';
-import { usePositionStore } from '@/stores/usePositionStore';
-import { flattenAll, placeOrder, startTwap } from '@/stores/trading';
+import { placeOrder, startTwap } from '@/stores/trading';
 import type { ExecPreview } from '@/lib/trading/execution';
 import { fmtPct, fmtPrice, fmtQty, fmtUsd, priceDecimals } from '@/lib/format';
 import { pctFromEntry } from '@/lib/trading/pnl';
@@ -20,12 +18,15 @@ export const PLACING_MS = 450;
 export const PLACED_MS = 1400;
 type Phase = 'idle' | 'placing' | 'placed';
 
-export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
+/**
+ * Order ticket, compact two-column form: side and type on top, size and risk on the left, price,
+ * TP and SL on the right, Place across the bottom with the estimated fee at your maker / taker
+ * tier. Trades the window's symbol (its link group's, or its own).
+ */
+export function OrderTicket({ symbol }: { symbol?: string }) {
   // Priced on every book update with the same model the router fills with.
-  const { t, req, pv } = useTicketPreview();
-  const hasPositions = usePositionStore((s) => s.positions.length > 0);
+  const { t, req, pv } = useTicketPreview(symbol);
   const [phase, setPhase] = useState<Phase>('idle');
-  const [flattening, setFlattening] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -61,8 +62,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
   const exitsOn = !t.reduceOnly;
 
   return (
-    <Panel code="EMSX" title="Order Ticket" sub={`${t.symbol}/USDT`} drag={drag} testId="ticket">
-      <div className="col ticket" style={{ gap: 12 }}>
+    <div className="ticket tk-win" data-testid="ticket">
         <Segmented<Side>
           full
           size="lg"
@@ -91,6 +91,88 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
           <span className="num">{fmtUsd(t.balance)}</span>
         </div>
 
+        <div className="tk-grid">
+          <div className="tk-col">
+        <div className="col" style={{ gap: 6 }}>
+          {t.reduceOnly ? (
+            <div className="col" style={{ gap: 6 }} data-testid="reduce-sizing">
+              <div className="row">
+                <span className="label">Close % of {t.side === 'Long' ? 'short' : 'long'} position</span>
+                <span className="spacer" />
+                <span className="num faint">
+                  open {fmtQty(t.reducible)} {t.symbol}
+                </span>
+              </div>
+              <div className="row" style={{ gap: 4 }}>
+                {[25, 50, 75, 100].map((p) => (
+                  <button key={p} className={`btn sm grow ${t.reducePct === p ? 'active' : ''}`} onClick={() => t.setReducePct(p)}>
+                    {p}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+          <>
+          <div className="row">
+            <span className="label">Risk sizing</span>
+            <span className="spacer" />
+            <Segmented<SizingMode>
+              ariaLabel="Sizing mode"
+              value={t.sizingMode}
+              onChange={t.setSizingMode}
+              options={[
+                { value: 'pct', label: '% of equity' },
+                { value: 'usdt', label: 'USDT' },
+              ]}
+            />
+          </div>
+          <NumericField
+            value={t.sizingValue}
+            onCommit={t.setSizingValue}
+            suffix={t.sizingMode === 'pct' ? '%' : 'USDT'}
+            ariaLabel={t.sizingMode === 'pct' ? 'Percent of equity' : 'USDT value'}
+            testId="sizing-value"
+          />
+          {t.sizingMode === 'pct' && (
+            <div className="row" style={{ gap: 4 }}>
+              {[5, 10, 25, 50].map((p) => (
+                <button key={p} className={`btn sm grow ${t.pctValue === p ? 'active' : ''}`} onClick={() => t.setSizingValue(p)}>
+                  {p}%
+                </button>
+              ))}
+            </div>
+          )}
+          </>
+          )}
+          <div className="row ticket-flags">
+            <Toggle on={t.reduceOnly} onChange={(v) => t.setFlag('reduceOnly', v)} label="Reduce-only" title={`Only closes existing ${t.side === 'Long' ? 'short' : 'long'} ${t.symbol} exposure — never opens or flips a position`} testId="reduce-only" />
+            <Toggle on={t.bracket && exitsOn} disabled={!exitsOn} onChange={(v) => t.setFlag('bracket', v)} label="Bracket TP/SL" title="Send take-profit (limit) and stop-loss (stop-market) as live one-cancels-other exit orders. Off: TP/SL are alerts only." testId="bracket" />
+          </div>
+          <div className="ticket-summary">
+            <div className="row">
+              <span className="label">Size</span>
+              <span className="spacer" />
+              <span className="num" data-testid="ticket-size">{fmtQty(t.reduceOnly ? pv.qty : t.size)} {t.symbol}</span>
+            </div>
+            <div className="row">
+              <span className="label">Notional</span>
+              <span className="spacer" />
+              <span className={`num ${insufficient ? 'down' : ''}`}>{fmtUsd(twap || !pv.ok ? t.notional : pv.notional)} USDT</span>
+            </div>
+            {twap ? (
+              <div className="row">
+                <span className="label">Est. fee · {FEE_TIERS[tier].label} taker</span>
+                <span className="spacer" />
+                <span className="num" data-testid="ticket-fee">{fmtUsd(t.notional * FEE_TIERS[tier].taker)} USDT</span>
+              </div>
+            ) : (
+              <PreTrade pv={pv} tierLabel={FEE_TIERS[tier].label} symbol={t.symbol} estFee={estFee} />
+            )}
+          </div>
+        </div>
+
+          </div>
+          <div className="tk-col">
         {t.orderType === 'limit' ? (
           <div className="col" style={{ gap: 6 }}>
             <NumericField label="Limit price" value={t.limitPx} decimals={dec} onCommit={(v) => t.setLimitPrice(v > 0 ? v : null)} suffix="USDT" ariaLabel="Limit price" testId="limit-price" />
@@ -170,84 +252,6 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
           </div>
         )}
 
-        <div className="col" style={{ gap: 6 }}>
-          {t.reduceOnly ? (
-            <div className="col" style={{ gap: 6 }} data-testid="reduce-sizing">
-              <div className="row">
-                <span className="label">Close % of {t.side === 'Long' ? 'short' : 'long'} position</span>
-                <span className="spacer" />
-                <span className="num faint">
-                  open {fmtQty(t.reducible)} {t.symbol}
-                </span>
-              </div>
-              <div className="row" style={{ gap: 4 }}>
-                {[25, 50, 75, 100].map((p) => (
-                  <button key={p} className={`btn sm grow ${t.reducePct === p ? 'active' : ''}`} onClick={() => t.setReducePct(p)}>
-                    {p}%
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-          <>
-          <div className="row">
-            <span className="label">Risk sizing</span>
-            <span className="spacer" />
-            <Segmented<SizingMode>
-              ariaLabel="Sizing mode"
-              value={t.sizingMode}
-              onChange={t.setSizingMode}
-              options={[
-                { value: 'pct', label: '% of equity' },
-                { value: 'usdt', label: 'USDT' },
-              ]}
-            />
-          </div>
-          <NumericField
-            value={t.sizingValue}
-            onCommit={t.setSizingValue}
-            suffix={t.sizingMode === 'pct' ? '%' : 'USDT'}
-            ariaLabel={t.sizingMode === 'pct' ? 'Percent of equity' : 'USDT value'}
-            testId="sizing-value"
-          />
-          {t.sizingMode === 'pct' && (
-            <div className="row" style={{ gap: 4 }}>
-              {[5, 10, 25, 50].map((p) => (
-                <button key={p} className={`btn sm grow ${t.pctValue === p ? 'active' : ''}`} onClick={() => t.setSizingValue(p)}>
-                  {p}%
-                </button>
-              ))}
-            </div>
-          )}
-          </>
-          )}
-          <div className="row ticket-flags">
-            <Toggle on={t.reduceOnly} onChange={(v) => t.setFlag('reduceOnly', v)} label="Reduce-only" title={`Only closes existing ${t.side === 'Long' ? 'short' : 'long'} ${t.symbol} exposure — never opens or flips a position`} testId="reduce-only" />
-            <Toggle on={t.bracket && exitsOn} disabled={!exitsOn} onChange={(v) => t.setFlag('bracket', v)} label="Bracket TP/SL" title="Send take-profit (limit) and stop-loss (stop-market) as live one-cancels-other exit orders. Off: TP/SL are alerts only." testId="bracket" />
-          </div>
-          <div className="ticket-summary">
-            <div className="row">
-              <span className="label">Size</span>
-              <span className="spacer" />
-              <span className="num" data-testid="ticket-size">{fmtQty(t.reduceOnly ? pv.qty : t.size)} {t.symbol}</span>
-            </div>
-            <div className="row">
-              <span className="label">Notional</span>
-              <span className="spacer" />
-              <span className={`num ${insufficient ? 'down' : ''}`}>{fmtUsd(twap || !pv.ok ? t.notional : pv.notional)} USDT</span>
-            </div>
-            {twap ? (
-              <div className="row">
-                <span className="label">Est. fee · {FEE_TIERS[tier].label} taker</span>
-                <span className="spacer" />
-                <span className="num" data-testid="ticket-fee">{fmtUsd(t.notional * FEE_TIERS[tier].taker)} USDT</span>
-              </div>
-            ) : (
-              <PreTrade pv={pv} tierLabel={FEE_TIERS[tier].label} symbol={t.symbol} estFee={estFee} />
-            )}
-          </div>
-        </div>
-
         {exitsOn ? (
         <>
         <div className="ticket-levels">
@@ -286,6 +290,8 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
           </div>
         )}
 
+          </div>
+        </div>
         <button
           className={`btn lg primary place-btn ${phase} ${t.side === 'Long' ? 'long' : 'short'}`}
           onClick={submit}
@@ -311,22 +317,7 @@ export function OrderTicket({ drag }: { drag?: PanelDragProps }) {
         </button>
         {insufficient && <span className="error-text">Notional + fees exceed available balance</span>}
 
-        {hasPositions && (
-          <button
-            className="btn danger"
-            disabled={flattening}
-            data-testid="flatten-all"
-            onClick={async () => {
-              setFlattening(true);
-              await flattenAll();
-              setFlattening(false);
-            }}
-          >
-            {flattening ? <Loader2 size={13} className="spin" /> : <Layers size={13} />} Flatten all
-          </button>
-        )}
-      </div>
-    </Panel>
+    </div>
   );
 }
 

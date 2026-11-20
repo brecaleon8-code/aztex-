@@ -65,11 +65,11 @@ function walk(node: AnyNode | undefined, fn: (n: AnyNode) => void) {
   node.children?.forEach((c) => walk(c, fn));
 }
 
-/** Every node of the tree: main layout, borders and popped-out windows. */
+/** Every node of the tree: main layout, borders and popped-out / floating windows (sub-layouts). */
 function eachNode(json: IJsonModel, fn: (n: AnyNode) => void) {
   walk(json.layout as AnyNode, fn);
   json.borders?.forEach((b) => walk(b as AnyNode, fn));
-  for (const p of Object.values(json.popouts ?? {})) walk((p as { layout?: AnyNode }).layout, fn);
+  for (const p of Object.values({ ...(json.popouts ?? {}), ...(json.subLayouts ?? {}) })) walk((p as { layout?: AnyNode }).layout, fn);
 }
 
 /** Ids of every tab (window) in the tree. */

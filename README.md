@@ -20,9 +20,10 @@ Set `VITE_MARKET_DATA=live` (see `.env.example`) to start on Binance public mark
 | State | Zustand domain stores: `useThemeStore`, `useMarketStore`, `useOrderStore`, `usePositionStore`, `useWalletStore`, `useLayoutStore`, plus `useChartStore`, `useDiscoveryStore`, `useCommunityStore`, `useOtcStore`, `useToastStore`. User preferences persist to `localStorage`. |
 | Price chart | Hand-rolled SVG (see "Charting decision" below) |
 | Simple charts | `recharts` (P/L mountain, dominance ring, comparison lines) |
+| Docking | `flexlayout-react` (tiling, splitters, tab stacks, edge docking, maximize, pop-out). See "Docked workspace" below for why. |
 | Icons | `lucide-react` |
 | Styling | Plain CSS with custom-property theming (`[data-theme]` on `<html>`). "Graphite" visual language: a neutral grayish-black interface where royal green appears only as a deliberate hint (brand mark, active nav/workspace indicators, primary actions, focus rings, selected-row edge, chart entry flag and POC). Bright mint/red stay reserved for P/L direction, and one warm tone marks warnings. Modest 6–8px radii, quiet panel chrome. "Silver" is the separately tuned light theme. |
-| Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource |
+| Fonts | Inter (UI) and IBM Plex Mono (all numbers), self-hosted via Fontsource. The layout brief suggested JetBrains Mono; Plex Mono was kept because it is already bundled and does the same job (tabular, slashed zero), so no new font dependency. |
 | Tests | Vitest + Testing Library (unit/component), Playwright (acceptance) |
 
 ## Fees, partner codes, deposits & Studio
@@ -58,18 +59,42 @@ Market and marketable orders, closes, flattens and TWAP slices pay taker; restin
 - **Execution model (no look-ahead):** signals fill at the next bar's open; the stop is checked before the target within a bar; fees are charged on both sides.
 - **Formula language** additions: comparisons, `and`/`or`/`not`, and `rsi`, `highest`, `lowest`, `prev`, `cross_over`, `cross_under`, `abs`, `min`, `max`.
 
-## Chart tabs & multi-chart layouts
+## Docked workspace
 
-The Terminal works like TradingView:
+Every app (Terminal, Data & Discovery, Community, OTC) is a docked, multi-window workspace in the style of a professional market-data desktop. Only the layout patterns are borrowed; the Aztex identity, colours and wording stay.
 
-- **Tabs per crypto.** A tab strip sits next to the workspace switcher. Each tab is a chart page for one crypto. **+** opens another crypto in a new tab (or switches to it if it's already open), **×** or a middle-click closes a tab. Each tab shows its 24h change.
-- **Up to 4 charts per tab.** The layout button on the chart offers **1**, **2 side by side**, **2 stacked**, **1 large + 2** and **4 (2 × 2)**. Each chart has its own symbol and timeframe, picked from its header.
-- **One chart trades.** Click a chart to focus it. It gets a green outline and a **Trading** tag, and the ticket, order book, tape and levels follow it. Picking a symbol anywhere else (watchlist, command line, palette) changes the focused chart.
-- **Persistence.** Tabs, layouts and each chart's symbol/timeframe survive reloads (`aztex.chartTabs`).
-- **Data.** Unfocused charts get candle-only streams from the same `MarketDataProvider` (`useSeriesStore`, wired in `app/marketFeed.ts`). The outgoing series is cached, so switching focus never flashes empty.
-- **Fit to screen.** Maximize turns any layout into a full-screen multi-chart view. Small panes drop their indicator panes to keep the price plot readable.
+**Shell, the same on every route**
 
-Code: `stores/useChartTabsStore.ts` (pure, unit-tested), `app/chartTabsSync.ts` (tabs ↔ selected symbol), `modules/terminal/ChartTabs.tsx`, `modules/terminal/chart/ChartGrid.tsx`.
+- **Top bar (40px):** logo mark; one search field for symbols, windows, pages and commands (`/` focuses it, results grouped under the field); Ctrl/⌘ K palette; clock; fee tier (maker / taker); the wallet with Deposit and Withdraw in its menu; the profile menu, which holds theme and layout density.
+- **App rail (48px):** icons only, with tooltips; the active app gets an accent edge. Studio, Appearance and Account sit at the bottom.
+- **Workspace tabs (32px):** rename (double-click), reorder (drag), close; **+** opens a template or a saved layout; **Window** adds any window; **Layout** saves, saves as, renames, deletes or resets the current layout (a dot marks unsaved changes). Ctrl+1…9 switch tabs.
+- **Bottom stack:** the command line (a fixed dark terminal in every theme), then one 24px status row with feed, latency, order mode, clock, session and network fees.
+
+**Windows**
+
+- **Tiling** with 4px splitters that light up on hover; neighbours resize live and charts re-measure as you drag. Minimum window size is 220 × 140.
+- **Docking:** drag a window by its tab onto an edge of another window to split it, or onto its centre to stack it as a tab; drag a tab out to undock it.
+- **Link groups:** each linkable window (Monitor, Chart, Order book, Ticket, News, Time & Sales, Order flow) has a dot on its tab: none, red, blue, green or amber. Windows sharing a colour share a symbol. The Trading template links Monitor, Chart, Order book and Ticket in red.
+- **Maximize** fills the dock (Esc restores). **Pop-out** moves a window into its own browser window, sharing the same state; closing that window docks it back.
+- **Templates:** Trading, Research and Execution for the terminal (plus a 2 × 2 Charts grid), and one per app.
+- **Saved layouts** store the dock tree, sizes, tab stacks, link groups, each window's settings and the symbol per group. Persistence goes through a `LayoutRepository` (localStorage today). An unreadable store falls back to the Trading template.
+
+**Window contents**
+
+- **Monitor:** a dense table (Symbol, Last, Chg, Chg %, Bid, Ask, Spread, 24h Vol, sparkline): sortable, column picker, resizable columns, 24px rows, a 300ms flash on change, named lists as tabs, search to add, a row menu to remove.
+- **Chart:** symbol, bid / ask and the OHLC readout on one header line; a 28px toolbar (timeframes, chart type, zoom, profiles, indicators, settings); the drawing rail inside the window. Charts are windows: open as many as you like, each with its own symbol, timeframe, type and indicators. The focused chart drives the terminal's market stream; the others draw their own candle streams.
+- **Order book:** ladder / depth / heatmap, cumulative-depth toggle, tick grouping, and a Time & Sales strip (last 20 prints).
+- **Order ticket:** compact two-column form; Place spans the bottom; the fee estimate uses your maker / taker tier.
+- **Blotter:** Positions, Open orders, Orders, Fills, OTC and execution Quality as tabs of dense sortable tables, with the SL → TP bar, Close, Flatten all, Cancel and Cancel all.
+- **News & events, Comparison, Market share, Scanner, Currency search, Messages, Forum, OTC desk** are windows too.
+
+**Styling rules:** 1px border, 8px radius, no shadows inside the dock; 28px header in the alternate panel colour; 8px body padding; 12px monospace numbers in tables (11px in the book); green and red only for price movement and P/L; the active window gets an accent frame and a 2px accent top edge; single-line empty states. Light and dark follow the same rules.
+
+**Why flexlayout-react.** Both `dockview` and `flexlayout-react` were tried against the brief's three hardest tests (splitter drag, docking into a stack, save / restore). flexlayout's drag-and-drop uses pointer events, so it works under Playwright; dockview uses native HTML5 drag-and-drop, which Playwright cannot drive reliably. flexlayout also brings maximize, pop-out windows, min sizes and a JSON model that round-trips. It is the only new dependency.
+
+**Honest limits.** One symbol streams at a time (the focused chart's), as before. A linked book, tape or flow window on another symbol shows a one-click **Stream X here** prompt instead of stale data. Chart drawings follow their chart within a session but, as before this rework, are not saved across reloads.
+
+Code: `src/workspace/` (model, templates, repository, link store, dock host, window registry), `src/app/shell/` (top bar, rail, tab strip, status row, search), `src/modules/*/windows`. Unit tests in `src/workspace/workspace.test.ts`; Playwright tests under "Docked workspace" in `e2e/acceptance.spec.ts`, run in both dark and light (`chromium-light` project).
 
 ## Chart settings (colours, theme, feed)
 
@@ -91,24 +116,23 @@ Studio is its own app, like MetaEditor next to MT5:
 
 - **Separate app.** It has its own HTML entry (`studio.html`, built as a second Vite input), its own bundle and window, and a web-app manifest (`public/studio.webmanifest`, icons in `public/brand/studio-*.png`).
 - **Install.** Chrome and Edge can install it as a desktop app with its own icon and taskbar entry. The **Install app** button in Studio's title bar uses the browser's install prompt.
-- **Open from the terminal.** Press **F4**, use the code icon (`</>`) in the top bar (**Open Studio** / **Install as desktop app…**), use **Open Studio** in the Indicator menu, or use the chart's settings menu.
+- **Open from the terminal.** Press **F4**, use the code icon (`</>`) in the app rail, use **Aztex Studio** / **Install Studio as an app…** in the profile menu, use **Open Studio** in the Indicator menu, or use the chart's settings menu.
 - **Download page.** `/get-studio` is the download page. Servers answer `/studio` with the app itself.
 - **Live sync.** Terminal and Studio share one library through storage (`lib/sync/crossWindow.ts`). An indicator saved in Studio appears in the terminal's Indicator menu immediately, and **Show on chart** brings the terminal window forward.
 - **Own backtest symbol.** Studio keeps its own backtest symbol and timeframe (`aztex.studio.market`), so it never moves your chart.
 
-## Top bar, bottom bar & account menu
+## Account & profile menu
 
-The layout follows TradingView: one slim row on top, pages along the bottom.
+The round icon at the top right opens the profile menu:
 
-- **Top row.** Brand, the command line, and the account strip (equity, available, unrealized, realized, **Add crypto**, **Withdraw**). On the right: news, search (Ctrl/⌘ K), Aztex Studio, and the account menu.
-- **Bottom bar.** The page tabs: Terminal (F1), Data & Discovery (F2), On-chain (F3, with an unread-alert count), Community (F5) and OTC Desk (F6). On the right: your fee tier, network fees, feed status and latency, and the session clock.
-- **Account menu** (round icon, top right):
-  - who you are and your equity
-  - Account & balances (F7) and Add crypto
-  - Chart settings (Ctrl+,)
-  - New chart tab, New window, Aztex Studio (F4), Keyboard shortcuts (?)
-  - **Layout** density: Web / Mobile / Desktop. **Mobile** shows the phone app in a phone frame, with a QR code to open it on your phone.
-  - **Theme**: System / Dark / Light. System follows the OS setting live.
+- who you are and your equity
+- Account & balances (F7) and Add crypto
+- Chart settings (Ctrl+,)
+- New window, Aztex Studio (F4), Install Studio as an app, Keyboard shortcuts (?)
+- **Layout** density: Web / Mobile / Desktop. **Mobile** shows the phone app in a phone frame, with a QR code to open it on your phone.
+- **Theme**: System / Dark / Light. System follows the OS setting live.
+
+The wallet (balance, Deposit, Withdraw) is its own menu beside it.
 
 ## Phone app
 
@@ -175,22 +199,19 @@ On a phone-sized screen (≤ 760 px wide, or a landscape phone), Aztex becomes a
 
 **Keyboard shortcuts.** Press **?** or use the ⌨ button on the workspace bar for the full sheet (`app/ShortcutsSheet.tsx`). The price-action keys work at the mouse position (`modules/terminal/chart/chartCursor.ts`).
 
-## News & calendar dock
+## News & events window
 
-Open it with the **News** button in the top bar, **Alt+N**, or the command palette. You can pin it to the **left or right** edge, and it stays there on every page and across reloads.
+Add it from **Window › News & events**, or open the **Research** template, which links it to the chart in red.
 
-- **Headlines tab.** A live wire covering crypto, macro, regulation, on-chain and markets news.
-  - **Filtering:** pick categories with the chips, set a minimum impact, or tick **My assets**. My assets keeps stories about your selected symbol, watchlist and open positions, plus high-impact macro news.
-  - **Reading:** click a headline for its summary, or click a symbol tag (▲/▼ shows sentiment) to open that symbol on the chart.
-  - **Scrolling:** while you're scrolled down, new stories wait behind a "N new" pill, so nothing shifts under your cursor.
-- **Calendar tab.** An economic and crypto calendar for yesterday through the next six days, in UTC.
+- **Headlines.** A live wire covering crypto, macro, regulation, on-chain and markets news: time, source, headline and symbol tags. Clicking a tag loads that symbol into every window of the link group. **{symbol} only** keeps stories tagged with the linked symbol (a window setting, saved with the layout).
+- **Listings & funding strip.** Upcoming listings and funding prints, with countdowns.
+- **Calendar.** The economic and crypto calendar, yesterday through the next six days, in UTC:
   - Economic events include CPI, NFP, Fed/ECB/BoE/BoJ decisions and PMIs. Crypto events include options expiries, token unlocks, upgrades and ETF deadlines.
   - Each event shows impact bars, actual, forecast and previous values, and a countdown for anything in the next 24 hours. A "now" line marks the current time.
   - When an event prints, the actual value is coloured **beat/miss** against the forecast (lower-is-better series such as CPI and unemployment are handled). The print also posts to the wire.
-- **Always on.** A "Next high impact" strip with a countdown sits at the top. High-impact events raise a toast 5 minutes before release and again when they print; the bell icon mutes these.
-- **Layout.** The dock is resizable (drag its inner edge; double-click resets the width). It collapses to a slim rail that still shows the unread count and the next-event countdown. On narrow screens and on the Mobile platform it floats over the page instead.
+- **Alerts.** High-impact events raise a toast 5 minutes before release and again when they print.
 
-**Data.** The wire and calendar are **simulated** (`src/lib/news/mockNews.ts`). A demo high-impact release is scheduled a few minutes after load so you can watch one print. The source sits behind a `NewsProvider` interface (`src/lib/news/types.ts`), so a production adapter can plug in a licensed headline socket and an economic-calendar API without UI changes. Feed wiring and alerts live in `src/app/newsFeed.ts`, the UI in `src/app/NewsDock.tsx`, and preferences in `useNewsStore` (only preferences are persisted).
+**Data.** The wire, events and calendar are **simulated** (`src/lib/news/mockNews.ts`). A demo high-impact release is scheduled a few minutes after load so you can watch one print. The source sits behind a `NewsProvider` interface (`src/lib/news/types.ts`), so a production adapter can plug in a licensed headline socket and an economic-calendar API without UI changes. Feed wiring and alerts live in `src/app/newsFeed.ts`, the window in `src/modules/news/NewsWindow.tsx`; the calendar and feed components in `src/app/NewsDock.tsx` are shared with the phone app.
 
 ## Studio scripts (Level 2 indicators)
 
@@ -230,7 +251,7 @@ Code: `src/lib/script/` holds `engine.ts`, `prelude.ts` (the in-VM API), `templa
 
 ## Brand
 
-The Aztex logo (`public/brand/aztex-logo.png`) is rebuilt as vectors in `src/app/Logo.tsx`: the full **wordmark** in the top bar and the pixel-**X** mark for the favicon. Colours sampled from the artwork:
+The Aztex logo (`public/brand/aztex-logo.png`) is rebuilt as vectors in `src/app/Logo.tsx`: the pixel-**X** mark in the top bar and the favicon, and the full **wordmark** in Studio and the phone preview. Colours sampled from the artwork:
 
 | Role | Hex | Use |
 | --- | --- | --- |
@@ -244,16 +265,19 @@ In the wordmark, the letters and the X's centre cell use `currentColor`, so they
 
 ```
 src/
-  app/            App shell, routing, sidebar, status strip, gas ticker, market/scanner feed wiring
+  app/            App root, routing, palette, gas ticker, market/scanner/news feed wiring
+    shell/        top bar + universal search, app rail, workspace tab strip, status row
+  workspace/      docked workspace: model, templates, LayoutRepository, link groups, dock host, window registry
   mobile/         phone app: shell + bottom tabs, Quotes/Chart/Trade/History/Menu screens, bottom sheets, phone preview
   modules/
-    terminal/     watchlist, chart/ (PriceChart, toolbar, indicator menu), order book, ticket, positions, P/L, CLI
+    terminal/     chart/ (PriceChart, toolbar, indicator menu), order book, ticket, positions, P/L, CLI; windows/ (Monitor, Chart, Blotter, …)
+    news/         News & events window
     discovery/    currency search, market share, comparison chart, blockchain scanner + alerts
     community/    identity (X handle, friend code), contacts, chat with trade chips, forum
     otc/          RFQ with countdown, desks, blotter
     studio/       Studio workspace (indicator library, strategy lab) + the /get-studio download page
   studio/         Aztex Studio app shell (separate entry: studio.html), install prompt
-  components/ui/  Panel, Segmented, NumericField, Toasts
+  components/ui/  Panel, Segmented, NumericField, Toasts, DenseTable
   lib/
     indicators/   sma, ema, bollinger, rsi (Wilder), macd, formula tokenizer/parser/evaluator, compute
     chart/        heikin-ashi, viewport (zoom + pixel-accumulator pan), scales, fib, flag paths
@@ -316,7 +340,7 @@ src/
 | News wire | `terminal/News.tsx` | Simulated headlines; filter to the selected symbol. |
 
 **Pro workflow.**
-- **Command palette** (⌘K / Ctrl K, or the search box in the top bar): fuzzy-jump to any symbol, page, workspace or panel, switch timeframe or chart style, toggle the volume profile or theme, change the data source, or flatten positions.
+- **Command palette** (⌘K / Ctrl K, or the Ctrl K button in the top bar): fuzzy-jump to any symbol, page, workspace or panel, switch timeframe or chart style, toggle the volume profile or theme, change the data source, or flatten positions.
 - **Watchlist** rows carry a 24h sparkline (real 15m history from the active provider) and a 24h change pill, with bid/ask under the last price.
 - **Chart**: symbol watermark, a countdown to the forming candle's close under the last-price tag, resting limit orders drawn as labelled lines, and 24h high/low/volume in the header on wide screens.
 - **Order ticket** shows pre-trade risk: max loss at SL, target at TP, reward-to-risk ratio and risk as a % of equity (flagged above 2%).

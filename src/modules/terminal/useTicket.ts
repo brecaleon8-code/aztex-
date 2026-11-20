@@ -7,10 +7,11 @@ import { positionSize, suggestedLevels } from '@/lib/trading/pnl';
 import { previewFor, type OrderRequest } from '@/stores/trading';
 
 /** Derived order-ticket values shared by the ticket and the chart's draft levels. */
-export function useTicket() {
+export function useTicket(forSymbol?: string) {
   const t = useOrderStore();
-  const symbol = useMarketStore((s) => s.selected);
-  const asset = useMarketStore((s) => s.assets[s.selected]);
+  const selected = useMarketStore((s) => s.selected);
+  const symbol = forSymbol ?? selected;
+  const asset = useMarketStore((s) => s.assets[symbol]);
   const balance = useWalletStore((s) => s.balance);
   const positions = usePositionStore((s) => s.positions);
   const holdingsValue = useHoldingsValue();
@@ -34,8 +35,8 @@ export function useTicket() {
 }
 
 /** The ticket as an order request, priced against the live book (re-renders on every book update). */
-export function useTicketPreview() {
-  const t = useTicket();
+export function useTicketPreview(symbol?: string) {
+  const t = useTicket(symbol);
   useMarketStore((s) => s.bookVersion);
   const req: OrderRequest = {
     symbol: t.symbol,

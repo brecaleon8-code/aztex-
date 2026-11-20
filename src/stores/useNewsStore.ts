@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { EconEvent, Impact, NewsCategory, NewsStory } from '@/lib/news/types';
+import type { EconEvent, Impact, MarketEvent, NewsCategory, NewsStory } from '@/lib/news/types';
 
 export type DockSide = 'left' | 'right';
 export type NewsTab = 'feed' | 'calendar';
@@ -19,6 +19,7 @@ interface NewsState {
   // Live data (not persisted)
   stories: NewsStory[];
   events: EconEvent[];
+  marketEvents: MarketEvent[];
   // Preferences (persisted)
   pinned: boolean;
   side: DockSide;
@@ -34,6 +35,7 @@ interface NewsState {
 
   addStories: (s: NewsStory[]) => void;
   setEvents: (e: EconEvent[]) => void;
+  setMarketEvents: (e: MarketEvent[]) => void;
   updateEvent: (e: EconEvent) => void;
   toggleDock: () => void;
   setPinned: (v: boolean) => void;
@@ -55,6 +57,7 @@ export const useNewsStore = create<NewsState>()(
     (set) => ({
       stories: [],
       events: [],
+      marketEvents: [],
       pinned: false,
       side: 'right',
       collapsed: false,
@@ -75,6 +78,7 @@ export const useNewsStore = create<NewsState>()(
           return { stories: [...fresh, ...s.stories].sort((a, b) => b.time - a.time).slice(0, MAX_STORIES) };
         }),
       setEvents: (events) => set({ events }),
+      setMarketEvents: (marketEvents) => set({ marketEvents }),
       updateEvent: (e) => set((s) => ({ events: s.events.map((x) => (x.id === e.id ? e : x)) })),
       toggleDock: () => set((s) => (s.pinned && !s.collapsed ? { pinned: false } : { pinned: true, collapsed: false, lastSeen: Date.now() })),
       setPinned: (pinned) => set(pinned ? { pinned, collapsed: false, lastSeen: Date.now() } : { pinned }),
@@ -99,9 +103,10 @@ export const useNewsStore = create<NewsState>()(
     }),
     {
       name: 'aztex.news',
-      partialize: ({ stories: _s, events: _e, ...prefs }) => {
+      partialize: ({ stories: _s, events: _e, marketEvents: _m, ...prefs }) => {
         void _s;
         void _e;
+        void _m;
         return Object.fromEntries(Object.entries(prefs).filter(([, v]) => typeof v !== 'function'));
       },
     },

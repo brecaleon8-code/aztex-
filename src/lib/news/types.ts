@@ -38,10 +38,24 @@ export interface EconEvent {
   detail?: string;
 }
 
+/** Listings and perpetual funding, for the News window's events strip. */
+export interface MarketEvent {
+  id: string;
+  time: number;
+  kind: 'listing' | 'funding';
+  symbol: string;
+  title: string;
+  detail: string;
+  /** Funding rate per period, in percent (positive: longs pay shorts). */
+  rate?: number;
+}
+
 export interface NewsHandlers {
   onStories: (s: NewsStory[]) => void;
   onCalendar: (events: EconEvent[]) => void;
   onEventUpdate: (e: EconEvent) => void;
+  /** Upcoming listings and funding times; refreshed as they roll. Optional for providers without them. */
+  onMarketEvents?: (e: MarketEvent[]) => void;
 }
 
 /**

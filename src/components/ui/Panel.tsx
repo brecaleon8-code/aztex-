@@ -27,17 +27,19 @@ interface PanelProps {
  * Inside a dock window the window header already carries the title, so a panel drops its own
  * title row and keeps only its controls (as a slim sub-toolbar).
  */
-export const PanelChromeContext = createContext<'page' | 'window'>('page');
+export const PanelChromeContext = createContext<'page' | 'window' | 'window-section'>('page');
 
 export function Panel({ code, title, sub, actions, children, className = '', bodyClassName = '', flush, style, drag, testId }: PanelProps) {
   // Controls inside the header (buttons, selects) must not start a panel drag.
   const fromControl = useRef(false);
   const chrome = useContext(PanelChromeContext);
-  if (chrome === 'window')
+  // 'window-section': one of several panels in a window, so it keeps a compact title.
+  if (chrome !== 'page')
     return (
       <section className={`panel in-window ${className}`} style={style} data-testid={testId}>
-        {(sub || actions) && (
+        {(sub || actions || chrome === 'window-section') && (
           <header className="panel-head win-subbar">
+            {chrome === 'window-section' && <h2 className="panel-title win-section-title">{title}</h2>}
             {sub && <span className="panel-sub">{sub}</span>}
             <div className="spacer" />
             {actions && <div className="panel-actions">{actions}</div>}

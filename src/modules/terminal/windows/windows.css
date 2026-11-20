@@ -174,3 +174,303 @@
 .chart-win {
   container-type: inline-size;
 }
+
+/* Monitor */
+.mon {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.mon .dt-wrap {
+  flex: 1;
+}
+.mon-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+  overflow-x: auto;
+  scrollbar-width: none;
+  user-select: none;
+}
+.mon-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mon-tab:hover {
+  color: var(--text);
+}
+.mon-tab.on {
+  color: var(--text);
+  background: var(--raised);
+}
+.mon-tab.add {
+  padding: 0 5px;
+}
+.mon-tab-x {
+  display: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-faint);
+}
+.mon-tab.on .mon-tab-x,
+.mon-tab:hover .mon-tab-x {
+  display: inline-grid;
+}
+.mon-rename {
+  width: 90px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 11.5px;
+}
+.mon-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.mon-add {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 200px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.mon-add:focus-within {
+  border-color: var(--accent);
+}
+.mon-add input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+.mon-add-list {
+  top: 26px;
+  left: 0;
+  width: 220px;
+  z-index: 20;
+}
+.mon-sym {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.mon-sym b {
+  font-weight: 650;
+}
+.mon-more {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0;
+}
+.dt tr:hover .mon-more,
+.mon-more:focus-visible {
+  opacity: 1;
+}
+.mon-more:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.mon .dt td .spark {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Blotter */
+.blot {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.blot-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+.blot-bar .seg {
+  font-size: 11.5px;
+}
+.blot-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.blot-body .dt-wrap {
+  flex: 1;
+}
+.blot-body .tca {
+  padding: 8px;
+}
+.bl-algos {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.bl-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.bl-range .pos-bar {
+  position: relative;
+  flex: 1;
+  min-width: 40px;
+  margin: 0;
+}
+.dt tr.closing td {
+  opacity: 0.5;
+}
+.btn.xs {
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  gap: 3px;
+}
+.btn.xs.icon {
+  width: 20px;
+  padding: 0;
+}
+
+/* Order ticket: side and type on top, size and risk | price, TP and SL, Place across the bottom. */
+.tk-win {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 8px;
+  overflow: auto;
+  container-type: inline-size;
+}
+.tk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px 14px;
+}
+@container (min-width: 440px) {
+  .tk-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.tk-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.tk-win .place-btn {
+  flex: none;
+  margin-top: auto;
+}
+
+/* Order book window: ladder over the last 20 prints. */
+.ob-win > .panel-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ob-win .ob {
+  flex: 1 1 auto;
+  min-height: 0;
+  font-size: 11px;
+}
+.ob-win .ob .num,
+.ob-win .ob .ob-price {
+  font-size: 11px;
+}
+.ob-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ob-tape {
+  flex: none;
+  height: min(34%, 230px);
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.ob-tape-head,
+.ob-tape-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  height: 18px;
+  align-items: center;
+  padding: 0 8px;
+}
+.ob-tape-head {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line-soft);
+}
+.ob-tape-row > :not(:first-child),
+.ob-tape-head > :not(:first-child) {
+  text-align: right;
+}
+.ob-tape-row .num {
+  font-size: 11px;
+}
+.ob-tape-row.big {
+  background: var(--hl);
+}
+.tk-win .place-btn {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -8px 12px -6px var(--panel);
+}
+.ob-win .ob-row {
+  height: 18px;
+  min-height: 18px;
+}
+.ob-win .ob-tape {
+  height: min(28%, 200px);
+}

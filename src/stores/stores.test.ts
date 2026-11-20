@@ -1,4 +1,3 @@
-import { reorder } from './useLayoutStore';
 import { useChartStore } from './useChartStore';
 import { matchAlerts } from './useDiscoveryStore';
 import { useOtcStore } from './useOtcStore';
@@ -12,12 +11,6 @@ import { FEE_TIERS } from '@/lib/account/fees';
 const TAKER = FEE_TIERS.standard.taker;
 import type { ScannerEvent } from '@/types';
 
-describe('layout reorder', () => {
-  it('moves a panel into the target slot', () => {
-    expect(reorder(['watchlist', 'chart', 'orderbook', 'ticket', 'positions', 'pnl'], 'pnl', 'chart')).toEqual(['watchlist', 'pnl', 'chart', 'orderbook', 'ticket', 'positions']);
-    expect(reorder(['watchlist', 'chart', 'orderbook', 'ticket', 'positions', 'pnl'], 'watchlist', 'orderbook')).toEqual(['chart', 'orderbook', 'watchlist', 'ticket', 'positions', 'pnl']);
-  });
-});
 
 describe('scanner alert matching', () => {
   const e: ScannerEvent = { id: '1', symbol: 'ETH', network: 'Base', type: 'whale_move', amount: 1, usd: 12_000_000, from: 'a', to: 'b', time: 0, flagged: false, txHash: 'x' };

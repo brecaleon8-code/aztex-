@@ -19,6 +19,7 @@ export function startNewsFeed(): () => void {
   const stop = provider.start({
     onStories: (s) => st().addStories(s),
     onCalendar: (e) => st().setEvents(e),
+    onMarketEvents: (e) => st().setMarketEvents(e),
     onEventUpdate: (e) => {
       st().updateEvent(e);
       if (!st().alerts || e.impact < 3) return;

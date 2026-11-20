@@ -9,7 +9,7 @@
   min-height: 0;
   min-width: 0;
 }
-.dock-host .flexlayout__layout {
+.flexlayout__layout {
   --flexlayout-font-family: var(--font-ui);
   --flexlayout-font-size: 12px;
   --flexlayout-font-weight: 500;
@@ -53,15 +53,15 @@
 }
 
 /* Window frame */
-.dock-host .flexlayout__tabset {
+.flexlayout__tabset {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: none;
 }
-.dock-host .flexlayout__tabset-selected {
+.flexlayout__tabset-selected {
   border-color: var(--accent);
 }
-.dock-host .flexlayout__tabset_tabbar_outer {
+.flexlayout__tabset_tabbar_outer {
   height: 28px;
   min-height: 28px;
   padding: 0 2px 0 0;
@@ -70,16 +70,16 @@
   user-select: none;
   -webkit-user-select: none;
 }
-.dock-host .flexlayout__tabset-selected .flexlayout__tabset_tabbar_outer {
+.flexlayout__tabset-selected .flexlayout__tabset_tabbar_outer {
   box-shadow: inset 0 2px 0 var(--accent);
 }
-.dock-host .flexlayout__tabset_tabbar_inner_tab_container {
+.flexlayout__tabset_tabbar_inner_tab_container {
   padding-left: 0;
 }
-.dock-host .flexlayout__tabset_tabbar_inner_tab_container_top {
+.flexlayout__tabset_tabbar_inner_tab_container_top {
   border-top: 0;
 }
-.dock-host .flexlayout__tab_button {
+.flexlayout__tab_button {
   height: 27px;
   margin: 0;
   padding: 0 6px 0 9px;
@@ -90,15 +90,15 @@
   color: var(--text-dim);
   cursor: grab;
 }
-.dock-host .flexlayout__tab_button--selected {
+.flexlayout__tab_button--selected {
   color: var(--text);
   background: var(--panel);
 }
-.dock-host .flexlayout__tab_button--unselected:hover {
+.flexlayout__tab_button--unselected:hover {
   color: var(--text);
   background: var(--hover);
 }
-.dock-host .flexlayout__tab_button_trailing {
+.flexlayout__tab_button_trailing {
   opacity: 0;
   width: 14px;
   min-width: 14px;
@@ -106,33 +106,33 @@
   color: var(--text-faint);
   border-radius: 3px;
 }
-.dock-host .flexlayout__tab_button:hover .flexlayout__tab_button_trailing,
-.dock-host .flexlayout__tab_button--selected .flexlayout__tab_button_trailing {
+.flexlayout__tab_button:hover .flexlayout__tab_button_trailing,
+.flexlayout__tab_button--selected .flexlayout__tab_button_trailing {
   opacity: 1;
 }
-.dock-host .flexlayout__tab_button_trailing:hover {
+.flexlayout__tab_button_trailing:hover {
   color: var(--text);
   background: var(--raised);
 }
-.dock-host .flexlayout__tabset_tab_divider {
+.flexlayout__tabset_tab_divider {
   width: 0;
 }
-.dock-host .flexlayout__tab {
+.flexlayout__tab {
   background: var(--panel);
   border-radius: 0 0 7px 7px;
   overflow: hidden;
 }
 /* Built-in maximize / close buttons are replaced by ours. */
-.dock-host .flexlayout__tab_toolbar_button-max,
-.dock-host .flexlayout__tab_toolbar_button-min,
-.dock-host .flexlayout__tab_toolbar_button-close {
+.flexlayout__tab_toolbar_button-max,
+.flexlayout__tab_toolbar_button-min,
+.flexlayout__tab_toolbar_button-close {
   display: none;
 }
-.dock-host .flexlayout__tab_toolbar {
+.flexlayout__tab_toolbar {
   gap: 0;
   padding-right: 2px;
 }
-.dock-host .flexlayout__tab_toolbar_button {
+.flexlayout__tab_toolbar_button {
   width: 24px;
   height: 22px;
   border-radius: 5px;
@@ -140,21 +140,21 @@
 }
 
 /* Splitters: the 4px gap between windows. */
-.dock-host .flexlayout__splitter {
+.flexlayout__splitter {
   background: transparent;
   transition: background-color var(--t-fast) var(--ease);
 }
-.dock-host .flexlayout__splitter:hover,
-.dock-host .flexlayout__splitter_drag {
+.flexlayout__splitter:hover,
+.flexlayout__splitter_drag {
   background: var(--accent);
 }
-.dock-host .flexlayout__outline_rect {
+.flexlayout__outline_rect {
   border: 2px solid var(--accent);
   background: var(--accent-soft);
   border-radius: 8px;
   box-shadow: none;
 }
-.dock-host .flexlayout__drag_rect,
+.flexlayout__drag_rect,
 .flexlayout__drag_rect {
   border: 1px solid var(--accent);
   border-radius: 6px;
@@ -164,7 +164,7 @@
   padding: 4px 10px;
   box-shadow: var(--pop-shadow);
 }
-.dock-host .flexlayout__edge_rect {
+.flexlayout__edge_rect {
   background: var(--accent);
 }
 
@@ -334,4 +334,10 @@
 }
 .pop-menu .menu-item.danger {
   color: var(--loss);
+}
+.win-section-title {
+  font: 600 12px var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
 }

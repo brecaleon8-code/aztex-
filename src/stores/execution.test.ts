@@ -5,7 +5,7 @@ import { usePositionStore } from './usePositionStore';
 import { useWalletStore, STARTING_BALANCE } from './useWalletStore';
 import { useFeeStore } from './useFeeStore';
 import { useExecutionStore } from './useExecutionStore';
-import { closePosition, onPrices, placeOrder, previewFor, CLOSE_ANIM_MS, cancelWorkingOrder, modifyLevels } from './trading';
+import { closePosition, onPrices, placeOrder, placeStopOrder, previewFor, CLOSE_ANIM_MS, cancelWorkingOrder, cancelAllOrders, modifyLevels } from './trading';
 import { FEE_TIERS } from '@/lib/account/fees';
 
 const TAKER = FEE_TIERS.standard.taker;
@@ -185,6 +185,23 @@ describe('order router', () => {
     placeOrder({ ...base, side: 'Long', orderType: 'market', size: 1, bracket: true, tp: 105, sl: 95 });
     setBtc(106, null);
     expect(orders().find((o) => o.kind === 'take_profit')?.pnl).toBeCloseTo(105 - 100.5);
+  });
+});
+
+describe('cancelAllOrders', () => {
+  it('cancels resting limits and stop entries, leaves bracket exits on their positions', () => {
+    placeOrder({ ...base, side: 'Long', orderType: 'market', size: 1, bracket: true, tp: 110, sl: 90 });
+    placeOrder({ ...base, side: 'Long', orderType: 'limit', size: 1, limitPrice: 95 });
+    placeStopOrder({ symbol: 'BTC', side: 'Long', size: 1, triggerPrice: 104, tp: 115, sl: 95 });
+    expect(usePositionStore.getState().workingOrders).toHaveLength(1);
+    expect(usePositionStore.getState().stopOrders).toHaveLength(1);
+    expect(cancelAllOrders()).toBe(2);
+    expect(usePositionStore.getState().workingOrders).toHaveLength(0);
+    expect(usePositionStore.getState().stopOrders).toHaveLength(0);
+    const legs = orders().filter((o) => o.source === 'bracket');
+    expect(legs.every((o) => o.status === 'new')).toBe(true);
+    expect(orders().filter((o) => o.reason === 'Cancel all')).toHaveLength(2);
+    expect(cancelAllOrders()).toBe(0);
   });
 });
 

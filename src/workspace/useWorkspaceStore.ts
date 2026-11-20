@@ -207,12 +207,15 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const win = makeWindow(type, group, settings);
       replaceWs(ws.id, (w) => ({ ...w, windows: { ...w.windows, [win.id]: win } }));
       const m = dockModels.get(ws.id);
+      // A new chart joins the current chart's stack as a tab (like a new chart tab); others go to the active stack.
+      const chartStack = type === 'chart' && get().activeChart && ws.windows[get().activeChart!] ? m?.getNodeById(get().activeChart!)?.getParent()?.getId() : undefined;
       if (m) {
-        const target = opts.stackId ?? m.getActiveTabset()?.getId() ?? firstTabsetId(m);
+        const target = opts.stackId ?? chartStack ?? m.getActiveTabset()?.getId() ?? firstTabsetId(m);
         if (target) m.doAction(Actions.addNode(tabOf(win), target, DockLocation.CENTER, -1, true));
         else replaceWs(ws.id, (w) => ({ ...w, dock: addTab(w.dock, tabOf(win)), rev: w.rev + 1 }));
       } else replaceWs(ws.id, (w) => ({ ...w, dock: addTab(w.dock, tabOf(win), opts.stackId), rev: w.rev + 1 }));
-      if (type === 'chart' && scope === 'terminal') get().activateChart(win.id);
+      // The new window has focus: a linkable one streams its symbol, a chart becomes the focused chart.
+      get().focusWindow(win.id);
       return win.id;
     },
 
